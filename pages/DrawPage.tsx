@@ -13,6 +13,7 @@ import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
+import TournamentFormatSelector, { SingleTournamentFormat } from '../components/TournamentFormatSelector.tsx';
 
 interface DrawPageProps {
     setActivePage: (page: 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments') => void;
@@ -24,7 +25,7 @@ interface DrawPageProps {
     clearLaunchMode?: () => void;
 }
 
-type DrawFlow = 'pairs' | 'team-tournament';
+type DrawFlow = 'pairs' | 'team-tournament' | 'single-tournament-format-first';
 type DrawEntryChoice = 'menu' | 'pairs' | 'team' | 'existing';
 type TeamTournamentFormat = 'ROUND ROBIN' | 'ANDATA E RITORNO' | 'ELIMINAZIONE DIRETTA';
 type TeamTournamentMatchesPerDay = 3 | 5;
@@ -111,6 +112,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [mode, setMode] = useState<DrawMode>('Normal');
     const [numPairs, setNumPairs] = useState(2);
     const [isCustomNumPairs, setIsCustomNumPairs] = useState(false);
+    const [selectedFormatForNewFlow, setSelectedFormatForNewFlow] = useState<SingleTournamentFormat | null>(null);
     const [drawnPairs, setDrawnPairs] = useState<[Player, Player][] | null>(null);
     const [manualPairs, setManualPairs] = useState<[string, string][]>([]);
     const [isShuffling, setIsShuffling] = useState(false);
@@ -992,7 +994,20 @@ const DrawPage: React.FC<DrawPageProps> = ({
             preselectedTournamentName={newGiornataForTournament}
             clearPreselectedTournament={() => setNewGiornataForTournament(null)}
             forceExistingTournament={entryChoice === 'existing' && !newGiornataForTournament}
+            initialFormat={selectedFormatForNewFlow || undefined}
         />;
+    }
+
+    if (activeFlow === 'single-tournament-format-first' && !selectedFormatForNewFlow) {
+        return (
+            <TournamentFormatSelector
+                onSelectFormat={(format) => setSelectedFormatForNewFlow(format)}
+                onBack={() => {
+                    setActiveFlow('pairs');
+                    setEntryChoice('menu');
+                }}
+            />
+        );
     }
 
     if (!teamTournamentToConfigure && entryChoice === 'menu') {
@@ -1004,10 +1019,13 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             Scegli se creare un nuovo torneo (a coppie o a squadre) o aggiungere una giornata a un torneo gia esistente
                         </p>
                         <Button onClick={openPairsFlow} size="lg" className="w-full !text-sm">
-                            SINGOLO / A COPPIE
+                            TORNEI MULTI GIORNATA
                         </Button>
                         <Button onClick={openTeamFlow} size="lg" className="w-full !text-sm">
                             A SQUADRE
+                        </Button>
+                        <Button onClick={() => { setEntryChoice('pairs'); setActiveFlow('single-tournament-format-first'); }} size="lg" className="w-full !text-sm">
+                            TORNEO SINGOLO
                         </Button>
                         <Button onClick={openExistingTournamentDayFlow} size="lg" className="w-full !text-sm">
                             AGGIUNGI GIORNATA A TORNEO ESISTENTE
@@ -1865,40 +1883,52 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div>
                                 <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Numero Coppie da Sorteggiare</label>
                                  <div className="mt-1 flex items-center flex-wrap gap-2">
-                                    {Array.from({ length: 7 }, (_, i) => i + 2).map(num => (
+                                    {(() => {
+                                        let allowedPairs = Array.from({ length: 7 }, (_, i) => i + 2);
+                                        if (selectedFormatForNewFlow === 'torneotto-30') allowedPairs = [4];
+                                        else if (selectedFormatForNewFlow === 'beat-the-box') allowedPairs = [4, 6, 8];
+                                        else if (selectedFormatForNewFlow === 'americano') allowedPairs = [4, 5, 6, 7, 8];
+                                        return allowedPairs.map(num => (
+                                            <Button
+                                                key={num}
+                                                type="button"
+                                                variant={numPairs === num && !isCustomNumPairs ? 'primary' : 'secondary'}
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (isTeamTournamentFlow) {
+                                                        handleFlowChange('pairs');
+                                                    }
+                                                    setIsCustomNumPairs(false);
+                                                    setNumPairs(num);
+                                                }}
+                                                className="!px-4"
+                                            >
+                                                {num}
+                                            </Button>
+                                        ));
+                                    })()}
+                                    
+                                    {(!selectedFormatForNewFlow || !['torneotto-30'].includes(selectedFormatForNewFlow)) && (
                                         <Button
-                                            key={num}
                                             type="button"
-                                            variant={numPairs === num && !isCustomNumPairs ? 'primary' : 'secondary'}
+                                            variant={isCustomNumPairs ? 'primary' : 'secondary'}
                                             size="sm"
                                             onClick={() => {
                                                 if (isTeamTournamentFlow) {
                                                     handleFlowChange('pairs');
                                                 }
-                                                setIsCustomNumPairs(false);
-                                                setNumPairs(num);
+                                                setIsCustomNumPairs(true);
+                                                let minCustom = 9;
+                                                if (selectedFormatForNewFlow === 'beat-the-box' && numPairs % 2 !== 0) {
+                                                    minCustom = 10;
+                                                }
+                                                setNumPairs(Math.max(minCustom, numPairs)); // Assicura che parta dal minimo corretto
                                             }}
-                                            className="!px-4"
+                                            className="!px-4 font-bold"
                                         >
-                                            {num}
+                                            9+
                                         </Button>
-                                    ))}
-                                    
-                                    <Button
-                                        type="button"
-                                        variant={isCustomNumPairs ? 'primary' : 'secondary'}
-                                        size="sm"
-                                        onClick={() => {
-                                            if (isTeamTournamentFlow) {
-                                                handleFlowChange('pairs');
-                                            }
-                                            setIsCustomNumPairs(true);
-                                            setNumPairs(Math.max(9, numPairs)); // Assicura che parta da almeno 9
-                                        }}
-                                        className="!px-4 font-bold"
-                                    >
-                                        9+
-                                    </Button>
+                                    )}
 
                                     {isCustomNumPairs && (
                                         <div className="flex items-center gap-2 ml-2">
@@ -1906,6 +1936,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 type="number"
                                                 min={9}
                                                 max={64}
+                                                step={selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1}
                                                 value={numPairs}
                                                 onChange={(e) => {
                                                     const val = parseInt(e.target.value, 10);
@@ -1986,7 +2017,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {!isTeamTournamentFlow && (
                         <div className="px-4">
                             <Button onClick={handleDraw} className="w-full" disabled={isShuffling}>
-                                <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : 'Sorteggia Coppie')}</span>
+                                <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : (selectedFormatForNewFlow ? 'Avanti - Scegli Coppie' : 'Sorteggia Coppie'))}</span>
                             </Button>
                             {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
                         </div>
@@ -2068,7 +2099,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         onClick={() => setShowTournamentFlow(true)}
                                         className="flex-1"
                                     >
-                                        Avanti - Scelta Torneo
+                                        {selectedFormatForNewFlow ? 'Avanti - Impostazioni Torneo' : 'Avanti - Scelta Torneo'}
                                     </Button>
                                 </div>
                             </div>

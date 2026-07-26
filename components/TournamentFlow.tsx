@@ -1385,16 +1385,33 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  americanoScoringType: selectedFormat === 'americano' ? americanoScoringType : undefined
  };
  
- // Create matches with empty results (0-0 sets, no winner)
- // For Round Robin + Finali, use Round Robin matches for calendar
  const matchesToSave = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
- 
- const scheduledMatches: Omit<Match, 'id'>[] = matchesToSave.map((match) => ({
- ...match,
- date: new Date(tournamentDate).toISOString(),
- sets: [{ team1: 0, team2: 0 }],
- winner: null,
- }));
+ const scoresToSave = isRoundRobinFinali ? roundRobinScores : matchScores;
+  
+ const scheduledMatches: Omit<Match, 'id'>[] = matchesToSave.map((match, index) => {
+    const scores = scoresToSave[index] || [{ team1: 0, team2: 0 }];
+    const team1Games = scores.reduce((sum, s) => sum + (s.team1 || 0), 0);
+    const team2Games = scores.reduce((sum, s) => sum + (s.team2 || 0), 0);
+    const hasScores = scores.length > 0 && (team1Games > 0 || team2Games > 0);
+
+    let winner: 'team1' | 'team2' | 'draw' | null = null;
+    if (hasScores) {
+      const team1Wins = scores.filter(s => s.team1 > s.team2).length;
+      const team2Wins = scores.filter(s => s.team2 > s.team1).length;
+      if (team1Wins > team2Wins) winner = 'team1';
+      else if (team2Wins > team1Wins) winner = 'team2';
+      else if (team1Games > team2Games) winner = 'team1';
+      else if (team2Games > team1Games) winner = 'team2';
+      else winner = 'draw';
+    }
+
+    return {
+      ...match,
+      date: new Date(tournamentDate).toISOString(),
+      sets: scores,
+      winner: winner,
+    };
+  });
 
  console.log(`📝 Saving tournament: ${finalName} with ${scheduledMatches.length} matches`);
  
@@ -1436,14 +1453,34 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  numGironi: gironi.length
  };
  
- // Create empty matches - SOLO gironi, NON semifinali/finali (verranno create dopo)
- const allMatches = gironiMatches.flat();
- const scheduledMatches: Omit<Match, 'id'>[] = allMatches.map(match => ({
- ...match,
- date: new Date(tournamentDate).toISOString(),
- sets: [{ team1: 0, team2: 0 }],
- winner: null
- }));
+  // Create matches - preserving scores if user typed any
+  const scheduledMatches: Omit<Match, 'id'>[] = [];
+  gironiMatches.forEach((groupMatches, gIndex) => {
+    groupMatches.forEach((match, mIndex) => {
+      const scores = gironiScores[gIndex]?.[mIndex] || [{ team1: 0, team2: 0 }];
+      const team1Games = scores.reduce((sum, s) => sum + (s.team1 || 0), 0);
+      const team2Games = scores.reduce((sum, s) => sum + (s.team2 || 0), 0);
+      const hasScores = scores.length > 0 && (team1Games > 0 || team2Games > 0);
+
+      let winner: 'team1' | 'team2' | 'draw' | null = null;
+      if (hasScores) {
+        const team1Wins = scores.filter(s => s.team1 > s.team2).length;
+        const team2Wins = scores.filter(s => s.team2 > s.team1).length;
+        if (team1Wins > team2Wins) winner = 'team1';
+        else if (team2Wins > team1Wins) winner = 'team2';
+        else if (team1Games > team2Games) winner = 'team1';
+        else if (team2Games > team1Games) winner = 'team2';
+        else winner = 'draw';
+      }
+
+      scheduledMatches.push({
+        ...match,
+        date: new Date(tournamentDate).toISOString(),
+        sets: scores,
+        winner: winner
+      });
+    });
+  });
  
  await addMultipleMatches(scheduledMatches, newTournamentData);
  setIsCalendarSavedModalOpen(true);

@@ -1,3 +1,10 @@
+## v6.0.1 — 2026-07-26
+- Major Release: Migrazione completa repository su EloManager6.
+- Algorithm Overhaul: Algoritmo di turnazione torneo Americano completamente riprogettato con vincolo matematico stringente sui partner (nessuna ripetizione di compagno finché non si è giocato con tutti gli altri giocatori) e bilanciamento perfetto dei riposi.
+- UI/UX & PDF: Formattazione verticale e pulita dei riposi ("Riposo:" con elenco giocatori a capo) in schermate e report PDF.
+- Modal di Conferma: Garantito il popup di conferma salvataggio ("Calendario Salvato!") su tutti i tipi di tornei e flussi di salvataggio parziale.
+- Salvataggio Incrementale: Preservati i punteggi delle partite inserite anche durante il salvataggio parziale del calendario o inserimenti a tappe.
+
 ## v5.0.9
 - Fix: Nelle classifiche (Storico ELO), le etichette delle giornate mostrano ora correttamente il tipo di giornata (es. "Beat the Box", "Americano", "Round Robin + Finali") invece del nome del torneo padre (es. "TorneOtto Inverno 2025").
 - Fix: Risolto bug critico su voci elo_history "orfane" (event_id non corrisponde a nessun torneo nel DB) tramite ricerca per data per recuperare il tipo di giornata corretto.

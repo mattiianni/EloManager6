@@ -398,7 +398,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         });
     };
 
-    const calculateAmericanoStandings = (matches: Match[]): TournamentStandingEntry[] => {
+    const calculateAmericanoStandings = (matches: Match[], scoringType?: 'games-diff' | 'points'): TournamentStandingEntry[] => {
         console.log(`🎯 TournamentsPage Americano: Starting calculation with ${matches.length} matches`);
         
         const playerStats = new Map<string, {
@@ -460,14 +460,14 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         });
 
         // Convert to standings array
-        // For now, assume "games-diff" scoring (we don't have the scoring type stored)
         const standings: TournamentStandingEntry[] = Array.from(playerStats.values()).map(stats => {
             const gameDifference = stats.totalGamesWon - stats.totalGamesLost;
+            const points = scoringType === 'points' ? stats.totalGamesWon : gameDifference;
             
             return {
                 teamId: stats.player.id,
                 team: [stats.player],
-                points: gameDifference, // For "games-diff": use game difference
+                points,
                 gamesWon: stats.totalGamesWon,
                 gamesLost: stats.totalGamesLost,
                 gameDifference,
@@ -477,7 +477,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
         console.log(`🎯 TournamentsPage Americano: Created ${standings.length} standings entries`);
         
-        return standings.sort((a, b) => b.points - a.points);
+        return standings.sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            return b.gamesWon - a.gamesWon;
+        });
     };
 
     const handlePrint = async (tournament: Tournament) => {
@@ -576,7 +579,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         
         let standings: TournamentStandingEntry[];
         if (tournament.type === TournamentType.Americano) {
-            standings = calculateAmericanoStandings(tournamentMatches);
+            standings = calculateAmericanoStandings(tournamentMatches, tournament.americanoScoringType);
         } else if (tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2) {
             // For Round Robin + Finali, calculate based on finals results
             const roundRobinMatchCount = tournamentMatches.length - 2;
@@ -621,7 +624,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         
         let standings: TournamentStandingEntry[];
         if (firstDay.type === TournamentType.Americano) {
-            standings = calculateAmericanoStandings(seriesMatches);
+            standings = calculateAmericanoStandings(seriesMatches, firstDay.americanoScoringType);
         } else if (firstDay.type === TournamentType.RoundRobinFinali && seriesMatches.length > 2) {
             const roundRobinMatchCount = seriesMatches.length - 2;
             standings = calculateFinalStandingsForRoundRobinFinali(seriesMatches, roundRobinMatchCount, getPlayerById as any);
@@ -1451,47 +1454,132 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                 }
                                                                 return (
                                                                     <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-white/10">
-                                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                                                            {tournamentMatches.map((m, idx) => {
-                                                                                const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
-                                                                                const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
-                                                                                const t1SetsDisplay = m.sets && m.sets.length > 0 ? (
-                                                                                    <div className="flex items-center gap-1.5">
-                                                                                        {m.sets.map((s, i) => (
-                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
-                                                                                                {s.team1}
-                                                                                            </span>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                const t2SetsDisplay = m.sets && m.sets.length > 0 ? (
-                                                                                    <div className="flex items-center gap-1.5">
-                                                                                        {m.sets.map((s, i) => (
-                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
-                                                                                                {s.team2}
-                                                                                            </span>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                
-                                                                                return (
-                                                                                    <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
-                                                                                        <div className="flex items-center justify-between gap-3">
-                                                                                            <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
-                                                                                            {t1SetsDisplay}
+                                                                        <div className="space-y-3">
+                                                                            {(() => {
+                                                                                if (day.type === TournamentType.Americano) {
+                                                                                    const roundsMap = new Map<number, typeof tournamentMatches>();
+                                                                                    
+                                                                                    const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
+                                                                                    const numPlayers = allPlayersIds.size;
+                                                                                    const matchesPerRound = Math.min(day.americanoFields || 2, Math.floor(numPlayers / 4));
+
+                                                                                    tournamentMatches.forEach((sm, index) => {
+                                                                                        const r = sm.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
+                                                                                        if (!roundsMap.has(r)) roundsMap.set(r, []);
+                                                                                        roundsMap.get(r)!.push(sm);
+                                                                                    });
+                                                                                    
+                                                                                    const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+                                                                                    return Array.from(roundsMap.entries()).sort((a,b)=>a[0]-b[0]).map(([r, matchesForRound]) => {
+                                                                                        const playersInRound = new Set(matchesForRound.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
+                                                                                        const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
+                                                                                        
+                                                                                        return (
+                                                                                            <div key={`round-${r}`} className="mb-4">
+                                                                                                <div className="flex justify-between items-start mb-2">
+                                                                                                    <h4 className="font-semibold text-gray-800 dark:text-gray-200">Turno {r}</h4>
+                                                                                                    {restingPlayers.length > 0 && (
+                                                                                                        <div className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-2.5 py-1 rounded-md text-right">
+                                                                                                            <span className="font-semibold block">Riposo:</span>
+                                                                                                            {restingPlayers.map(p => (
+                                                                                                                <div key={p.id}>{p.name} {p.surname}</div>
+                                                                                                            ))}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                                                                                    {matchesForRound.map((m, idx) => {
+                                                                                                        const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
+                                                                                                        const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
+                                                                                                        const t1SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                                {m.sets.map((s, i) => (
+                                                                                                                    <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                                        {s.team1}
+                                                                                                                    </span>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+                                                                                                        const t2SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                                {m.sets.map((s, i) => (
+                                                                                                                    <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                                        {s.team2}
+                                                                                                                    </span>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+                                                                                                        
+                                                                                                        return (
+                                                                                                            <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
+                                                                                                                <div className="flex items-center justify-between gap-3">
+                                                                                                                    <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
+                                                                                                                    {t1SetsDisplay}
+                                                                                                                </div>
+                                                                                                                <div className="flex items-center gap-2">
+                                                                                                                    <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                                    <span className="text-[10px] uppercase font-bold text-app-muted dark:text-white/40 tracking-wider">vs</span>
+                                                                                                                    <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                                </div>
+                                                                                                                <div className="flex items-center justify-between gap-3">
+                                                                                                                    <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
+                                                                                                                    {t2SetsDisplay}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    });
+                                                                                } else {
+                                                                                    return (
+                                                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                                                                            {tournamentMatches.map((m, idx) => {
+                                                                                                const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
+                                                                                                const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
+                                                                                                const t1SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                    <div className="flex items-center gap-1.5">
+                                                                                                        {m.sets.map((s, i) => (
+                                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                                {s.team1}
+                                                                                                            </span>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+                                                                                                const t2SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                    <div className="flex items-center gap-1.5">
+                                                                                                        {m.sets.map((s, i) => (
+                                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                                {s.team2}
+                                                                                                            </span>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+                                                                                                
+                                                                                                return (
+                                                                                                    <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
+                                                                                                        <div className="flex items-center justify-between gap-3">
+                                                                                                            <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
+                                                                                                            {t1SetsDisplay}
+                                                                                                        </div>
+                                                                                                        <div className="flex items-center gap-2">
+                                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                            <span className="text-[10px] uppercase font-bold text-app-muted dark:text-white/40 tracking-wider">vs</span>
+                                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                        </div>
+                                                                                                        <div className="flex items-center justify-between gap-3">
+                                                                                                            <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
+                                                                                                            {t2SetsDisplay}
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                );
+                                                                                            })}
                                                                                         </div>
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
-                                                                                            <span className="text-[10px] uppercase font-bold text-app-muted dark:text-white/40 tracking-wider">vs</span>
-                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
-                                                                                        </div>
-                                                                                        <div className="flex items-center justify-between gap-3">
-                                                                                            <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
-                                                                                            {t2SetsDisplay}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
+                                                                                    );
+                                                                                }
+                                                                            })()}
                                                                         </div>
                                                                     </div>
                                                                 );

@@ -2,8 +2,8 @@
 
 ## Stato corrente
 
-- Versione attuale: `5.0.8`
-- Formato incrementale successivo: `5.0.9`, `4.1.12`, `4.1.13`, ...
+- Versione attuale: `6.0.1`
+- Formato incrementale successivo: `6.0.2`, `6.1.0`, ...
 - Mese corrente di riferimento: `Lug 2026`
 
 ## Checklist

@@ -915,7 +915,8 @@ export const printTournamentReport = (
     displayNameOverride?: string
 ) => {
     const displayName = displayNameOverride || tournament.name;
-    const isAmericano = tournament.type === TournamentType.Americano;
+    const isAmericano = tournament.type === TournamentType.Americano || 
+                        (tournament.type === TournamentType.Serie && (americanoScoringType !== undefined || americanoFields !== undefined));
     const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
     const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
 
@@ -1004,7 +1005,53 @@ export const printTournamentReport = (
         ? matches.slice(roundRobinMatchCount) 
         : [];
     
-    const roundRobinContent = roundRobinMatches.map((match, index) => generateMatchRow(match, index, false, -1)).join('');
+    let roundRobinContent = '';
+    
+    if (isAmericano) {
+        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
+        const numPlayers = allPlayersIds.size;
+        const matchesPerRound = Math.min(americanoFields || 2, Math.floor(numPlayers / 4));
+
+        let currentRound = 0;
+        roundRobinContent = roundRobinMatches.map((match, index) => {
+            const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
+            let rowHtml = '';
+            
+            if (r !== currentRound) {
+                currentRound = r;
+                
+                const playersInRound = new Set(
+                    roundRobinMatches
+                        .filter((m, i) => (m.roundNumber || (matchesPerRound > 0 ? Math.floor(i / matchesPerRound) + 1 : 1)) === currentRound)
+                        .flatMap(m => [...m.team1, ...m.team2])
+                );
+                
+                const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
+                const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
+                const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
+                
+                let restingText = '';
+                if (restingPlayers.length > 0) {
+                    restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-bottom: 4px; border-radius: 4px; font-weight: normal;"><b>Riposo:</b>${restingPlayers.map(p => `<div style="margin-top: 1px;">${p.name} ${p.surname}</div>`).join('')}</div>`;
+                }
+
+                rowHtml += `
+                    <tr>
+                        <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
+                            Turno ${currentRound}
+                            ${restingText}
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            rowHtml += generateMatchRow(match, index, false, -1);
+            return rowHtml;
+        }).join('');
+    } else {
+        roundRobinContent = roundRobinMatches.map((match, index) => generateMatchRow(match, index, false, -1)).join('');
+    }
+    
     const finalsContent = finalsMatches.map((match, index) => generateMatchRow(match, index, true, index)).join('');
     
     // For Gironi + Fase Finale tournaments, split matches into gironi, semifinals, and finals
@@ -3662,24 +3709,56 @@ export const printBlankScoreSheet = (
     `).join('');
     }
 
-    const matchesContent = matches.map((match, index) => {
-        const t1p1 = getPlayerById(match.team1[0]);
-        const t1p2 = getPlayerById(match.team1[1]);
-        const t2p1 = getPlayerById(match.team2[0]);
-        const t2p2 = getPlayerById(match.team2[1]);
-        if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+    let matchesContent = '';
+    
+    if (isAmericano) {
+        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
+        const numPlayers = allPlayersIds.size;
+        const matchesPerRound = Math.min(americanoFields || 2, Math.floor(numPlayers / 4));
 
-        const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-        const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-        let court = '-';
-        if (tournamentDetails.type === TournamentType.TorneOtto) {
-            court = `Campo ${(index % 2) + 1}`;
-        } else if (tournamentDetails.type === TournamentType.Americano) {
+        let currentRound = 0;
+        
+        matchesContent = matches.map((match, index) => {
+            const t1p1 = getPlayerById(match.team1[0]);
+            const t1p2 = getPlayerById(match.team1[1]);
+            const t2p1 = getPlayerById(match.team2[0]);
+            const t2p2 = getPlayerById(match.team2[1]);
+            if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            
             const maxCourts = americanoFields || 2;
-            court = `Campo ${(index % maxCourts) + 1}`;
-        }
+            const court = `Campo ${(index % maxCourts) + 1}`;
+            
+            const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
+            let rowHtml = '';
+            
+            if (r !== currentRound) {
+                currentRound = r;
+                
+                const playersInRound = new Set(
+                    matches
+                        .filter((m, i) => (m.roundNumber || (matchesPerRound > 0 ? Math.floor(i / matchesPerRound) + 1 : 1)) === currentRound)
+                        .flatMap(m => [...m.team1, ...m.team2])
+                );
+                const restingPlayers = pairs.flat().filter(p => !playersInRound.has(p.id));
+                let restingText = '';
+                if (restingPlayers.length > 0) {
+                    restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-bottom: 4px; border-radius: 4px; font-weight: normal;"><b>Riposo:</b>${restingPlayers.map(p => `<div style="margin-top: 1px;">${p.name} ${p.surname}</div>`).join('')}</div>`;
+                }
 
-        return `
+                rowHtml += `
+                    <tr>
+                        <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
+                            Turno ${currentRound}
+                            ${restingText}
+                        </td>
+                    </tr>
+                `;
+            }
+
+            rowHtml += `
                 <tr style="height: 22px;">
                     <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
@@ -3688,8 +3767,37 @@ export const printBlankScoreSheet = (
                     </td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
                 </tr>
-        `;
-    }).join('');
+            `;
+            
+            return rowHtml;
+        }).join('');
+    } else {
+        matchesContent = matches.map((match, index) => {
+            const t1p1 = getPlayerById(match.team1[0]);
+            const t1p2 = getPlayerById(match.team1[1]);
+            const t2p1 = getPlayerById(match.team2[0]);
+            const t2p2 = getPlayerById(match.team2[1]);
+            if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            let court = '-';
+            if (tournamentDetails.type === TournamentType.TorneOtto) {
+                court = `Campo ${(index % 2) + 1}`;
+            }
+
+            return `
+                    <tr style="height: 22px;">
+                        <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
+                        <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
+                        <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
+                            <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                        </td>
+                        <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
+                    </tr>
+            `;
+        }).join('');
+    }
     
     const content = `
         <style>

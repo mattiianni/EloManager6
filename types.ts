@@ -32,6 +32,7 @@ export interface Match {
     sets: SetScore[];
     winner: 'team1' | 'team2' | 'draw' | null;
     tournamentId?: string;
+    roundNumber?: number;
 }
 
 export interface SetScore {

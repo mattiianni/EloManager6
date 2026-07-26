@@ -406,7 +406,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  ];
  };
  
- const calculateAmericanoStandings = (matches: Match[]): TournamentStandingEntry[] => {
+ const calculateAmericanoStandings = (matches: Match[], scoringType?: 'games-diff' | 'points'): TournamentStandingEntry[] => {
  console.log(`🎯 MatchesPage Americano: Starting calculation with ${matches.length} matches`);
  
  const playerStats = new Map<string, {
@@ -468,14 +468,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
 
  // Convert to standings array
- // For now, assume"games-diff" scoring (we don't have the scoring type stored)
  const standings: TournamentStandingEntry[] = Array.from(playerStats.values()).map(stats => {
  const gameDifference = stats.totalGamesWon - stats.totalGamesLost;
+ const points = scoringType === 'points' ? stats.totalGamesWon : gameDifference;
  
  return {
  teamId: stats.player.id,
  team: [stats.player],
- points: gameDifference, // For"games-diff": use game difference
+ points,
  gamesWon: stats.totalGamesWon,
  gamesLost: stats.totalGamesLost,
  gameDifference,
@@ -485,7 +485,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  console.log(`🎯 MatchesPage Americano: Created ${standings.length} standings entries`);
  
- return standings.sort((a, b) => b.points - a.points);
+ return standings.sort((a, b) => {
+ if (b.points !== a.points) return b.points - a.points;
+ return b.gamesWon - a.gamesWon;
+ });
  };
 
  // Gironi + Fase Finale functions
@@ -621,7 +624,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  let standings: TournamentStandingEntry[];
  if (tournament.type === TournamentType.Americano) {
  console.log(`🎯 MatchesPage: Using Americano calculation`);
- standings = calculateAmericanoStandings(tournamentMatches);
+ standings = calculateAmericanoStandings(tournamentMatches, editingTournament?.americanoScoringType);
  } else if (tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2) {
  console.log(`🎯 MatchesPage: Using Round Robin + Finali calculation`);
  const roundRobinMatchCount = tournamentMatches.length - 2;
@@ -1986,29 +1989,91 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  
  // Per altri tipi di torneo, mostra normalmente
- return tournamentMatches.map(match => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+ if (editingTournament?.type === TournamentType.Americano) {
+     const roundsMap = new Map<number, typeof tournamentMatches>();
+     
+     const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
+     const numPlayers = allPlayersIds.size;
+     const matchesPerRound = Math.min(editingTournament.americanoFields || 2, Math.floor(numPlayers / 4));
 
- return (
- <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
- <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
- </div>
- <MatchScoreInput
- sets={editScores[match.id] || []}
- onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
- disabled={isSubmitting}
- />
- <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
- </div>
- </div>
- )
- });
+     tournamentMatches.forEach((sm, index) => {
+         const r = sm.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
+         if (!roundsMap.has(r)) roundsMap.set(r, []);
+         roundsMap.get(r)!.push(sm);
+     });
+                                                                                    
+     const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+     return Array.from(roundsMap.entries()).sort((a,b)=>a[0]-b[0]).map(([r, matchesForRound]) => {
+         const playersInRound = new Set(matchesForRound.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
+         const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
+         
+         return (
+             <div key={`round-${r}`} className="mb-6">
+                 <div className="flex justify-between items-start mb-3">
+                     <h4 className="font-semibold text-gray-800 dark:text-gray-200">Turno {r}</h4>
+                     {restingPlayers.length > 0 && (
+                         <div className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-2.5 py-1 rounded-md text-right">
+                             <span className="font-semibold block">Riposo:</span>
+                             {restingPlayers.map(p => (
+                                 <div key={p.id}>{p.name} {p.surname}</div>
+                             ))}
+                         </div>
+                     )}
+                 </div>
+                 <div className="space-y-2">
+                     {matchesForRound.map(match => {
+                         const team1 = match.team1.map(p => getPlayerById(p)!);
+                         const team2 = match.team2.map(p => getPlayerById(p)!);
+                         if (!team1[0] || !team2[0]) return null;
+
+                         return (
+                             <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                 <div className="text-right text-sm">
+                                     <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+                                 </div>
+                                 <MatchScoreInput
+                                     sets={editScores[match.id] || []}
+                                     onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
+                                     disabled={isSubmitting}
+                                 />
+                                 <div className="text-sm">
+                                     <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+                                 </div>
+                             </div>
+                         )
+                     })}
+                 </div>
+             </div>
+         );
+     });
+ } else {
+     return tournamentMatches.map(match => {
+         const team1 = match.team1.map(p => getPlayerById(p)!);
+         const team2 = match.team2.map(p => getPlayerById(p)!);
+         if (!team1[0] || !team2[0]) return null;
+
+         return (
+             <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                 <div className="text-right text-sm">
+                     <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+                 </div>
+                 <MatchScoreInput
+                     sets={editScores[match.id] || []}
+                     onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
+                     disabled={isSubmitting}
+                 />
+                 <div className="text-sm">
+                     <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+                 </div>
+             </div>
+         )
+     });
+ }
  })()}
  </div>
  <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
