@@ -1,3 +1,7 @@
+## v6.0.9 — 2026-07-27
+- Fix Grafico ELO Singolo Torneo: Impostata la base di partenza a 1500 (`Start = 1500`) in `RankingChart.tsx` quando viene applicato un filtro torneo, mostrando l'evoluzione specifica del torneo anziché l'accumulato globale.
+- Sincronizzazione Real-Time Classifica Globale: Inserita la chiamata automatica `refreshData()` al mount di `RankingPage.tsx` per garantire la presenza immediata di tutti i tornei ed i delta ELO aggiornati dal DB.
+
 ## v6.0.8 — 2026-07-27
 - Fix Aggiornamento ELO Globale & Classifiche Singolo Torneo: Popolati i record `elo_history` ed aggiornato `current_elo` nel DB Neon per i tornei di test. Aggiunto in `RankingPage.tsx` il calcolo ELO dinamico al volo dai match come fallback se `eloHistory` non ha ancora record salvati per il torneo selezionato.
 

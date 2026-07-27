@@ -140,13 +140,16 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             const firstEntryInDate = perPlayerDateFirstEntry.get(playerId)?.get(firstDateStr || '');
 
             let base: number;
-            if (firstEntryInDate) {
+            if (selectedSeriesKey) {
+                // When a single tournament/series is selected, start the tournament progression from 1500
+                base = 1500;
+            } else if (firstEntryInDate) {
                 base = firstEntryInDate.eloBefore;
             } else if (priorEntry) {
                 base = priorEntry.eloAfter;
             } else {
                 const player = players.find(p => p.id === playerId);
-                base = player ? player.initialElo : 0;
+                base = player ? player.initialElo : 1500;
             }
             playerInitialBase.set(playerId, base);
             initialPoint[playerId] = base;
