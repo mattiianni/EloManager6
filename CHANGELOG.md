@@ -1,3 +1,7 @@
+## v6.0.20 — 2026-07-27
+- Fix Equità Riposi Americano: Riscritto l'algoritmo di turnazione `generateAmericanoMatches` in `TournamentFlow.tsx` con tracciamento dinamico `benchedCounts`. Garantita la perfetta equità per cui ogni giocatore effettua esattamente lo stesso numero di riposi e di partite giocate.
+- Fix Flusso Torneo Singolo / TPRA: Modificato `getInitialStep()` in `TournamentFlow.tsx`. Imposto il passaggio obbligatorio per la schermata di impostazione Nome Torneo, Data e Circolo (`setup`) per tutti i nuovi tornei prima di accedere al tabellone, prevenendo salvataggi con nome vuoto e blocchi.
+
 ## v6.0.19 — 2026-07-27
 - Aggiornamento README Repository: Aggiornata la documentazione ufficiale del repository `README.md` allineando la versione del prodotto a `v6.0.19`, le specifiche dell'algoritmo ELO dinamico reale, il design system Apple HIG e la suite di formati torneo.
 

@@ -238,86 +238,128 @@ const generateFinalsMatches = (top4Standings: TournamentStandingEntry[]): Omit<M
 // CORRECT algorithm: each player partners with ALL others exactly once
 // Opponents also rotate to maximize variety
 const generateAmericanoMatches = (
- pairs: [Player, Player][], 
- fields: number, 
- rounds: number
+  pairs: [Player, Player][], 
+  fields: number, 
+  rounds: number
 ): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
- const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
- const players = pairs.flat(); // All individual players
- const n = players.length;
- 
- if (n % 2 !== 0) {
- throw new Error('Americano requires an even number of players');
- }
- 
- // Circle rotation function: keeps position 0 fixed, rotates the rest
- const rotate = (arr: Player[]): Player[] => {
- if (arr.length <= 1) return arr;
- const fixed = arr[0];
- const rest = arr.slice(1);
- const last = rest.pop() as Player;
- return [fixed, last, ...rest];
- };
- 
- let currentArrangement = [...players];
- 
- for (let r = 0; r < rounds; r++) {
- // Generate pairs for this round (perfect matching)
- const roundPairs: [Player, Player][] = [];
- for (let i = 0; i < n / 2; i++) {
- roundPairs.push([currentArrangement[i], currentArrangement[n - 1 - i]]);
- }
- 
- // Create matches by pairing the pairs
- // Alternate matching scheme to vary opponents
- let pairsForMatching = [...roundPairs];
- 
- if (r % 2 === 1) {
- // On odd rounds, shift pairs to mix opponents
- pairsForMatching = [
- roundPairs[0],
- ...roundPairs.slice(2),
- roundPairs[1]
- ];
- }
- 
- // Create matches (2 pairs = 1 match), limited by available fields
- const maxMatchesThisRound = Math.min(fields, Math.floor(pairsForMatching.length / 2));
- 
- for (let i = 0; i < maxMatchesThisRound; i++) {
- const pair1 = pairsForMatching[i * 2];
- const pair2 = pairsForMatching[i * 2 + 1];
- 
- if (pair1 && pair2) {
- matches.push({
- team1: [pair1[0].id, pair1[1].id],
- team2: [pair2[0].id, pair2[1].id],
- roundNumber: r + 1
- });
- }
- }
- 
- // Rotate for next round
- currentArrangement = rotate(currentArrangement);
- }
- 
- return matches;
+  const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
+  const players = pairs.flat(); // All individual players
+  const n = players.length;
+  
+  if (n % 2 !== 0) {
+    throw new Error('Americano requires an even number of players');
+  }
+
+  // Maximum active players per round given available fields
+  const maxActivePlayers = Math.min(n, fields * 4);
+  const playersPerRound = Math.floor(maxActivePlayers / 4) * 4;
+  const benchedPerRound = n - playersPerRound;
+
+  // Track total benched count and played count for fair distribution
+  const benchedCounts = new Map<string, number>();
+  const partnerHistory = new Map<string, Set<string>>();
+  
+  players.forEach(p => {
+    benchedCounts.set(p.id, 0);
+    partnerHistory.set(p.id, new Set());
+  });
+
+  let currentArrangement = [...players];
+
+  const rotate = (arr: Player[]): Player[] => {
+    if (arr.length <= 1) return arr;
+    const fixed = arr[0];
+    const rest = arr.slice(1);
+    const last = rest.pop() as Player;
+    return [fixed, last, ...rest];
+  };
+
+  for (let r = 0; r < rounds; r++) {
+    let activePlayers: Player[] = [];
+
+    if (benchedPerRound > 0) {
+      // Sort players by benched count ascending (players with least rests get benched first)
+      const sortedByBenched = [...currentArrangement].sort((a, b) => {
+        const bA = benchedCounts.get(a.id) || 0;
+        const bB = benchedCounts.get(b.id) || 0;
+        return bA - bB;
+      });
+
+      const benchedThisRound = sortedByBenched.slice(0, benchedPerRound);
+      benchedThisRound.forEach(p => {
+        benchedCounts.set(p.id, (benchedCounts.get(p.id) || 0) + 1);
+      });
+
+      const benchedIds = new Set(benchedThisRound.map(p => p.id));
+      activePlayers = currentArrangement.filter(p => !benchedIds.has(p.id));
+    } else {
+      activePlayers = [...currentArrangement];
+    }
+
+    // Pair active players for this round
+    const numActive = activePlayers.length;
+    const roundPairs: [Player, Player][] = [];
+    for (let i = 0; i < numActive / 2; i++) {
+      const p1 = activePlayers[i];
+      const p2 = activePlayers[numActive - 1 - i];
+      roundPairs.push([p1, p2]);
+      
+      partnerHistory.get(p1.id)?.add(p2.id);
+      partnerHistory.get(p2.id)?.add(p1.id);
+    }
+
+    // Match pairs together
+    let pairsForMatching = [...roundPairs];
+    if (r % 2 === 1 && pairsForMatching.length > 2) {
+      pairsForMatching = [
+        roundPairs[0],
+        ...roundPairs.slice(2),
+        roundPairs[1]
+      ];
+    }
+
+    const matchesCount = Math.floor(pairsForMatching.length / 2);
+    for (let i = 0; i < matchesCount; i++) {
+      const pair1 = pairsForMatching[i * 2];
+      const pair2 = pairsForMatching[i * 2 + 1];
+
+      if (pair1 && pair2) {
+        matches.push({
+          team1: [pair1[0].id, pair1[1].id],
+          team2: [pair2[0].id, pair2[1].id],
+          roundNumber: r + 1
+        });
+      }
+    }
+
+    currentArrangement = rotate(currentArrangement);
+  }
+
+  return matches;
 };
 
 const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false, initialFormat }) => {
- const { tournaments, addMultipleMatches, getPlayerById } = usePadelStore();
- const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
- 
- const getInitialStep = (): Step => {
-   if (!initialFormat) return 'tournament-selection';
-   switch (initialFormat) {
-     case 'americano': return 'americano-info';
-     case 'torneo-libero': return 'torneo-libero-setup';
-     case 'gironi-fase-finale': return 'gironi-setup';
-     case 'eliminazione-diretta': return 'tpra-flow';
-     default: return 'setup';
-   }
- };
+  const { tournaments, addMultipleMatches, getPlayerById } = usePadelStore();
+  const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
+  
+  const getInitialStep = (): Step => {
+    // If preselected tournament exists, go straight to format step
+    if (preselectedTournamentName) {
+      if (initialFormat) {
+        switch (initialFormat) {
+          case 'americano': return 'americano-info';
+          case 'torneo-libero': return 'torneo-libero-setup';
+          case 'gironi-fase-finale': return 'gironi-setup';
+          case 'eliminazione-diretta': return 'tpra-flow';
+          default: return 'setup';
+        }
+      }
+      return 'tournament-selection';
+    }
+
+    // ALWAYS go to setup first for new tournaments so user can enter the Tournament Name
+    return 'setup';
+  };
 
  const [step, setStep] = useState<Step>(getInitialStep());
  const [tournamentDate, setTournamentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1171,7 +1213,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
  if (finalName.trim() === '' || clubName.trim() === '') {
- alert('Please provide a tournament name and a club name.');
+ alert('Per favore inserisci il Nome del Torneo ed il Nome del Circolo per proseguire.');
  return;
  }
  
