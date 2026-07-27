@@ -1,3 +1,6 @@
+## v6.0.5 — 2026-07-27
+- Fix Logica Turnazione & Riposi Americano: Inserito l'attributo `roundNumber` in tutti i match dell'Americano e persistito nel DB Postgres per garantire la perfetta costanza del numero dei riposanti in ogni turno ($N - \text{partite} \times 4$). Creati 2 tornei di verifica nel DB (10 e 12 giocatori).
+
 ## v6.0.4 — 2026-07-27
 - Fix Pareggi Beat the Box: Corretto il calcolo dei punteggi nel Beat the Box in caso di pareggio (1 pt per giocatore).
 - Prevenzione Crash PDF: Introdotta la gestione sicura con fallback in tutte le funzioni di stampa PDF per coppie parziali o giocatori non trovati.

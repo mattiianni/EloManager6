@@ -256,6 +256,7 @@ async function ensureTablesExist() {
     // Add created_at column for reliable match ordering (preserves insertion order)
     try {
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`;
+        await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS round_number INTEGER`;
         // Backfill existing rows: set created_at = date for old matches
         await sql`UPDATE matches SET created_at = date WHERE created_at IS NULL`;
     } catch (error) {
@@ -1567,7 +1568,7 @@ app.get('/api/data', async (req, res) => {
             sql`SELECT * FROM players WHERE workspace_id = ${wsId} AND (is_deleted = FALSE OR is_deleted IS NULL);`,
             sql`SELECT id, name, surname FROM players WHERE workspace_id = ${wsId} AND is_deleted = TRUE;`,
             sql`
-                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id 
+                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number 
                 FROM matches 
                 WHERE workspace_id = ${wsId}
             `,
@@ -1675,6 +1676,7 @@ app.get('/api/data', async (req, res) => {
             sets: m.sets,
             winner: m.winner,
             tournamentId: m.tournament_id,
+            roundNumber: m.round_number || undefined,
         }));
 
         const teamMatches = teamMatchesResult.map(m => {
@@ -2002,14 +2004,14 @@ app.delete('/api/players', async (req, res) => {
 // POST /api/matches - Add match
 app.post('/api/matches', async (req, res) => {
     try {
-        const { date, team1, team2, sets, winner, tournamentId } = req.body;
+        const { date, team1, team2, sets, winner, tournamentId, roundNumber } = req.body;
         if (!date || !team1 || !team2 || !sets) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
         const result = await sql`
-            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id)
-            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${winner}, ${tournamentId || null}, ${req.workspaceId})
+            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number)
+            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null})
             RETURNING id
         `;
         const matchId = result[0].id;
@@ -5368,8 +5370,8 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
         for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
             const match = matches[matchIndex];
             const result = await sql`
-                INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id)
-                VALUES (${match.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets)}, ${match.winner || null}, ${tournamentId}, ${req.workspaceId})
+                INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number)
+                VALUES (${match.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets)}, ${match.winner || null}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber || null})
                 RETURNING id
             `;
             const matchId = result[0].id;

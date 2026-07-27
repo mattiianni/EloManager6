@@ -292,6 +292,7 @@ const generateAmericanoMatches = (
  matches.push({
  team1: [pair1[0].id, pair1[1].id],
  team2: [pair2[0].id, pair2[1].id],
+ roundNumber: r + 1
  });
  }
  }
