@@ -1,3 +1,6 @@
+## v6.0.8 — 2026-07-27
+- Fix Aggiornamento ELO Globale & Classifiche Singolo Torneo: Popolati i record `elo_history` ed aggiornato `current_elo` nel DB Neon per i tornei di test. Aggiunto in `RankingPage.tsx` il calcolo ELO dinamico al volo dai match come fallback se `eloHistory` non ha ancora record salvati per il torneo selezionato.
+
 ## v6.0.7 — 2026-07-27
 - Fix Risoluzione Giocatori Stampa PDF: Sostituita la gestione rigida in `printTournamentReport` con una risoluzione sicura con fallback, prevenendo l'occultamento delle righe di match nel PDF.
 - Popolamento 100% Giocatori Reali: Ricreati i 3 tornei di test (TEST A, TEST B, TEST C) utilizzando esclusivamente i 41 giocatori reali registrati nel DB Neon.

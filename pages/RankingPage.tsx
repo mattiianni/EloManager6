@@ -186,7 +186,19 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                 // ELO visualizzato
                 let displayElo = player.currentElo;
                 if (selectedTournamentId) {
-                    const tournamentDelta = playerTimeline.reduce((sum, entry) => sum + entry.delta, 0);
+                    let tournamentDelta = playerTimeline.reduce((sum, entry) => sum + entry.delta, 0);
+                    // Fallback: if eloHistory does not contain entries for this tournament yet, calculate delta on the fly from matches
+                    if (playerTimeline.length === 0 && playerMatches.length > 0) {
+                        const K = 16;
+                        playerMatches.forEach(m => {
+                            if (!m.winner) return;
+                            const isTeam1 = m.team1.includes(player.id);
+                            const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
+                            const expected1 = 0.5; // default equal expectation for single tournament on the fly
+                            const delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
+                            tournamentDelta += delta;
+                        });
+                    }
                     displayElo = 1500 + tournamentDelta;
                 }
 
