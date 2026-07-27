@@ -928,14 +928,18 @@ export const printTournamentReport = (
     let teamsContent = '';
     if (!isAmericano) {
         const teams = standings.map(s => s.team);
-        teamsContent = teams.map((pair, index) => `
+        teamsContent = teams.map((pair, index) => {
+            const p1 = pair && pair[0] ? `${pair[0].name || ''} ${pair[0].surname || ''}`.trim() : 'Giocatore 1';
+            const p2 = pair && pair[1] ? `${pair[1].name || ''} ${pair[1].surname || ''}`.trim() : 'Giocatore 2';
+            return `
             <div class="team-box">
                 <div class="team-number">Squadra ${index + 1}</div>
-                <div style="color: #000;">${pair[0].name} ${pair[0].surname}</div>
+                <div style="color: #000;">${p1}</div>
                 <div style="color: #000; margin: 2px 0;">&</div>
-                <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
+                <div style="color: #000;">${p2}</div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     // Helper function to generate match row HTML

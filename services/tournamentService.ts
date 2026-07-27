@@ -110,15 +110,16 @@ export function calculateFinalStandingsForRoundRobinFinali(
     const getTeamStats = (teamIds: [string, string]): { gamesWon: number, gamesLost: number } => {
         let gamesWon = 0;
         let gamesLost = 0;
+        const targetSorted = [...teamIds].sort().join('-');
         
         allMatches.forEach(match => {
-            const isTeam1 = match.team1[0] === teamIds[0] && match.team1[1] === teamIds[1];
-            const isTeam2 = match.team2[0] === teamIds[0] && match.team2[1] === teamIds[1];
+            const team1Sorted = [...match.team1].sort().join('-');
+            const team2Sorted = [...match.team2].sort().join('-');
             
-            if (isTeam1) {
+            if (team1Sorted === targetSorted) {
                 gamesWon += match.sets.reduce((sum, set) => sum + set.team1, 0);
                 gamesLost += match.sets.reduce((sum, set) => sum + set.team2, 0);
-            } else if (isTeam2) {
+            } else if (team2Sorted === targetSorted) {
                 gamesWon += match.sets.reduce((sum, set) => sum + set.team2, 0);
                 gamesLost += match.sets.reduce((sum, set) => sum + set.team1, 0);
             }
@@ -127,11 +128,15 @@ export function calculateFinalStandingsForRoundRobinFinali(
         return { gamesWon, gamesLost };
     };
     
+    const safeGetPlayer = (id: string): Player => {
+        return getPlayerById(id) || { id, name: 'Giocatore', surname: '', currentElo: 1500 };
+    };
+
     // Build standings in correct order based on finals
     const standings: TournamentStandingEntry[] = [];
     
     // 1st place: winner of finale 1°-2°
-    const team1 = [getPlayerById(winner1_2[0])!, getPlayerById(winner1_2[1])!];
+    const team1 = [safeGetPlayer(winner1_2[0]), safeGetPlayer(winner1_2[1])];
     const stats1 = getTeamStats(winner1_2 as [string, string]);
     standings.push({
         teamId: winner1_2.join('-'),
@@ -143,7 +148,7 @@ export function calculateFinalStandingsForRoundRobinFinali(
     });
     
     // 2nd place: loser of finale 1°-2°
-    const team2 = [getPlayerById(loser1_2[0])!, getPlayerById(loser1_2[1])!];
+    const team2 = [safeGetPlayer(loser1_2[0]), safeGetPlayer(loser1_2[1])];
     const stats2 = getTeamStats(loser1_2 as [string, string]);
     standings.push({
         teamId: loser1_2.join('-'),
@@ -155,7 +160,7 @@ export function calculateFinalStandingsForRoundRobinFinali(
     });
     
     // 3rd place: winner of finale 3°-4°
-    const team3 = [getPlayerById(winner3_4[0])!, getPlayerById(winner3_4[1])!];
+    const team3 = [safeGetPlayer(winner3_4[0]), safeGetPlayer(winner3_4[1])];
     const stats3 = getTeamStats(winner3_4 as [string, string]);
     standings.push({
         teamId: winner3_4.join('-'),
@@ -167,7 +172,7 @@ export function calculateFinalStandingsForRoundRobinFinali(
     });
     
     // 4th place: loser of finale 3°-4°
-    const team4 = [getPlayerById(loser3_4[0])!, getPlayerById(loser3_4[1])!];
+    const team4 = [safeGetPlayer(loser3_4[0]), safeGetPlayer(loser3_4[1])];
     const stats4 = getTeamStats(loser3_4 as [string, string]);
     standings.push({
         teamId: loser3_4.join('-'),

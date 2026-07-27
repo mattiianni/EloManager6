@@ -1,3 +1,10 @@
+## v6.0.4 — 2026-07-27
+- Fix Pareggi Beat the Box: Corretto il calcolo dei punteggi nel Beat the Box in caso di pareggio (1 pt per giocatore).
+- Prevenzione Crash PDF: Introdotta la gestione sicura con fallback in tutte le funzioni di stampa PDF per coppie parziali o giocatori non trovati.
+- Anti-Doppio Submit: Bloccata l'invocazione multipla concorrente in fase di completamento torneo per evitare la creazione di partite duplicate.
+- Robustezza Confronto Coppie: Allineato l'accoppiamento delle coppie indipendentemente dall'ordine dei giocatori `[P1, P2]` o `[P2, P1]`.
+- UI Turni Americano: Aggiunta sfumatura/fade visivo sulla barra dei turni scorrevole in mobile.
+
 ## v6.0.3 — 2026-07-27
 - UI Redesign "Cosa Vuoi Organizzare Oggi": Riprogettata la schermata iniziale di selezione tipo torneo/giornata con un layout a griglia 2x2 moderna di Card interattive dotate di icone flat e descrizioni sintetiche dedicate.
 - Navigazione & Back Button: Aggiunto pulsante di ritorno rapido "← Torna indietro" nella vista di configurazione del sorteggio per rientrare istantaneamente al menu principale.

@@ -1073,6 +1073,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  setShowFinalsConfirmModal(false);
  setIsSubmitting(true);
+ setIsTournamentSaved(true);
  
  try {
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
@@ -1699,6 +1700,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Numero di turni (max: {maxAmericanoRounds})
  </label>
+ <div className="relative">
  <div className="overflow-x-auto max-w-full pb-2 pt-1 flex items-center gap-2 flex-nowrap md:flex-wrap">
  {Array.from({ length: maxAmericanoRounds - 1 }, (_, i) => i + 2).map(num => (
  <Button
@@ -1712,6 +1714,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {num}
  </Button>
  ))}
+ </div>
+ <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-white dark:from-gray-900 to-transparent md:hidden" />
  </div>
  </div>
 

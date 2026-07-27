@@ -60,7 +60,7 @@ export function calculateBoxStandings(boxMatches: Match[], boxPlayers: Player[])
     });
     
     boxMatches.forEach(match => {
-        if (!match.winner || match.winner === 'draw') return;
+        if (!match.winner) return;
         const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
         const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
         
