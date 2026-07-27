@@ -1,3 +1,6 @@
+## v6.1.6 — 2026-07-27
+- Hotfix Runtime Errors: Corretta l'ulteriore chiamata a `toggleMatchday` rimasta alla riga 1634 di `pages/TournamentsPage.tsx` sostituendola con `toggleExpandedMatchday`. Aggiunto l'optional chaining `?.` su tutti i callback di navigazione di `TournamentsPage` prevenendo crash a runtime.
+
 ## v6.1.5 — 2026-07-27
 - Test Completo Multi-Formato & Salvataggio Intermedio: Eseguito e verificato con successo un ciclo di test automatizzati end-to-end creando 2 tornei per ciascuna delle 6 tipologie (Americano, Eliminazione Diretta TPRA, Torneo Libero, Gironi + Fase Finale, Round Robin + Finali, Beat The Box) per un totale di 12 tornei sul database Neon. Testati e confermati i salvataggi intermedi dei punteggi, la persistenza e la stabilità senza alcun errore.
 
