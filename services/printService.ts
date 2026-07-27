@@ -944,11 +944,11 @@ export const printTournamentReport = (
 
     // Helper function to generate match row HTML
     const generateMatchRow = (match: Match, index: number, isFinal: boolean = false, finalsIndex: number = -1) => {
-        const t1p1 = getPlayerById(match.team1[0]);
-        const t1p2 = getPlayerById(match.team1[1]);
-        const t2p1 = getPlayerById(match.team2[0]);
-        const t2p2 = getPlayerById(match.team2[1]);
-        if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+        const resolveP = (id: string) => getPlayerById(id) || ({ id, name: 'Giocatore', surname: id ? id.slice(0, 4) : 'N.D.' } as Player);
+        const t1p1 = resolveP(match.team1[0]);
+        const t1p2 = resolveP(match.team1[1]);
+        const t2p1 = resolveP(match.team2[0]);
+        const t2p2 = resolveP(match.team2[1]);
 
         const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
         

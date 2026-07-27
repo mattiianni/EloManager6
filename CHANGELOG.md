@@ -1,3 +1,7 @@
+## v6.0.7 — 2026-07-27
+- Fix Risoluzione Giocatori Stampa PDF: Sostituita la gestione rigida in `printTournamentReport` con una risoluzione sicura con fallback, prevenendo l'occultamento delle righe di match nel PDF.
+- Popolamento 100% Giocatori Reali: Ricreati i 3 tornei di test (TEST A, TEST B, TEST C) utilizzando esclusivamente i 41 giocatori reali registrati nel DB Neon.
+
 ## v6.0.6 — 2026-07-27
 - Test Scenari Reali Americano: Generati e salvati nel DB 3 tornei di test strutturati: TEST A (9 coppie / 3 campi / 8 turni -> 6 riposi costanti), TEST B (10 coppie / 4 campi / 10 turni -> 4 riposi costanti) e TEST C (4 coppie / 2 campi / 7 turni -> 0 riposi).
 
