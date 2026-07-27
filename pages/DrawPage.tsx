@@ -8,7 +8,7 @@ import Button from '../components/ui/Button.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
 import TournamentFlow from '../components/TournamentFlow.tsx';
 import ShuffleAnimation from '../components/ui/ShuffleAnimation.tsx';
-import { ShuffleIcon, ChevronDownIcon, PencilIcon } from '../components/ui/Icons.tsx';
+import { ShuffleIcon, ChevronDownIcon, PencilIcon, CalendarIcon, UsersIcon, TrophyIcon, PlusIcon, ArrowUpRightIcon, ArrowLeftIcon } from '../components/ui/Icons.tsx';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
@@ -1012,26 +1012,81 @@ const DrawPage: React.FC<DrawPageProps> = ({
 
     if (!teamTournamentToConfigure && entryChoice === 'menu') {
         return (
-            <div className="mx-auto max-w-3xl">
-                <Card title="Tipo Torneo / Giornata">
-                    <div className="space-y-4">
-                        <p className="text-sm text-app-muted">
-                            Scegli se creare un nuovo torneo (a coppie o a squadre) o aggiungere una giornata a un torneo gia esistente
-                        </p>
-                        <Button onClick={openPairsFlow} size="lg" className="w-full !text-sm">
-                            TORNEI MULTI GIORNATA
-                        </Button>
-                        <Button onClick={openTeamFlow} size="lg" className="w-full !text-sm">
-                            A SQUADRE
-                        </Button>
-                        <Button onClick={() => { setEntryChoice('pairs'); setActiveFlow('single-tournament-format-first'); }} size="lg" className="w-full !text-sm">
-                            TORNEO SINGOLO
-                        </Button>
-                        <Button onClick={openExistingTournamentDayFlow} size="lg" className="w-full !text-sm">
-                            AGGIUNGI GIORNATA A TORNEO ESISTENTE
-                        </Button>
+            <div className="mx-auto max-w-3xl space-y-4">
+                <div className="text-left mb-3 px-1">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Cosa vuoi organizzare oggi?</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Seleziona il formato del torneo o aggiungi una giornata</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
+                    {/* Card 1: Multi Giornata */}
+                    <div
+                        onClick={openPairsFlow}
+                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
+                                <CalendarIcon className="w-6 h-6" />
+                            </div>
+                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Multi Giornata</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Tornei a coppie, con più giornate e diverse modalità</p>
+                        </div>
                     </div>
-                </Card>
+
+                    {/* Card 2: Torneo Squadre */}
+                    <div
+                        onClick={openTeamFlow}
+                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                                <UsersIcon className="w-6 h-6" />
+                            </div>
+                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Torneo a Squadre</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Tornei a squadre</p>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Torneo Singolo */}
+                    <div
+                        onClick={() => { setEntryChoice('pairs'); setActiveFlow('single-tournament-format-first'); }}
+                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                                <TrophyIcon className="w-6 h-6" />
+                            </div>
+                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Torneo Singolo</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Eventi a coppie in un singolo appuntamento</p>
+                        </div>
+                    </div>
+
+                    {/* Card 4: Nuova Giornata */}
+                    <div
+                        onClick={openExistingTournamentDayFlow}
+                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                                <PlusIcon className="w-6 h-6" />
+                            </div>
+                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Nuova Giornata</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Aggiungi giornate ai tornei attivi</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -1876,6 +1931,24 @@ const DrawPage: React.FC<DrawPageProps> = ({
             {isCompletingTeamTournamentConfiguration && teamTournamentConfig?.format === 'ELIMINAZIONE DIRETTA' && (
                 <ShuffleAnimation title="Creo il tabellone..." />
             )}
+            
+            <div className="flex items-center">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        setEntryChoice('menu');
+                        setSelectedFormatForNewFlow(null);
+                        setActiveFlow('pairs');
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium"
+                >
+                    <ArrowLeftIcon className="w-4 h-4" />
+                    Torna indietro
+                </Button>
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] gap-6 items-start">
                 <div className="space-y-6">
                     <Card title="Opzioni Sorteggio Coppie">

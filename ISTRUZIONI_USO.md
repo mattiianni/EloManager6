@@ -22,9 +22,18 @@ In `Giocatori` puoi:
 - aprire il profilo giocatore
 - stampare il riepilogo profili
 
-## Sorteggi
+## Sorteggi (Cosa Vuoi Organizzare Oggi)
 
-In `Sorteggi` puoi:
+In `Sorteggi` l'interfaccia 2x2 ti permette di scegliere la modalità desiderata con icone flat dedicate:
+
+1. **Multi Giornata**: Tornei a coppie su più tappe.
+2. **Torneo a Squadre**: Sfide tra team e squadre numerate.
+3. **Torneo Singolo**: Eventi a coppie in un singolo appuntamento con scelta anticipata del formato.
+4. **Nuova Giornata**: Aggancio di giornate ai tornei attivi.
+
+*Nota:* In qualsiasi momento della configurazione del sorteggio puoi cliccare sul pulsante **`← Torna indietro`** in alto per rientrare alla schermata iniziale.
+
+Per il sorteggio coppie puoi:
 
 - selezionare i partecipanti
 - scegliere la modalita':

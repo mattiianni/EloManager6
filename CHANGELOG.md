@@ -1,3 +1,8 @@
+## v6.0.3 — 2026-07-27
+- UI Redesign "Cosa Vuoi Organizzare Oggi": Riprogettata la schermata iniziale di selezione tipo torneo/giornata con un layout a griglia 2x2 moderna di Card interattive dotate di icone flat e descrizioni sintetiche dedicate.
+- Navigazione & Back Button: Aggiunto pulsante di ritorno rapido "← Torna indietro" nella vista di configurazione del sorteggio per rientrare istantaneamente al menu principale.
+- Aggiornamento Documentazione Applicativa: Aggiornata la Guida HTML V5.0.3, la Presentazione HTML, i Testi Promo, la guida uso e il README con i riferimenti della versione 6.0.3 e della nuova interfaccia.
+
 ## v6.0.2 — 2026-07-27
 - Cleanup Repository: Rimossi oltre 30 file temporanei, file `.bak`, `.tmp`, `.part1` e script di debug dal root project. Rimosso `eloService.ts` inutilizzato.
 - UI/UX Polish (Americano): Introdotta scrollbar orizzontale responsive per il selettore del numero di turni (per tornei con 9+ coppie) per un rendering fluido su dispositivi mobile.

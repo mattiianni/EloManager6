@@ -1,5 +1,5 @@
 ================================================================
-PADEL ELO MANAGER v4.1.3 - TESTI PROMOZIONALI
+PADEL ELO MANAGER v6.0.3 - TESTI PROMOZIONALI
 ================================================================
 
 
@@ -9,12 +9,13 @@ PADEL ELO MANAGER v4.1.3 - TESTI PROMOZIONALI
 
 Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
 
-Ho sviluppato *Padel ELO Manager* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
+Ho sviluppato *Padel ELO Manager v6.0.3* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
 
 Cosa fa in pratica:
-- *7 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi, Torneo Libero, Torneo a Squadre)
+- *Interfaccia 2x2 Ultra-Moderna* per la selezione del torneo (Multi Giornata, Torneo a Squadre, Torneo Singolo, Nuova Giornata) con descrizioni chiare e pulsante di ripristino rapido
+- *7 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta, Torneo Libero, Torneo a Squadre)
 - *Sorteggio coppie intelligente* con 4 modalita (casuale, bilanciato forte+debole, teste di serie, manuale)
-- *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia
+- *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia con K-factor unificato K=16
 - *Integrazione Playtomic nativa* - converte rigorosamente l'ELO in livello Playtomic (e viceversa), in modo che chiunque capisca immediatamente il proprio livello reale
 - *Profilo completo* per ognuno: statistiche, compagni e avversari frequenti, grafico andamento, storico giornate
 - *Stampa PDF* di tutto: classifiche, profili, tabelloni coppie, schede match vuote da compilare al campo

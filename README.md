@@ -2,7 +2,7 @@
 
 Applicazione full-stack per la gestione di tornei di padel con ranking ELO, statistiche, PDF e isolamento dati per workspace.
 
-Versione documentata: `v5.0.3`
+Versione documentata: `v6.0.3`
 
 ## Stato attuale
 
@@ -17,15 +17,15 @@ I file `pages/_app.tsx`, `pages/_document.tsx`, `pages/index.tsx` e `next.config
 
 ## Routine release
 
-- Versione corrente: `5.0.3`
-- Dalla release successiva si incrementa la patch: `5.0.3`, `4.1.12`, ...
-- Quando cambia il mese reale, si aggiorna anche il mese visibile nei riferimenti applicativi e documentali (`Gen`, `Feb`, `Mar`, `Apr`, `Mag`, `Giu`, ...).
-- Ad ogni release vanno aggiornati i riferimenti versione nell'app, la documentazione `.md`, il `README`, il backup `.zip` e il dump completo `.txt` del codice.
+- Versione corrente: `6.0.3`
+- Dalla release successiva si incrementa la patch: `6.0.4`, ...
 
-## Aggiornamenti v5.0.3
+## Aggiornamenti v6.0.3
 
-- Versione prodotto aggiornata a `5.0.3`.
-- **Apple HIG UI Polish:** migliorati i margini dei fogli modali (`HIGSheet`) e la gestione del wrapping testuale nei pulsanti nativi (`HIGButton`) per un'estetica premium su dispositivi mobile.
+- Versione prodotto aggiornata a `6.0.3`.
+- **UI Redesign 2x2:** Schermata iniziale "Cosa vuoi organizzare oggi?" riprogettata con una griglia 2x2 di Card interattive con icone flat minimaliste.
+- **Pulsante Back Rapido:** Aggiunto il pulsante "← Torna indietro" nella vista di configurazione del sorteggio.
+- **Documentazione ELO e Guida HTML:** Aggiornati i manuali con i riferimenti della versione 6.0.3 e del K-factor unificato K=16.
 
 ## Aggiornamenti v5.0.2
 

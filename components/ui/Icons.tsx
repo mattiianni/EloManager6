@@ -20,5 +20,7 @@ export const ChevronDownIcon = ({ className }: { className?: string }) => <SFIco
 export const PencilIcon = ({ className }: { className?: string }) => <SFIcon name="pencil" className={className} />;
 export const StatsIcon = ({ className }: { className?: string }) => <SFIcon name="chart.bar.fill" className={className} />;
 export const HomeIcon = ({ className }: { className?: string }) => <SFIcon name="house.fill" className={className} />;
-export const InfoIcon = ({ className }: { className?: string }) => <SFIcon name="info.circle" className={className} />;
+export const CalendarIcon = ({ className }: { className?: string }) => <SFIcon name="calendar" className={className} />;
+export const PlusIcon = ({ className }: { className?: string }) => <SFIcon name="plus" className={className} />;
+export const ArrowUpRightIcon = ({ className }: { className?: string }) => <SFIcon name="arrow.up.right" className={className} />;
 export const MaterialIcon = ({ name, className, filled }: { name: string; className?: string; filled?: boolean }) => <SFIcon name={name} className={className} filled={filled} />;

@@ -88,6 +88,7 @@ const SF_TO_MATERIAL: Record<string, string> = {
   'arrow.down': 'arrow_downward',
   'arrow.left': 'arrow_back',
   'arrow.right': 'arrow_forward',
+  'arrow.up.right': 'north_east',
   'arrow.right.circle': 'arrow_circle_right',
   'arrow.left.and.right': 'sync_alt',
 
