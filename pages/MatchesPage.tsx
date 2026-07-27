@@ -278,7 +278,18 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [deleteAlert, setDeleteAlert] = useState<{
      isOpen: boolean;
      tournamentId: string | null;
- }>({ isOpen: false, tournamentId: null });
+     isDeleting?: boolean;
+     progressPercent?: number;
+     loadingText?: string;
+ }>({ isOpen: false, tournamentId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+
+ const [deleteMatchAlert, setDeleteMatchAlert] = useState<{
+     isOpen: boolean;
+     matchId: string | null;
+     isDeleting?: boolean;
+     progressPercent?: number;
+     loadingText?: string;
+ }>({ isOpen: false, matchId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
  
  // Round Robin + Finali specific states
  const [showFinalsStandingsModal, setShowFinalsStandingsModal] = useState(false);
@@ -918,17 +929,81 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  };
 
  const handleDeleteTournament = (tournamentId: string) => {
-     setDeleteAlert({ isOpen: true, tournamentId });
+ setDeleteAlert({ isOpen: true, tournamentId, isDeleting: false, progressPercent: 0, loadingText: '' });
  };
- 
+
  const handleConfirmDeleteTournament = async (cascade: boolean) => {
-     if (deleteAlert.tournamentId) {
-         await deleteTournament(deleteAlert.tournamentId, cascade);
-     }
-     setDeleteAlert({ isOpen: false, tournamentId: null });
-     setShowDeleteSuccess(true);
+ setDeleteAlert(prev => ({
+ ...prev,
+ isDeleting: true,
+ progressPercent: 15,
+ loadingText: cascade ? "Eliminazione torneo e giocatori..." : "Eliminazione torneo in corso..."
+ }));
+
+ try {
+ const interval = setInterval(() => {
+ setDeleteAlert(prev => {
+ if (prev.progressPercent && prev.progressPercent < 85) {
+ return { ...prev, progressPercent: prev.progressPercent + 20 };
+ }
+ return prev;
+ });
+ }, 100);
+
+ if (deleteAlert.tournamentId) {
+ await deleteTournament(deleteAlert.tournamentId, cascade);
+ }
+
+ clearInterval(interval);
+ setDeleteAlert(prev => ({ ...prev, progressPercent: 100, loadingText: "Completato!" }));
+
+ setTimeout(() => {
+ setDeleteAlert({ isOpen: false, tournamentId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+ setShowDeleteSuccess(true);
+ }, 300);
+ } catch (error) {
+ console.error("Errore eliminazione torneo:", error);
+ setDeleteAlert({ isOpen: false, tournamentId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+ }
  };
- 
+
+ const handleRequestDeleteMatch = (matchId: string) => {
+ setDeleteMatchAlert({ isOpen: true, matchId, isDeleting: false, progressPercent: 0, loadingText: '' });
+ };
+
+ const handleConfirmDeleteMatch = async () => {
+ if (!deleteMatchAlert.matchId) return;
+ setDeleteMatchAlert(prev => ({
+ ...prev,
+ isDeleting: true,
+ progressPercent: 15,
+ loadingText: "Eliminazione partita in corso..."
+ }));
+
+ try {
+ const interval = setInterval(() => {
+ setDeleteMatchAlert(prev => {
+ if (prev.progressPercent && prev.progressPercent < 85) {
+ return { ...prev, progressPercent: prev.progressPercent + 25 };
+ }
+ return prev;
+ });
+ }, 100);
+
+ await deleteMatch(deleteMatchAlert.matchId);
+
+ clearInterval(interval);
+ setDeleteMatchAlert(prev => ({ ...prev, progressPercent: 100, loadingText: "Completato!" }));
+
+ setTimeout(() => {
+ setDeleteMatchAlert({ isOpen: false, matchId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+ }, 300);
+ } catch (error) {
+ console.error("Errore eliminazione partita:", error);
+ setDeleteMatchAlert({ isOpen: false, matchId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+ }
+ };
+
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
  if (selectedPlayers.length !== 4) {
@@ -1774,7 +1849,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  {match.sets.map(s => `${s.team1}-${s.team2}`).join(' ')}
  </span>
  <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</div>
- <Button variant="danger" size="sm" onClick={async () => await deleteMatch(match.id)} className="!p-2 ml-4"><TrashIcon /></Button>
+ <Button variant="danger" size="sm" onClick={() => handleRequestDeleteMatch(match.id)} className="!p-2 ml-4"><TrashIcon /></Button>
  </div>
  <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-2">
  Variazione ELO: <span className={`font-semibold ${eloChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -3221,23 +3296,47 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
             <HIGAlert
                 isOpen={deleteAlert.isOpen}
-                title="Elimina Giornata/Torneo"
-                message="Vuoi eliminare questa voce? I match e le statistiche relative verranno rimossi. Puoi scegliere se eliminare anche i giocatori 'isolati' che hanno partecipato SOLO a questo evento."
+                title="Elimina Evento/Torneo"
+                message="Rimuovi tutti i match e i dati? Puoi scegliere di eliminare anche i giocatori 'isolati' che hanno partecipato solo a questo evento."
+                isLoading={deleteAlert.isDeleting}
+                loadingText={deleteAlert.loadingText}
+                progressPercent={deleteAlert.progressPercent}
                 actions={[
                     {
-                        label: "Annulla",
-                        style: "cancel",
-                        onPress: () => setDeleteAlert({ isOpen: false, tournamentId: null })
-                    },
-                    {
-                        label: "Elimina solo il torneo/giornata",
+                        label: "Elimina Solo Torneo",
                         style: "default",
                         onPress: () => handleConfirmDeleteTournament(false)
                     },
                     {
-                        label: "Elimina torneo e giocatori isolati",
+                        label: "Elimina Torneo e Giocatori Non Più Attivi",
                         style: "destructive",
                         onPress: () => handleConfirmDeleteTournament(true)
+                    },
+                    {
+                        label: "Annulla",
+                        style: "cancel",
+                        onPress: () => setDeleteAlert({ isOpen: false, tournamentId: null, isDeleting: false, progressPercent: 0, loadingText: '' })
+                    }
+                ]}
+            />
+
+            <HIGAlert
+                isOpen={deleteMatchAlert.isOpen}
+                title="Elimina Partita"
+                message="Sei sicuro di voler eliminare questa partita? I dati ed il punteggio verranno rimossi permanentemente."
+                isLoading={deleteMatchAlert.isDeleting}
+                loadingText={deleteMatchAlert.loadingText}
+                progressPercent={deleteMatchAlert.progressPercent}
+                actions={[
+                    {
+                        label: "Elimina Partita",
+                        style: "destructive",
+                        onPress: handleConfirmDeleteMatch
+                    },
+                    {
+                        label: "Annulla",
+                        style: "cancel",
+                        onPress: () => setDeleteMatchAlert({ isOpen: false, matchId: null, isDeleting: false, progressPercent: 0, loadingText: '' })
                     }
                 ]}
             />

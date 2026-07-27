@@ -13,6 +13,7 @@ import Card from '../components/ui/Card.tsx';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
+import { HIGAlert } from '../components/ui/HIGAlert';
 
 const PlayersPage: React.FC = () => {
     const { workspace } = useAuth();
@@ -111,9 +112,48 @@ const PlayersPage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (playerId: string) => {
-        if (window.confirm('Sei sicuro di voler eliminare questo giocatore? Verranno eliminate anche tutte le sue partite.')) {
-           await deletePlayer(playerId);
+    const [deleteAlert, setDeleteAlert] = useState<{
+        isOpen: boolean;
+        playerId: string | null;
+        isDeleting?: boolean;
+        progressPercent?: number;
+        loadingText?: string;
+    }>({ isOpen: false, playerId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+
+    const handleDelete = (playerId: string) => {
+        setDeleteAlert({ isOpen: true, playerId, isDeleting: false, progressPercent: 0, loadingText: '' });
+    };
+
+    const handleConfirmDeletePlayer = async () => {
+        if (!deleteAlert.playerId) return;
+        setDeleteAlert(prev => ({
+            ...prev,
+            isDeleting: true,
+            progressPercent: 15,
+            loadingText: "Eliminazione giocatore in corso..."
+        }));
+
+        try {
+            const interval = setInterval(() => {
+                setDeleteAlert(prev => {
+                    if (prev.progressPercent && prev.progressPercent < 85) {
+                        return { ...prev, progressPercent: prev.progressPercent + 20 };
+                    }
+                    return prev;
+                });
+            }, 100);
+
+            await deletePlayer(deleteAlert.playerId);
+
+            clearInterval(interval);
+            setDeleteAlert(prev => ({ ...prev, progressPercent: 100, loadingText: "Completato!" }));
+            
+            setTimeout(() => {
+                setDeleteAlert({ isOpen: false, playerId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+            }, 300);
+        } catch (error) {
+            console.error("Errore eliminazione giocatore:", error);
+            setDeleteAlert({ isOpen: false, playerId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
         }
     };
     
@@ -412,6 +452,27 @@ const PlayersPage: React.FC = () => {
                 onPrintSelected={(selectedIds) => {
                     printPlayerProfiles(selectedIds, players, matches, eloHistory, tournaments);
                 }}
+            />
+
+            <HIGAlert
+                isOpen={deleteAlert.isOpen}
+                title="Elimina Giocatore"
+                message="Sei sicuro di voler eliminare questo giocatore? Verranno eliminate anche tutte le sue partite e lo storico collegato."
+                isLoading={deleteAlert.isDeleting}
+                loadingText={deleteAlert.loadingText}
+                progressPercent={deleteAlert.progressPercent}
+                actions={[
+                    {
+                        label: "Elimina Giocatore",
+                        style: "destructive",
+                        onPress: handleConfirmDeletePlayer
+                    },
+                    {
+                        label: "Annulla",
+                        style: "cancel",
+                        onPress: () => setDeleteAlert({ isOpen: false, playerId: null, isDeleting: false, progressPercent: 0, loadingText: '' })
+                    }
+                ]}
             />
         </div>
     );

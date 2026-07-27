@@ -1,3 +1,6 @@
+## v6.0.21 — 2026-07-27
+- Integrazione Universale Progress Bar Eliminazione: Esteso il popup HIG Alert con spinner ed animazione della progress bar a tutte le azioni di eliminazione dell'applicazione (eliminazione partite singole in `MatchesPage.tsx` ed eliminazione giocatori in `PlayersPage.tsx`).
+
 ## v6.0.20 — 2026-07-27
 - Fix Equità Riposi Americano: Riscritto l'algoritmo di turnazione `generateAmericanoMatches` in `TournamentFlow.tsx` con tracciamento dinamico `benchedCounts`. Garantita la perfetta equità per cui ogni giocatore effettua esattamente lo stesso numero di riposi e di partite giocate.
 - Fix Flusso Torneo Singolo / TPRA: Modificato `getInitialStep()` in `TournamentFlow.tsx`. Imposto il passaggio obbligatorio per la schermata di impostazione Nome Torneo, Data e Circolo (`setup`) per tutti i nuovi tornei prima di accedere al tabellone, prevenendo salvataggi con nome vuoto e blocchi.
