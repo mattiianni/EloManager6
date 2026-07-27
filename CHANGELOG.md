@@ -1,3 +1,6 @@
+## v6.1.0 — 2026-07-27
+- Major Milestone Release v6.1.0: Integrazione completa del motore ELO dinamico partita per partita, algoritmo Americano ad equità assoluta di giocate e riposi, design system Apple HIG avanzato con Progress Control ed etichette esplicite di eliminazione, grafici Recharts ad alta risoluzione con etichette ordinate trasparenti.
+
 ## v6.0.21 — 2026-07-27
 - Integrazione Universale Progress Bar Eliminazione: Esteso il popup HIG Alert con spinner ed animazione della progress bar a tutte le azioni di eliminazione dell'applicazione (eliminazione partite singole in `MatchesPage.tsx` ed eliminazione giocatori in `PlayersPage.tsx`).
 
