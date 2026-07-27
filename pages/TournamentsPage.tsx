@@ -227,7 +227,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         isOpen: boolean;
         type: 'tournament' | 'series' | null;
         idOrName: string | null;
-    }>({ isOpen: false, type: null, idOrName: null });
+        isDeleting?: boolean;
+        progressPercent?: number;
+        loadingText?: string;
+    }>({ isOpen: false, type: null, idOrName: null, isDeleting: false, progressPercent: 0, loadingText: '' });
     const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
     const [editName, setEditName] = useState('');
     const [editClub, setEditClub] = useState('');
@@ -646,12 +649,40 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     };
 
     const handleConfirmDelete = async (cascade: boolean) => {
-        if (deleteAlert.type === 'tournament' && deleteAlert.idOrName) {
-            await deleteTournament(deleteAlert.idOrName, cascade);
-        } else if (deleteAlert.type === 'series' && deleteAlert.idOrName) {
-            await deleteTournamentSeries(deleteAlert.idOrName, cascade);
+        setDeleteAlert(prev => ({
+            ...prev,
+            isDeleting: true,
+            progressPercent: 10,
+            loadingText: cascade ? "Eliminazione torneo e giocatori..." : "Eliminazione torneo in corso..."
+        }));
+
+        try {
+            // Simulated smooth progress steps
+            const progressInterval = setInterval(() => {
+                setDeleteAlert(prev => {
+                    if (prev.progressPercent && prev.progressPercent < 85) {
+                        return { ...prev, progressPercent: prev.progressPercent + 15 };
+                    }
+                    return prev;
+                });
+            }, 120);
+
+            if (deleteAlert.type === 'tournament' && deleteAlert.idOrName) {
+                await deleteTournament(deleteAlert.idOrName, cascade);
+            } else if (deleteAlert.type === 'series' && deleteAlert.idOrName) {
+                await deleteTournamentSeries(deleteAlert.idOrName, cascade);
+            }
+
+            clearInterval(progressInterval);
+            setDeleteAlert(prev => ({ ...prev, progressPercent: 100, loadingText: "Completato!" }));
+            
+            setTimeout(() => {
+                setDeleteAlert({ isOpen: false, type: null, idOrName: null, isDeleting: false, progressPercent: 0, loadingText: '' });
+            }, 300);
+        } catch (error) {
+            console.error("Errore eliminazione:", error);
+            setDeleteAlert({ isOpen: false, type: null, idOrName: null, isDeleting: false, progressPercent: 0, loadingText: '' });
         }
-        setDeleteAlert({ isOpen: false, type: null, idOrName: null });
     };
     
     const handleEdit = (tournament: Tournament) => {
@@ -1733,6 +1764,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                 isOpen={deleteAlert.isOpen}
                 title={deleteAlert.type === 'series' ? "Elimina Serie" : "Elimina Evento"}
                 message="Rimuovi tutti i match e i dati? Puoi scegliere di eliminare anche i giocatori 'isolati' che hanno partecipato solo a questo evento."
+                isLoading={deleteAlert.isDeleting}
+                loadingText={deleteAlert.loadingText}
+                progressPercent={deleteAlert.progressPercent}
                 actions={[
                     {
                         label: "Elimina Solo Torneo",
@@ -1740,14 +1774,14 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                         onPress: () => handleConfirmDelete(false)
                     },
                     {
-                        label: "Elimina Torneo e Giocatori",
+                        label: "Elimina Torneo e Giocatori Non Più Attivi",
                         style: "destructive",
                         onPress: () => handleConfirmDelete(true)
                     },
                     {
                         label: "Annulla",
                         style: "cancel",
-                        onPress: () => setDeleteAlert({ isOpen: false, type: null, idOrName: null })
+                        onPress: () => setDeleteAlert({ isOpen: false, type: null, idOrName: null, isDeleting: false, progressPercent: 0, loadingText: '' })
                     }
                 ]}
             />

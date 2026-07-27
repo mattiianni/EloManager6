@@ -1,3 +1,6 @@
+## v6.0.17 — 2026-07-27
+- Redesign Apple HIG Alert & Progress Control Eliminazione Torneo: Riprogettato il popup di eliminazione torneo in `HIGAlert.tsx` e `TournamentsPage.tsx`. Aumentata la larghezza a 340px con la nuova etichetta esplicita `"Elimina Torneo e Giocatori Non Più Attivi"`. Aggiunto lo stato di caricamento dinamico con Apple Spinner, progress bar animata in tempo reale e riscontro di completamento visivo.
+
 ## v6.0.16 — 2026-07-27
 - Fix Margini ed Etichette Asse Y (Ordinate) Grafici ELO: Risolto il taglio delle cifre sull'asse ordinate in `PlayerProfileModal.tsx` e `RankingChart.tsx`. Aumentato il margine sinistro a `left: 15` e la larghezza dell'asse a `width={65}` con formattazione numerica pulita, garantendo la visibilità completa ed imbattibile di tutte le cifre ELO (es. `1577`, `1530`, `1505`).
 
