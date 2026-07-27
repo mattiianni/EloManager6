@@ -1,8 +1,8 @@
 # Padel ELO Manager
 
-Applicazione full-stack per la gestione di tornei di padel con ranking ELO, statistiche, PDF e isolamento dati per workspace.
+Applicazione full-stack PWA per la gestione avanzata di tornei di padel con algoritmo ELO dinamico in tempo reale, statistiche approfondite, reportistica PDF, design system Apple HIG e isolamento dati multi-workspace.
 
-Versione documentata: `v6.0.3`
+Versione documentata: `v6.0.18` (Mese: `Lug 2026`)
 
 ## Stato attuale
 
@@ -13,19 +13,17 @@ Versione documentata: `v6.0.3`
 - Multi-workspace: attivo
 - PWA: attiva tramite `vite-plugin-pwa`
 
-I file `pages/_app.tsx`, `pages/_document.tsx`, `pages/index.tsx` e `next.config.js` sono residui storici. Il runtime effettivo dell'app e' Vite, con bootstrap da `index.tsx`.
-
 ## Routine release
 
-- Versione corrente: `6.0.3`
-- Dalla release successiva si incrementa la patch: `6.0.4`, ...
+- Versione corrente: `6.0.18`
+- Routine automatizzata: patch versioning, backup ZIP e export TXT ad ogni release.
 
-## Aggiornamenti v6.0.3
+## Aggiornamenti v6.0.18
 
-- Versione prodotto aggiornata a `6.0.3`.
-- **UI Redesign 2x2:** Schermata iniziale "Cosa vuoi organizzare oggi?" riprogettata con una griglia 2x2 di Card interattive con icone flat minimaliste.
-- **Pulsante Back Rapido:** Aggiunto il pulsante "← Torna indietro" nella vista di configurazione del sorteggio.
-- **Documentazione ELO e Guida HTML:** Aggiornati i manuali con i riferimenti della versione 6.0.3 e del K-factor unificato K=16.
+- **Redesign Apple HIG Alert & Progress Control:** Riprogettato il popup di eliminazione torneo in `HIGAlert.tsx` e `TournamentsPage.tsx` con la nuova etichetta esplicita `"Elimina Torneo e Giocatori Non Più Attivi"`. Aggiunto lo stato di caricamento dinamico con Apple Spinner, progress bar animata in tempo reale e riscontro di completamento visivo.
+- **Formattazione Asse Ordinate (Y) nei Grafici ELO:** Risolto il taglio delle cifre sull'asse Y in `PlayerProfileModal.tsx` e `RankingChart.tsx`. Aumentata la larghezza dell'asse a 65px con margine sinistro esteso e formattazione numerica ad interi puliti per una visibilità perfetta.
+- **Sistema ELO Dinamico Reale Partita per Partita:** Sostituita l'aspettativa fissa con la vera formula ELO dinamica decimale basata sulla differenza ELO corrente delle due coppie ad ogni singolo turno. Ricalcolati tutti i match ed i record nel database Neon.
+- **Label Torneo nel Tooltip dei Grafici:** Il tooltip dei grafici ora recupera e visualizza sempre il nome reale del Torneo / Giornata anziché date generiche.
 
 ## Aggiornamenti v5.0.2
 

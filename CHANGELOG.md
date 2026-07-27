@@ -1,3 +1,6 @@
+## v6.0.19 — 2026-07-27
+- Aggiornamento README Repository: Aggiornata la documentazione ufficiale del repository `README.md` allineando la versione del prodotto a `v6.0.19`, le specifiche dell'algoritmo ELO dinamico reale, il design system Apple HIG e la suite di formati torneo.
+
 ## v6.0.18 — 2026-07-27
 - Trigger Vercel Deployment: Commit e push per l'avvio della build e del deploy automatico su Vercel.
 
