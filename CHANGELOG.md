@@ -1,3 +1,6 @@
+## v6.0.11 — 2026-07-27
+- Fix Calcolo Grafico ELO Singolo Torneo: Riscritta la logica di `chartData` in `RankingChart.tsx`. Quando un torneo è selezionato, la progressione del grafico per ciascun giocatore parte da 1500 (`Start = 1500`) ed accumula esclusivamente i delta del torneo filtrato, eliminando l'interferenza dei tornei passati.
+
 ## v6.0.10 — 2026-07-27
 - Fix Runtime TypeError in RankingPage: Corretto il riferimento della funzione di sincronizzazione dati in `RankingPage.tsx` sostituendo il nome errato con `fetchData` esposto dallo store.
 
