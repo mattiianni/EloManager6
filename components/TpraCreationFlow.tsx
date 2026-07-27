@@ -31,22 +31,28 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
     const handleSaveBracket = async () => {
         setIsSaving(true);
         try {
+            const validDate = tournamentDate && !isNaN(new Date(tournamentDate).getTime())
+                ? new Date(tournamentDate).toISOString()
+                : new Date().toISOString();
+            const finalName = tournamentName.trim() || 'Torneo Eliminazione Diretta';
+            const finalClub = clubName.trim() || 'Circolo Padel';
+
             // Save the tournament to the database
             const tournament: Omit<Tournament, 'id'> = {
-                name: tournamentName,
-                club: clubName,
-                date: tournamentDate,
+                name: finalName,
+                club: finalClub,
+                date: validDate,
                 type: TournamentType.EliminazioneDiretta,
                 matchIds: [],
                 status: 'scheduled',
-                finalStandings: { bracket: firstRoundNodes } // We store the bracket structure in finalStandings for now
+                finalStandings: { bracket: firstRoundNodes } // We store the bracket structure in finalStandings
             };
 
             // In eliminazione diretta, we do not create all matches instantly since we don't know the winners.
             // We just create the first round matches. 
             const initialMatches: Omit<Match, 'id'>[] = firstRoundNodes.map((node, i) => {
                 return {
-                    date: tournamentDate,
+                    date: validDate,
                     team1: node.team1 ? [node.team1[0].id, node.team1[1].id] : ['bye1', 'bye2'],
                     team2: node.team2 ? [node.team2[0].id, node.team2[1].id] : ['bye1', 'bye2'],
                     sets: [],

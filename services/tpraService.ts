@@ -59,17 +59,17 @@ export const generateTpraBracket = (pairs: [Player, Player][]): BracketNode[] =>
     return firstRoundNodes;
 };
 
-// Generates the standard seeding order (1 vs 16, 8 vs 9, etc)
+// Generates standard ATP seeding order where top seeds are placed in opposite halves/quarters
 function generateSeedOrder(size: number): number[] {
-    let rounds = Math.log2(size);
     let order = [1, 2];
-    
-    for (let r = 1; r < rounds; r++) {
-        const nextOrder = [];
-        const sum = Math.pow(2, r + 1) + 1;
-        for (let i = 0; i < order.length; i++) {
-            nextOrder.push(order[i]);
-            nextOrder.push(sum - order[i]);
+    while (order.length < size) {
+        const nextOrder: number[] = [];
+        const sum = order.length * 2 + 1;
+        for (let i = 0; i < order.length; i += 2) {
+            const first = order[i];
+            const second = order[i + 1];
+            nextOrder.push(first, sum - first);
+            nextOrder.push(sum - second, second);
         }
         order = nextOrder;
     }

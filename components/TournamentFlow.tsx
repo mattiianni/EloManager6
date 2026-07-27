@@ -1211,11 +1211,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎯 isRoundRobinFinali:', isRoundRobinFinali);
  console.log('🎯 savedTournamentType:', savedTournamentType);
  
- const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
- if (finalName.trim() === '' || clubName.trim() === '') {
- alert('Per favore inserisci il Nome del Torneo ed il Nome del Circolo per proseguire.');
- return;
- }
+  const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || '';
+  const finalClub = clubName.trim() || 'Circolo Padel';
+  if (finalName.trim() === '') {
+    alert('Per favore inserisci il Nome del Torneo.');
+    return;
+  }
  
  // For Torneo Libero, go to torneo-libero-setup
  if (selectedFormat === 'torneo-libero') {
@@ -1413,8 +1414,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
 
- const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
- if (finalName.trim() === '' || clubName.trim() === '') {
+ const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || preselectedTournamentName || 'Torneo Padel';
+ const finalClub = clubName.trim() || 'Circolo Padel';
+ if (finalName.trim() === '' || finalClub.trim() === '') {
  alert('Please provide a tournament name and a club name.');
  return;
  }

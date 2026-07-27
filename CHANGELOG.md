@@ -1,3 +1,7 @@
+## v6.1.2 — 2026-07-27
+- Implementazione Seeding ATP Ufficiale: Riscritto l'algoritmo di posizionamento delle teste di serie `generateSeedOrder` in `tpraService.ts`. Le teste di serie n.1 e n.2 vengono disposte ai lati opposti del tabellone (in cima alla metà superiore e in fondo alla metà inferiore) in modo che possano scontrarsi esclusivamente in FINALE.
+- Fix Salvataggio Tornei Singoli: Risolti i potenziali problemi di blocco o dati mancanti durante il salvataggio dei tornei ad eliminazione diretta, gironi e tornei liberi in `TpraCreationFlow.tsx` e `TournamentFlow.tsx` mediante la validazione rigorosa dei fallback di data ISO e nome torneo.
+
 ## v6.1.1 — 2026-07-27
 - Fix Selezione Coppie Eliminazione Diretta: Modificati i pulsanti di selezione rapida per l'Eliminazione Diretta / TPRA in `DrawPage.tsx` da `[4, 8, 16]` a `[4, 6, 8, 9+]`. Verificato empiricamente l'algoritmo di propagazione dei BYE e l'avanzamento automatico delle teste di serie per qualsiasi numero di coppie (es. 5, 6, 7, 9, 10, 12, 15).
 
