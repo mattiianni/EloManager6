@@ -1,3 +1,6 @@
+## v6.0.18 — 2026-07-27
+- Trigger Vercel Deployment: Commit e push per l'avvio della build e del deploy automatico su Vercel.
+
 ## v6.0.17 — 2026-07-27
 - Redesign Apple HIG Alert & Progress Control Eliminazione Torneo: Riprogettato il popup di eliminazione torneo in `HIGAlert.tsx` e `TournamentsPage.tsx`. Aumentata la larghezza a 340px con la nuova etichetta esplicita `"Elimina Torneo e Giocatori Non Più Attivi"`. Aggiunto lo stato di caricamento dinamico con Apple Spinner, progress bar animata in tempo reale e riscontro di completamento visivo.
 
