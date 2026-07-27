@@ -1,3 +1,6 @@
+## v6.1.1 — 2026-07-27
+- Fix Selezione Coppie Eliminazione Diretta: Modificati i pulsanti di selezione rapida per l'Eliminazione Diretta / TPRA in `DrawPage.tsx` da `[4, 8, 16]` a `[4, 6, 8, 9+]`. Verificato empiricamente l'algoritmo di propagazione dei BYE e l'avanzamento automatico delle teste di serie per qualsiasi numero di coppie (es. 5, 6, 7, 9, 10, 12, 15).
+
 ## v6.1.0 — 2026-07-27
 - Major Milestone Release v6.1.0: Integrazione completa del motore ELO dinamico partita per partita, algoritmo Americano ad equità assoluta di giocate e riposi, design system Apple HIG avanzato con Progress Control ed etichette esplicite di eliminazione, grafici Recharts ad alta risoluzione con etichette ordinate trasparenti.
 

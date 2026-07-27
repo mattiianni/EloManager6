@@ -1963,7 +1963,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         else if (selectedFormatForNewFlow === 'americano') allowedPairs = [4, 5, 6, 7, 8];
                                         else if (selectedFormatForNewFlow === 'round-robin-finali') allowedPairs = [4, 5, 6, 7, 8];
                                         else if (selectedFormatForNewFlow === 'gironi-fase-finale') allowedPairs = [6, 7, 8];
-                                        else if (selectedFormatForNewFlow === 'eliminazione-diretta') allowedPairs = [4, 8, 16];
+                                        else if (selectedFormatForNewFlow === 'eliminazione-diretta') allowedPairs = [4, 6, 8];
                                         return allowedPairs.map(num => (
                                             <Button
                                                 key={num}
