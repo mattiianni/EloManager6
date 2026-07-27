@@ -195,16 +195,34 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     // Fallback: if eloHistory does not contain entries for this tournament yet, calculate delta on the fly from matches
                     if (playerTimeline.length === 0 && playerMatches.length > 0) {
                         const K = 16;
-                        playerMatches.forEach(m => {
+                        const currentCumElo = new Map<string, number>();
+
+                        // Sort matches by round
+                        const sortedMatches = [...targetTournamentMatches].sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1));
+
+                        sortedMatches.forEach(m => {
                             if (!m.winner) return;
-                            const isTeam1 = m.team1.includes(player.id);
+                            const t1P1Elo = currentCumElo.get(m.team1[0]) ?? 1500;
+                            const t1P2Elo = currentCumElo.get(m.team1[1]) ?? t1P1Elo;
+                            const team1Avg = (t1P1Elo + t1P2Elo) / 2;
+
+                            const t2P1Elo = currentCumElo.get(m.team2[0]) ?? 1500;
+                            const t2P2Elo = currentCumElo.get(m.team2[1]) ?? t2P1Elo;
+                            const team2Avg = (t2P1Elo + t2P2Elo) / 2;
+
+                            const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
                             const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
-                            const expected1 = 0.5; // default equal expectation for single tournament on the fly
-                            const delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
-                            tournamentDelta += delta;
+                            const delta1 = K * (score1 - expected1);
+                            const delta2 = K * ((1 - score1) - (1 - expected1));
+
+                            m.team1.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta1));
+                            m.team2.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta2));
                         });
+
+                        displayElo = currentCumElo.get(player.id) ?? 1500;
+                    } else {
+                        displayElo = 1500 + tournamentDelta;
                     }
-                    displayElo = 1500 + tournamentDelta;
                 }
 
                 // Ultimo Delta (il delta del giorno più recente)

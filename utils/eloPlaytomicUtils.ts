@@ -41,3 +41,24 @@ export function playtomicLabel(pt: number): string {
     if (pt < 5) return 'Avanzato';
     return 'Elite';
 }
+
+// Calcolo ELO dinamico reale di una partita (con aspettativa di vittoria basata sulla differenza ELO delle due coppie)
+export function calculateMatchEloDelta(
+    team1EloAvg: number,
+    team2EloAvg: number,
+    winner: 'team1' | 'team2' | 'draw',
+    kFactor: number = 16
+): { deltaTeam1: number; deltaTeam2: number; expectedTeam1: number; expectedTeam2: number } {
+    const expectedTeam1 = 1 / (1 + Math.pow(10, (team2EloAvg - team1EloAvg) / 400));
+    const expectedTeam2 = 1 - expectedTeam1;
+    
+    let score1 = 0.5;
+    if (winner === 'team1') score1 = 1;
+    if (winner === 'team2') score1 = 0;
+    const score2 = 1 - score1;
+
+    const deltaTeam1 = kFactor * (score1 - expectedTeam1);
+    const deltaTeam2 = kFactor * (score2 - expectedTeam2);
+
+    return { deltaTeam1, deltaTeam2, expectedTeam1, expectedTeam2 };
+}

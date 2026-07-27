@@ -22,7 +22,7 @@ async function run() {
 
   console.log("Fetching matches...");
   const matches = await sql`
-      SELECT m.*, t.type as tournament_type, t.date as tournament_date
+      SELECT m.*, t.type as tournament_type, t.date as tournament_date, t.name as tournament_name, t.giornata_name
       FROM matches m
       JOIN tournaments t ON m.tournament_id = t.id
       WHERE m.winner IS NOT NULL
@@ -37,6 +37,7 @@ async function run() {
   
   let currentTournamentId = null;
   let currentTournamentDate = null;
+  let currentTournamentName = null;
   const tournamentEloChanges = new Map();
 
   const flushHistory = async () => {
@@ -45,8 +46,8 @@ async function run() {
       for (const [playerId, data] of tournamentEloChanges) {
           if(Math.abs(data.totalDelta) < 0.001) continue; // Skip practically zero changes
           await sql`
-              INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-              VALUES (${currentTournamentId}, ${playerId}, ${data.oldElo}, ${data.newElo}, ${data.totalDelta}, ${currentTournamentDate}, 'tournament', ${data.workspace_id})
+              INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+              VALUES (${currentTournamentId}, ${playerId}, ${data.oldElo}, ${data.newElo}, ${data.totalDelta}, ${currentTournamentDate}, 'tournament', ${data.workspace_id}, ${currentTournamentName})
           `;
       }
       tournamentEloChanges.clear();
@@ -59,6 +60,7 @@ async function run() {
           await flushHistory();
           currentTournamentId = m.tournament_id;
           currentTournamentDate = m.tournament_date;
+          currentTournamentName = m.giornata_name || m.tournament_name;
       }
 
       const p1 = playersState[m.team1_p1_id];

@@ -128,19 +128,34 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             data.push({ eventIndex: -1, elo: 1500, sourceLabel: 'Start (1500)' });
 
             const K = 16;
-            let currentElo = 1500;
+            const currentCumElo = new Map<string, number>();
+            currentCumElo.set(player.id, 1500);
 
             playerMatches.forEach((m, idx) => {
                 if (!m.winner) return;
                 const isTeam1 = m.team1.includes(player.id);
+                
+                const t1P1Elo = currentCumElo.get(m.team1[0]) ?? 1500;
+                const t1P2Elo = currentCumElo.get(m.team1[1]) ?? t1P1Elo;
+                const team1Avg = (t1P1Elo + t1P2Elo) / 2;
+
+                const t2P1Elo = currentCumElo.get(m.team2[0]) ?? 1500;
+                const t2P2Elo = currentCumElo.get(m.team2[1]) ?? t2P1Elo;
+                const team2Avg = (t2P1Elo + t2P2Elo) / 2;
+
+                const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
                 const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
-                const expected1 = 0.5;
-                const delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
-                currentElo += delta;
+                const delta1 = K * (score1 - expected1);
+                const delta2 = K * ((1 - score1) - (1 - expected1));
+
+                // Update ELOs
+                m.team1.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta1));
+                m.team2.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta2));
+
                 const label = m.roundNumber ? `Turno ${m.roundNumber}` : `Match #${idx + 1}`;
                 data.push({
                     eventIndex: idx,
-                    elo: currentElo,
+                    elo: currentCumElo.get(player.id) ?? 1500,
                     sourceLabel: label
                 });
             });
@@ -178,15 +193,37 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             const deltaForDate = dateDeltaSum.get(dateStr) || 0;
             const firstEntryForDate = dateFirstEntry.get(dateStr);
             cumulative += deltaForDate;
+
+            let label = firstEntryForDate?.sourceLabel && !firstEntryForDate.sourceLabel.startsWith('Date ')
+                ? firstEntryForDate.sourceLabel
+                : '';
+
+            if (!label && firstEntryForDate?.eventId) {
+                const tourney = tournaments.find(t => t.id === firstEntryForDate.eventId);
+                if (tourney) label = tourney.giornataName || tourney.name;
+            }
+
+            if (!label) {
+                const tourneyByDate = tournaments.find(t => t.date.split('T')[0] === dateStr);
+                if (tourneyByDate) label = tourneyByDate.giornataName || tourneyByDate.name;
+            }
+
+            if (!label) {
+                const dateObj = new Date(dateStr);
+                label = !isNaN(dateObj.getTime())
+                    ? `Giornata del ${dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                    : `Giornata ${index + 1}`;
+            }
+
             data.push({ 
                 eventIndex: index, 
                 elo: base + cumulative,
-                sourceLabel: firstEntryForDate?.sourceLabel || `Date ${dateStr}`
+                sourceLabel: label
             });
         });
 
         return data;
-    }, [player, eloHistory, playerMatches, selectedSeriesKey]);
+    }, [player, eloHistory, playerMatches, selectedSeriesKey, tournaments]);
 
     const partners = useMemo(() => {
         if (!player) return [];

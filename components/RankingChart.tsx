@@ -128,20 +128,37 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
                     sourceLabel: `Turno ${rNum}`
                 };
 
-                // For each selected player, calculate delta in this round if played
+                // Calculate match deltas dynamically per round based on current ELO ratings
+                const roundDeltas = new Map<string, number>();
+
+                roundMatches.forEach(m => {
+                    if (!m.winner) return;
+                    const t1P1Elo = currentCumElo.get(m.team1[0]) ?? 1500;
+                    const t1P2Elo = currentCumElo.get(m.team1[1]) ?? t1P1Elo;
+                    const team1Avg = (t1P1Elo + t1P2Elo) / 2;
+
+                    const t2P1Elo = currentCumElo.get(m.team2[0]) ?? 1500;
+                    const t2P2Elo = currentCumElo.get(m.team2[1]) ?? t2P1Elo;
+                    const team2Avg = (t2P1Elo + t2P2Elo) / 2;
+
+                    const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
+                    const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
+                    const delta1 = K * (score1 - expected1);
+                    const delta2 = K * ((1 - score1) - (1 - expected1));
+
+                    m.team1.forEach(pid => roundDeltas.set(pid, delta1));
+                    m.team2.forEach(pid => roundDeltas.set(pid, delta2));
+                });
+
+                // Update currentCumElo for all players involved in this round
+                roundDeltas.forEach((delta, pid) => {
+                    const prev = currentCumElo.get(pid) ?? 1500;
+                    currentCumElo.set(pid, prev + delta);
+                });
+
+                // Build data point for this round
                 selectedPlayerIds.forEach(pid => {
-                    const match = roundMatches.find(m => m.team1.includes(pid) || m.team2.includes(pid));
-                    let delta = 0;
-                    if (match && match.winner) {
-                        const isTeam1 = match.team1.includes(pid);
-                        const score1 = match.winner === 'team1' ? 1 : match.winner === 'team2' ? 0 : 0.5;
-                        const expected1 = 0.5; // Equal baseline expectation per match in single tournament
-                        delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
-                    }
-                    const prevElo = currentCumElo.get(pid) || 1500;
-                    const nextElo = prevElo + delta;
-                    currentCumElo.set(pid, nextElo);
-                    point[pid] = nextElo;
+                    point[pid] = currentCumElo.get(pid) ?? 1500;
                 });
 
                 data.push(point);
@@ -215,13 +232,30 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
         orderedDates.forEach((dateStr, index) => {
             let sourceLabel = '';
             const historyEntry = eloHistory.find(e => e.date.split('T')[0] === dateStr);
-            if (historyEntry) {
-                sourceLabel = historyEntry.sourceLabel || '';
+            if (historyEntry && historyEntry.sourceLabel && !historyEntry.sourceLabel.startsWith('Date ')) {
+                sourceLabel = historyEntry.sourceLabel;
+            }
+
+            if (!sourceLabel && historyEntry?.eventId) {
+                const tourney = tournaments.find(t => t.id === historyEntry.eventId);
+                if (tourney) sourceLabel = tourney.giornataName || tourney.name;
+            }
+
+            if (!sourceLabel) {
+                const tourneyByDate = tournaments.find(t => t.date.split('T')[0] === dateStr);
+                if (tourneyByDate) sourceLabel = tourneyByDate.giornataName || tourneyByDate.name;
+            }
+
+            if (!sourceLabel) {
+                const dateObj = new Date(dateStr);
+                sourceLabel = !isNaN(dateObj.getTime())
+                    ? `Giornata del ${dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                    : `Giornata ${index + 1}`;
             }
 
             const point: any = { 
                 eventIndex: index,
-                sourceLabel: sourceLabel || `Event #${index + 1}`
+                sourceLabel
             };
 
             selectedPlayerIds.forEach(playerId => {

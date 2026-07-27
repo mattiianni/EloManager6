@@ -1,3 +1,9 @@
+## v6.0.15 — 2026-07-27
+- Fix Label del Tooltip nei Grafici ELO: Risolta l'etichetta del tooltip in `PlayerProfileModal.tsx` e `RankingChart.tsx`. Ora il grafico mostra sempre il nome reale del Torneo / Giornata (es. `Torneotto 3^ Giornata`) anziché la stringa generica `Date XXXX-XX-XX`. Popolata la colonna `source_label` in `elo_history` in tutto il database Neon.
+
+## v6.0.14 — 2026-07-27
+- Implementazione Universale ELO Dinamico Reale Partita per Partita: Sostituito il calcolo rigido ad aspettativa fissa (0.5) con la vera formula ELO dinamica decimale basata sulla differenza ELO corrente delle due coppie ad ogni singolo turno. Applicato in tutto il backend, nel database Neon (ricalcolati tutti i 316 match esistenti), in `RankingChart.tsx`, in `PlayerProfileModal.tsx` ed in `RankingPage.tsx`.
+
 ## v6.0.13 — 2026-07-27
 - Fix Grafico ELO ed Andamento in PlayerProfileModal: Passato il prop `selectedSeriesKey` al modale del profilo giocatore (`PlayerProfileModal.tsx`). Ora, quando la classifica è filtrata per torneo e si apre la scheda del giocatore (es. "Alberto Ruotolo"), il grafico del modale mostra la variazione Turno per Turno / Partita per Partita di quel solo torneo (es. `Turno 1`, `Turno 2`...) a partire da 1500, invece di mostrare l'intero storico globale (`E1 ... E18`).
 
