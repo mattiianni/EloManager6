@@ -1,3 +1,6 @@
+## v6.0.6 — 2026-07-27
+- Test Scenari Reali Americano: Generati e salvati nel DB 3 tornei di test strutturati: TEST A (9 coppie / 3 campi / 8 turni -> 6 riposi costanti), TEST B (10 coppie / 4 campi / 10 turni -> 4 riposi costanti) e TEST C (4 coppie / 2 campi / 7 turni -> 0 riposi).
+
 ## v6.0.5 — 2026-07-27
 - Fix Logica Turnazione & Riposi Americano: Inserito l'attributo `roundNumber` in tutti i match dell'Americano e persistito nel DB Postgres per garantire la perfetta costanza del numero dei riposanti in ogni turno ($N - \text{partite} \times 4$). Creati 2 tornei di verifica nel DB (10 e 12 giocatori).
 
