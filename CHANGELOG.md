@@ -1,3 +1,6 @@
+## v6.0.13 — 2026-07-27
+- Fix Grafico ELO ed Andamento in PlayerProfileModal: Passato il prop `selectedSeriesKey` al modale del profilo giocatore (`PlayerProfileModal.tsx`). Ora, quando la classifica è filtrata per torneo e si apre la scheda del giocatore (es. "Alberto Ruotolo"), il grafico del modale mostra la variazione Turno per Turno / Partita per Partita di quel solo torneo (es. `Turno 1`, `Turno 2`...) a partire da 1500, invece di mostrare l'intero storico globale (`E1 ... E18`).
+
 ## v6.0.12 — 2026-07-27
 - Implementazione Grafico ELO Turno per Turno / Partita per Partita (Filtro Torneo): Ristrutturata la generazione di `chartData` in `RankingChart.tsx`. Quando un torneo è selezionato, l'asse X mostra i vari turni in sequenza (`Start 1500` → `Turno 1` → `Turno 2` ... `Turno N`) tracciando l'evoluzione ELO partita per partita solo di quel torneo.
 

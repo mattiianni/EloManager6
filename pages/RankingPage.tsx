@@ -471,7 +471,12 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                 <RankingChart theme={theme} selectedSeriesKey={selectedTournamentId} />
             </div>
 
-            <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} theme={theme} />
+            <PlayerProfileModal 
+                player={profilePlayer} 
+                onClose={() => setProfilePlayer(null)} 
+                theme={theme} 
+                selectedSeriesKey={selectedTournamentId}
+            />
         </div>
     );
 };

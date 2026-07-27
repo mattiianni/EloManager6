@@ -11,9 +11,10 @@ interface PlayerProfileModalProps {
     player: Player | null;
     onClose: () => void;
     theme?: 'light' | 'dark';
+    selectedSeriesKey?: string | null;
 }
 
-const CustomTooltip: React.FC<any> = ({ active, payload, label, theme, chartData }) => {
+const CustomTooltip: React.FC<any> = ({ active, payload, label, theme }) => {
     if (active && payload && payload.length) {
         return (
             <div className={`p-3 rounded-md shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border border-gray-200 text-gray-700'}`}>
@@ -31,22 +32,39 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label, theme, chartData
     return null;
 };
 
-const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose, theme: themeProp }) => {
+const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose, theme: themeProp, selectedSeriesKey }) => {
     const theme = themeProp || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     const { players, matches, eloHistory, getPlayerById, tournaments } = usePadelStore();
 
-    // Only count matches from completed tournaments or friendly matches
+    // Filter player matches by selectedSeriesKey if present
     const playerMatches = useMemo(() => {
         if (!player) return [];
-        return matches
-            .filter(m => m.team1.includes(player.id) || m.team2.includes(player.id))
-            .filter(m => {
+        let filtered = matches.filter(m => m.team1.includes(player.id) || m.team2.includes(player.id));
+        
+        if (selectedSeriesKey) {
+            const normSelected = selectedSeriesKey.trim().toLowerCase();
+            const targetTournaments = tournaments.filter(t => 
+                (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) ||
+                (t.name && t.name.trim().toLowerCase() === normSelected) ||
+                (t.parentTournamentName && t.parentTournamentName.trim().toLowerCase() === normSelected)
+            );
+            const targetIds = new Set(targetTournaments.map(t => t.id));
+            filtered = filtered.filter(m => m.tournamentId && targetIds.has(m.tournamentId));
+        } else {
+            filtered = filtered.filter(m => {
                 if (!m.tournamentId) return true; // Friendly match
                 const tournament = tournaments.find(t => t.id === m.tournamentId);
                 return tournament?.status === 'completed';
-            })
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [player, matches, tournaments]);
+            });
+        }
+
+        return filtered.sort((a, b) => {
+            const rA = a.roundNumber || 1;
+            const rB = b.roundNumber || 1;
+            if (rA !== rB) return rA - rB;
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+    }, [player, matches, tournaments, selectedSeriesKey]);
 
     const stats = useMemo(() => {
         if (!player) return null;
@@ -100,17 +118,43 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         return { total, totalClassic: playerMatches.length, ttMatchesCount, wins, gamesWon, gamesLost, form, bestStreak, lastDelta };
     }, [player, playerMatches, eloHistory]);
 
-    // ELO chart data: same approach as RankingChart.tsx (cumulative deltas), but grouped by DATE
+    // ELO chart data: turn-by-turn for selected tournament, or historical by date for global
     const eloChartData = useMemo(() => {
         if (!player) return [];
 
+        // --- CASE 1: SINGLE TOURNAMENT FILTERED ---
+        if (selectedSeriesKey) {
+            const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
+            data.push({ eventIndex: -1, elo: 1500, sourceLabel: 'Start (1500)' });
+
+            const K = 16;
+            let currentElo = 1500;
+
+            playerMatches.forEach((m, idx) => {
+                if (!m.winner) return;
+                const isTeam1 = m.team1.includes(player.id);
+                const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
+                const expected1 = 0.5;
+                const delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
+                currentElo += delta;
+                const label = m.roundNumber ? `Turno ${m.roundNumber}` : `Match #${idx + 1}`;
+                data.push({
+                    eventIndex: idx,
+                    elo: currentElo,
+                    sourceLabel: label
+                });
+            });
+
+            return data;
+        }
+
+        // --- CASE 2: GLOBAL VIEW ---
         const playerHistory = eloHistory
             .filter(e => e.playerId === player.id)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         if (playerHistory.length === 0) return [];
 
-        // Build per-date delta sum and first entry lookup
         const dateFirstEntry = new Map<string, typeof playerHistory[number]>();
         const dateDeltaSum = new Map<string, number>();
         
@@ -120,19 +164,15 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             dateDeltaSum.set(dateStr, (dateDeltaSum.get(dateStr) || 0) + entry.delta);
         });
 
-        // Get ordered unique dates
         const orderedDates = [...dateFirstEntry.keys()].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
-        // Initial base: eloBefore of first date
         const firstDate = orderedDates[0];
         const firstEntry = dateFirstEntry.get(firstDate);
         const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
 
         const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
-        // Initial point
         data.push({ eventIndex: -1, elo: base, sourceLabel: 'Start' });
 
-        // Cumulative approach
         let cumulative = 0;
         orderedDates.forEach((dateStr, index) => {
             const deltaForDate = dateDeltaSum.get(dateStr) || 0;
@@ -146,7 +186,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         });
 
         return data;
-    }, [player, eloHistory, tournaments]);
+    }, [player, eloHistory, playerMatches, selectedSeriesKey]);
 
     const partners = useMemo(() => {
         if (!player) return [];
