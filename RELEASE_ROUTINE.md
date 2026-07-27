@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.1.3`
+- Versione attuale: `6.1.4`
 - Formato incrementale successivo: `6.0.2`, `6.1.0`, ...
 - Mese corrente di riferimento: `Lug 2026`
 

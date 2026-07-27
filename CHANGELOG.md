@@ -1,3 +1,6 @@
+## v6.1.4 — 2026-07-27
+- Hotfix Runtime Errors: Risolto il `ReferenceError: toggleMatchday` in `TournamentsPage.tsx` sostituendolo con la funzione reale `toggleExpandedMatchday`. Applicato l'optional chaining sui callback di navigazione evitando il `TypeError: t is not a function`. Corretto il `ReferenceError: gironiScores` in `TournamentFlow.tsx` nella gestione del salvataggio dei gironi.
+
 ## v6.1.3 — 2026-07-27
 - Fix Modal e Bottone Inserimento Risultati TPRA: Abilitato il pulsante `In Corso - Inserisci Risultati` in `TournamentsPage.tsx` per i tornei TPRA / Eliminazione Diretta (precedentemente escluso). Rimosso il blocco in `TpraBracketView.tsx` che impediva l'apertura del modal sui nodi con vincitore o match giocati, aggiungendo l'indicatore visivo `⚡ Inserisci Risultato` / `✏️ Modifica Risultato` su ciascun card del tabellone.
 

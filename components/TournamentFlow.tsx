@@ -1516,7 +1516,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   const scheduledMatches: Omit<Match, 'id'>[] = [];
   gironiMatches.forEach((groupMatches, gIndex) => {
     groupMatches.forEach((match, mIndex) => {
-      const scores = gironiScores[gIndex]?.[mIndex] || [{ team1: 0, team2: 0 }];
+       const scores = (match as any).sets && (match as any).sets.length > 0 ? (match as any).sets : [{ team1: 0, team2: 0 }];
       const team1Games = scores.reduce((sum, s) => sum + (s.team1 || 0), 0);
       const team2Games = scores.reduce((sum, s) => sum + (s.team2 || 0), 0);
       const hasScores = scores.length > 0 && (team1Games > 0 || team2Games > 0);

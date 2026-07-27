@@ -1440,9 +1440,13 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                             <button
                                                                                 onClick={() => {
                                                                                     if (!expandedMatchdays.has(day.id)) {
-                                                                                        toggleMatchday(day.id);
+                                                                                        toggleExpandedMatchday(day.id);
                                                                                     }
-                                                                                    onNavigateToTeamTournamentMatchdayResults(day.id);
+                                                                                    if (day.type === TournamentType.TorneoASquadre) {
+                                                                                        onNavigateToTeamTournamentMatchdayResults?.(day.id);
+                                                                                    } else if (day.type !== TournamentType.EliminazioneDiretta) {
+                                                                                        onNavigateToResults?.(day.id);
+                                                                                    }
                                                                                 }}
                                                                                 className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-colors cursor-pointer"
                                                                             >
