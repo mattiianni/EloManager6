@@ -348,7 +348,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
                     <>
                         <div style={{ width: '100%', height: 400 }}>
                             <ResponsiveContainer>
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <LineChart data={chartData} margin={{ top: 10, right: 25, left: 15, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
                                     <XAxis
                                         dataKey="eventIndex"
@@ -358,9 +358,10 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
                                     />
                                     <YAxis 
                                         type="number" 
+                                        width={65}
                                         domain={['dataMin - 20', 'dataMax + 20']} 
                                         stroke={axisStrokeColor}
-                                        tickFormatter={(tick) => Number(tick).toFixed(2)}
+                                        tickFormatter={(tick) => Math.round(Number(tick)).toString()}
                                     />
                                     <Tooltip content={<CustomTooltip theme={theme} />} />
                                     <Legend

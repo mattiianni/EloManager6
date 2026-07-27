@@ -335,7 +335,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Andamento ELO</h3>
                             <div style={{ width: '100%', height: 250 }}>
                                 <ResponsiveContainer>
-                                    <LineChart data={eloChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <LineChart data={eloChartData} margin={{ top: 10, right: 25, left: 15, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
                                         <XAxis
                                             dataKey="eventIndex"
@@ -344,9 +344,10 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                                         />
                                         <YAxis
                                             type="number"
-                                            domain={['dataMin - 20', 'dataMax + 20']}
+                                            width={65}
+                                            domain={['dataMin - 15', 'dataMax + 15']}
                                             stroke={axisStrokeColor}
-                                            tickFormatter={(v) => Number(v).toFixed(2)}
+                                            tickFormatter={(v) => Math.round(Number(v)).toString()}
                                         />
                                         <Tooltip content={<CustomTooltip theme={theme} chartData={eloChartData} />} />
                                         <Line

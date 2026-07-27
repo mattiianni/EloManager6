@@ -1,3 +1,6 @@
+## v6.0.16 — 2026-07-27
+- Fix Margini ed Etichette Asse Y (Ordinate) Grafici ELO: Risolto il taglio delle cifre sull'asse ordinate in `PlayerProfileModal.tsx` e `RankingChart.tsx`. Aumentato il margine sinistro a `left: 15` e la larghezza dell'asse a `width={65}` con formattazione numerica pulita, garantendo la visibilità completa ed imbattibile di tutte le cifre ELO (es. `1577`, `1530`, `1505`).
+
 ## v6.0.15 — 2026-07-27
 - Fix Label del Tooltip nei Grafici ELO: Risolta l'etichetta del tooltip in `PlayerProfileModal.tsx` e `RankingChart.tsx`. Ora il grafico mostra sempre il nome reale del Torneo / Giornata (es. `Torneotto 3^ Giornata`) anziché la stringa generica `Date XXXX-XX-XX`. Popolata la colonna `source_label` in `elo_history` in tutto il database Neon.
 
