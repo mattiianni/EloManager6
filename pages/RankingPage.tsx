@@ -16,7 +16,7 @@ interface RankingPageProps {
 }
 
 const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
-    const { players, matches, eloHistory, tournaments, loading, refreshData } = usePadelStore();
+    const { players, matches, eloHistory, tournaments, loading, fetchData } = usePadelStore();
     const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
     const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
     const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
@@ -28,8 +28,8 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
 
     // Fetch fresh data from DB when component mounts
     React.useEffect(() => {
-        refreshData();
-    }, [refreshData]);
+        fetchData();
+    }, [fetchData]);
 
     // Reset showAllPlayers when tournament or threshold changes
     React.useEffect(() => {

@@ -1,3 +1,6 @@
+## v6.0.10 — 2026-07-27
+- Fix Runtime TypeError in RankingPage: Corretto il riferimento della funzione di sincronizzazione dati in `RankingPage.tsx` sostituendo il nome errato con `fetchData` esposto dallo store.
+
 ## v6.0.9 — 2026-07-27
 - Fix Grafico ELO Singolo Torneo: Impostata la base di partenza a 1500 (`Start = 1500`) in `RankingChart.tsx` quando viene applicato un filtro torneo, mostrando l'evoluzione specifica del torneo anziché l'accumulato globale.
 - Sincronizzazione Real-Time Classifica Globale: Inserita la chiamata automatica `refreshData()` al mount di `RankingPage.tsx` per garantire la presenza immediata di tutti i tornei ed i delta ELO aggiornati dal DB.
