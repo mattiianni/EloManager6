@@ -1,3 +1,6 @@
+## v6.1.3 — 2026-07-27
+- Fix Modal e Bottone Inserimento Risultati TPRA: Abilitato il pulsante `In Corso - Inserisci Risultati` in `TournamentsPage.tsx` per i tornei TPRA / Eliminazione Diretta (precedentemente escluso). Rimosso il blocco in `TpraBracketView.tsx` che impediva l'apertura del modal sui nodi con vincitore o match giocati, aggiungendo l'indicatore visivo `⚡ Inserisci Risultato` / `✏️ Modifica Risultato` su ciascun card del tabellone.
+
 ## v6.1.2 — 2026-07-27
 - Implementazione Seeding ATP Ufficiale: Riscritto l'algoritmo di posizionamento delle teste di serie `generateSeedOrder` in `tpraService.ts`. Le teste di serie n.1 e n.2 vengono disposte ai lati opposti del tabellone (in cima alla metà superiore e in fondo alla metà inferiore) in modo che possano scontrarsi esclusivamente in FINALE.
 - Fix Salvataggio Tornei Singoli: Risolti i potenziali problemi di blocco o dati mancanti durante il salvataggio dei tornei ad eliminazione diretta, gironi e tornei liberi in `TpraCreationFlow.tsx` e `TournamentFlow.tsx` mediante la validazione rigorosa dei fallback di data ISO e nome torneo.
