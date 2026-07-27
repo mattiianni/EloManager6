@@ -78,7 +78,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
     const chartData = useMemo(() => {
         if (selectedPlayerIds.length === 0) return [];
         
-        // --- CASE 1: SINGLE TOURNAMENT / SERIES FILTERED ---
+        // --- CASE 1: SINGLE TOURNAMENT / SERIES FILTERED (TURN-BY-TURN / MATCH-BY-MATCH) ---
         if (selectedSeriesKey) {
             const normSelected = selectedSeriesKey.trim().toLowerCase();
             const targetTournaments = tournaments.filter(t => 
@@ -88,51 +88,65 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             );
             const targetTournamentIds = new Set(targetTournaments.map(t => t.id));
 
-            // Initial point = 1500 for all players in this tournament
+            // Find all matches for the target tournament(s)
+            const targetMatches = matches
+                .filter(m => m.tournamentId && targetTournamentIds.has(m.tournamentId))
+                .sort((a, b) => {
+                    const rA = a.roundNumber || 1;
+                    const rB = b.roundNumber || 1;
+                    return rA - rB;
+                });
+
+            // Group matches by round (or index if roundNumber not set)
+            const roundsMap = new Map<number, typeof targetMatches>();
+            targetMatches.forEach((m, idx) => {
+                const r = m.roundNumber || (idx + 1);
+                if (!roundsMap.has(r)) roundsMap.set(r, []);
+                roundsMap.get(r)!.push(m);
+            });
+
+            const sortedRoundNumbers = Array.from(roundsMap.keys()).sort((a, b) => a - b);
+
+            // Initial point = Start (1500) for all selected players
             const initialPoint: any = { eventIndex: -1, sourceLabel: 'Start (1500)' };
+            const currentCumElo = new Map<string, number>();
+
             selectedPlayerIds.forEach(pid => {
                 initialPoint[pid] = 1500;
+                currentCumElo.set(pid, 1500);
             });
 
             const data: any[] = [initialPoint];
 
-            // Calculate tournament delta for each selected player
-            const tournamentPoint: any = {
-                eventIndex: 0,
-                sourceLabel: selectedSeriesKey
-            };
-
+            // Formula K factor calculation
             const K = 16;
-            selectedPlayerIds.forEach(pid => {
-                // First check if eloHistory has records for this tournament
-                const historyEntries = eloHistory.filter(e => 
-                    e.playerId === pid && 
-                    (targetTournamentIds.has(e.eventId) || (e.sourceLabel && e.sourceLabel.trim().toLowerCase() === normSelected))
-                );
 
-                let totalDelta = 0;
-                if (historyEntries.length > 0) {
-                    totalDelta = historyEntries.reduce((sum, e) => sum + (e.delta || 0), 0);
-                } else {
-                    // Fallback to match calculation if eloHistory entries aren't generated yet
-                    const playerTournamentMatches = matches.filter(m => 
-                        m.tournamentId && targetTournamentIds.has(m.tournamentId) && 
-                        (m.team1.includes(pid) || m.team2.includes(pid))
-                    );
-                    playerTournamentMatches.forEach(m => {
-                        if (!m.winner) return;
-                        const isTeam1 = m.team1.includes(pid);
-                        const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
-                        const expected1 = 0.5;
-                        const delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
-                        totalDelta += delta;
-                    });
-                }
+            sortedRoundNumbers.forEach((rNum, rIdx) => {
+                const roundMatches = roundsMap.get(rNum) || [];
+                const point: any = {
+                    eventIndex: rIdx,
+                    sourceLabel: `Turno ${rNum}`
+                };
 
-                tournamentPoint[pid] = 1500 + totalDelta;
+                // For each selected player, calculate delta in this round if played
+                selectedPlayerIds.forEach(pid => {
+                    const match = roundMatches.find(m => m.team1.includes(pid) || m.team2.includes(pid));
+                    let delta = 0;
+                    if (match && match.winner) {
+                        const isTeam1 = match.team1.includes(pid);
+                        const score1 = match.winner === 'team1' ? 1 : match.winner === 'team2' ? 0 : 0.5;
+                        const expected1 = 0.5; // Equal baseline expectation per match in single tournament
+                        delta = isTeam1 ? K * (score1 - expected1) : K * ((1 - score1) - expected1);
+                    }
+                    const prevElo = currentCumElo.get(pid) || 1500;
+                    const nextElo = prevElo + delta;
+                    currentCumElo.set(pid, nextElo);
+                    point[pid] = nextElo;
+                });
+
+                data.push(point);
             });
 
-            data.push(tournamentPoint);
             return data;
         }
 

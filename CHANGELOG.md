@@ -1,3 +1,6 @@
+## v6.0.12 — 2026-07-27
+- Implementazione Grafico ELO Turno per Turno / Partita per Partita (Filtro Torneo): Ristrutturata la generazione di `chartData` in `RankingChart.tsx`. Quando un torneo è selezionato, l'asse X mostra i vari turni in sequenza (`Start 1500` → `Turno 1` → `Turno 2` ... `Turno N`) tracciando l'evoluzione ELO partita per partita solo di quel torneo.
+
 ## v6.0.11 — 2026-07-27
 - Fix Calcolo Grafico ELO Singolo Torneo: Riscritta la logica di `chartData` in `RankingChart.tsx`. Quando un torneo è selezionato, la progressione del grafico per ciascun giocatore parte da 1500 (`Start = 1500`) ed accumula esclusivamente i delta del torneo filtrato, eliminando l'interferenza dei tornei passati.
 
