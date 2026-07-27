@@ -18,14 +18,14 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
 
 - requisiti: 2 coppie
 - 1 partita
-- ELO: `Friendly Match`, K `20`
+- ELO: K `16` (Standard unificato)
 
 ## 2. TorneOtto 30'
 
 - requisiti: 4 coppie
 - round robin completo
 - 6 partite
-- ELO: K `16`
+- ELO: K `16` (Standard unificato)
 
 ## 3. Round Robin + Finali
 
@@ -35,7 +35,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
 - fase finale:
   - finale 1°-2°
   - finale 3°-4°
-- ELO a fasi: `10 / 32 / 10 / 4 / 24`
+- ELO: K `16` (Standard unificato)
 
 ## 4. Americano
 
@@ -46,7 +46,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
   - numero round
   - scoring `games-diff` o `points`
 - classifica individuale
-- ELO: K `24`
+- ELO: K `16` (Standard unificato)
 
 ## 5. Torneo Libero
 
@@ -54,7 +54,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
 - round robin completo flessibile
 - consente nome giornata dedicato
 - supporta stampa vuota e completa dedicata
-- ELO: K `24`
+- ELO: K `16` (Standard unificato)
 
 ## 6. Gironi + Fase Finale
 
@@ -66,7 +66,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
   - gironi
   - semifinali
   - finali 1°-2° e 3°-4°
-- ELO: `K=16 Standard (tutte le fasi)`
+- ELO: K `16` (Standard unificato)
 
 ## 7. Beat the Box
 
@@ -75,7 +75,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
 - fase box round robin
 - con 8+ coppie puo' generare semifinali prima delle finali
 - ha stampa dedicata vuota e completa
-- ELO: K `16`
+- ELO: K `16` (Standard unificato)
 
 ## Note di implementazione
 

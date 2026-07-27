@@ -1,3 +1,9 @@
+## v6.0.2 — 2026-07-27
+- Cleanup Repository: Rimossi oltre 30 file temporanei, file `.bak`, `.tmp`, `.part1` e script di debug dal root project. Rimosso `eloService.ts` inutilizzato.
+- UI/UX Polish (Americano): Introdotta scrollbar orizzontale responsive per il selettore del numero di turni (per tornei con 9+ coppie) per un rendering fluido su dispositivi mobile.
+- Formato Selezionato Badge: Aggiunto badge visivo sintetico "Formato Selezionato" nelle schermate di setup preliminare del torneo.
+- Documentazione ELO: Allineata tutta la documentazione di sistema per confermare l'adozione del K-Factor fisso e costante K=16 per tutti i tornei.
+
 ## v6.0.1 — 2026-07-26
 - Major Release: Migrazione completa repository su EloManager6.
 - Algorithm Overhaul: Algoritmo di turnazione torneo Americano completamente riprogettato con vincolo matematico stringente sui partner (nessuna ripetizione di compagno finché non si è giocato con tutti gli altri giocatori) e bilanciamento perfetto dei riposi.

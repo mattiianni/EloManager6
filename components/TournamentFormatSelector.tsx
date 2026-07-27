@@ -48,20 +48,16 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                         Scegli il tipo di torneo che vuoi organizzare. Il numero di giocatori selezionabili dipenderà dal formato scelto.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {ALL_FORMATS.map((format) => {
-                            const isAmericano = format === 'americano';
-                            return (
-                                <Button
-                                    key={format}
-                                    onClick={() => isAmericano && onSelectFormat(format)}
-                                    className={`w-full justify-center py-4 text-base font-semibold ${!isAmericano ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    variant={isAmericano ? "primary" : "secondary"}
-                                    disabled={!isAmericano}
-                                >
-                                    {getFormatDisplayName(format)} {!isAmericano && '(In arrivo)'}
-                                </Button>
-                            );
-                        })}
+                        {ALL_FORMATS.map((format) => (
+                            <Button
+                                key={format}
+                                onClick={() => onSelectFormat(format)}
+                                className="w-full justify-center py-4 text-base font-semibold"
+                                variant="primary"
+                            >
+                                {getFormatDisplayName(format)}
+                            </Button>
+                        ))}
                     </div>
                     <div className="pt-4 flex justify-center">
                         <Button variant="secondary" onClick={onBack}>

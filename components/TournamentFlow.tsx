@@ -20,6 +20,7 @@ interface TournamentFlowProps {
  preselectedTournamentName?: string | null;
  clearPreselectedTournament?: () => void;
  forceExistingTournament?: boolean;
+ initialFormat?: TournamentFormat;
 }
 
 type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
@@ -302,15 +303,27 @@ const generateAmericanoMatches = (
  return matches;
 };
 
-const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false }) => {
+const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false, initialFormat }) => {
  const { tournaments, addMultipleMatches, getPlayerById } = usePadelStore();
- const [step, setStep] = useState<Step>('tournament-selection');
- const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(null);
+ const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
+ 
+ const getInitialStep = (): Step => {
+   if (!initialFormat) return 'tournament-selection';
+   switch (initialFormat) {
+     case 'americano': return 'americano-info';
+     case 'torneo-libero': return 'torneo-libero-setup';
+     case 'gironi-fase-finale': return 'gironi-setup';
+     case 'eliminazione-diretta': return 'tpra-flow';
+     default: return 'setup';
+   }
+ };
+
+ const [step, setStep] = useState<Step>(getInitialStep());
  const [tournamentDate, setTournamentDate] = useState(new Date().toISOString().split('T')[0]);
  const [clubName, setClubName] = useState('');
  const [tournamentName, setTournamentName] = useState('');
  const [selectedTournamentName, setSelectedTournamentName] = useState('');
- const [isCreatingNew, setIsCreatingNew] = useState(!forceExistingTournament);
+ const [isCreatingNew, setIsCreatingNew] = useState(initialFormat ? true : !forceExistingTournament);
  
  // Log whenever isCreatingNew changes
  React.useEffect(() => {
@@ -486,8 +499,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
  };
 
- // Calculate max rounds for Americano: (players - 1)
- const maxAmericanoRounds = pairs.length * 2 - 1;
+  // Calculate max unique rounds for Americano: (numPlayers - 1), where numPlayers = pairs.length * 2
+  const maxAmericanoRounds = pairs.length * 2 - 1;
 
  const handleAmericanoInfoContinue = () => {
  setStep('setup');
@@ -1656,6 +1669,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return (
  <Card title="Info Torneo Americano">
  <div className="space-y-6 px-4">
+ <div className="flex items-center gap-2">
+ <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+ Formato Selezionato: Americano
+ </span>
+ </div>
+
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Numero di campi disponibili
@@ -1665,7 +1684,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <Button
  key={num}
  type="button"
- variant={americanoFields === num ?"primary" :"secondary"}
+ variant={americanoFields === num ? "primary" : "secondary"}
  size="sm"
  onClick={() => setAmericanoFields(num)}
  className="!px-4"
@@ -1680,15 +1699,15 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Numero di turni (max: {maxAmericanoRounds})
  </label>
- <div className="flex items-center flex-wrap gap-2">
- {Array.from({ length: Math.min(maxAmericanoRounds - 1, 10) }, (_, i) => i + 2).map(num => (
+ <div className="overflow-x-auto max-w-full pb-2 pt-1 flex items-center gap-2 flex-nowrap md:flex-wrap">
+ {Array.from({ length: maxAmericanoRounds - 1 }, (_, i) => i + 2).map(num => (
  <Button
  key={num}
  type="button"
- variant={americanoRounds === num ?"primary" :"secondary"}
+ variant={americanoRounds === num ? "primary" : "secondary"}
  size="sm"
  onClick={() => setAmericanoRounds(num)}
- className="!px-4"
+ className="!px-4 shrink-0"
  >
  {num}
  </Button>
@@ -1703,7 +1722,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <div className="flex gap-2">
  <Button
  type="button"
- variant={americanoScoringType === 'games-diff' ?"primary" :"secondary"}
+ variant={americanoScoringType === 'games-diff' ? "primary" : "secondary"}
  size="sm"
  onClick={() => setAmericanoScoringType('games-diff')}
  className="flex-1"
@@ -1712,7 +1731,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Button>
  <Button
  type="button"
- variant={americanoScoringType === 'points' ?"primary" :"secondary"}
+ variant={americanoScoringType === 'points' ? "primary" : "secondary"}
  size="sm"
  onClick={() => setAmericanoScoringType('points')}
  className="flex-1"
@@ -1752,6 +1771,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return (
  <Card title="Setup Gironi + Fase Finale">
  <div className="space-y-6 px-4">
+ <div className="flex items-center gap-2">
+ <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+ Formato Selezionato: Gironi + Fase Finale
+ </span>
+ </div>
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
  Numero di gironi
@@ -2353,7 +2377,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </p>
  </div>
  )}
- {!preselectedTournamentName && (
+ {!preselectedTournamentName && !initialFormat && (
  <div className="w-full">
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Tournament</label>
  <div className="mt-1 flex w-full rounded-md shadow-sm">
@@ -2363,7 +2387,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  )}
 
- {isCreatingNew && !preselectedTournamentName ? (
+ {(isCreatingNew || initialFormat) && !preselectedTournamentName ? (
  <div className="w-full">
  <label htmlFor="tournamentName" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Nome Torneo</label>
  <input
