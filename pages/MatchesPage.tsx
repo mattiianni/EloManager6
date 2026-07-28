@@ -869,19 +869,44 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  setShowBeatBoxStandingsModal(true);
  } else {
- // Finals exist in DB, resume from appropriate phase
+ // Finals/Semifinals exist in DB, populate state & resume from appropriate phase
  const allFinalsCompleted = existingFinalsMatches.every(m => m.winner && m.sets.length > 0);
  if (allFinalsCompleted) {
  setEditingTournament(tournament);
  } else if (numBoxes >= 4 && existingFinalsMatches.length >= 2) {
  const semiMatches = existingFinalsMatches.slice(0, 2);
+ const finalMatchesInDb = existingFinalsMatches.slice(2);
  const allSemisCompleted = semiMatches.every(m => m.winner && m.sets.length > 0);
+
+ setBeatBoxSemifinalMatches(semiMatches);
+
  if (allSemisCompleted) {
+ if (finalMatchesInDb.length > 0) {
+ setBeatBoxFinalMatches(finalMatchesInDb);
+ } else {
+ const sfResults = {
+ sf1Winner: semiMatches[0].winner as 'team1' | 'team2',
+ sf2Winner: semiMatches[1].winner as 'team1' | 'team2',
+ };
+ const { finals } = createBeatBoxFinalsMatches(
+ numBoxes,
+ standings,
+ tournament.date,
+ sfResults,
+ (tournament.playoffType as any) || 'semifinals'
+ );
+ setBeatBoxFinalMatches(finals.map((m, i) => ({
+ ...m,
+ id: `temp-final-${i}`,
+ tournamentId: tournament.id
+ } as Match)));
+ }
  setIsInBeatBoxFinalsPhase(true);
  } else {
  setIsInBeatBoxSemifinalsPhase(true);
  }
  } else {
+ setBeatBoxFinalMatches(existingFinalsMatches);
  setIsInBeatBoxFinalsPhase(true);
  }
  }

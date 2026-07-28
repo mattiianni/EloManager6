@@ -1,3 +1,6 @@
+## v6.3.2 — 2026-07-28
+- Fix Beat the Box Semifinals & Finals Resume: Risolto l'azzeramento dei punteggi a `0-0` quando si riapriva un torneo Beat the Box nelle semifinali o finali. Popolati correttamente gli stati `beatBoxSemifinalMatches` e `beatBoxFinalMatches` in `pages/MatchesPage.tsx` con i risultati precedentemente salvati a database Neon.
+
 ## v6.3.1 — 2026-07-28
 - Fix TPRA TypeError & Score Input: Risolto il `TypeError: t is not a function` in `TpraBracketView.tsx` correggendo la prop `onSetsChange` in `MatchScoreInput.tsx` e proteggendo i callback con optional chaining.
 - TPRA Bracket Flow & Turn Progression: Corretta la condizione di completamento torneo in `TpraBracketView.tsx`. Il torneo TPRA non viene più contrassegnato come completato ai Quarti o alle Semifinali, ma **soltanto dopo che la Finale è stata disputata ed ha un vincitore**.
