@@ -984,7 +984,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                     size="sm"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onNavigateToTeamTournamentConfiguration(teamTournamentRootId || tournamentDays[0].id);
+                                                        onNavigateToTeamTournamentConfiguration?.(teamTournamentRootId || tournamentDays[0].id);
                                                     }}
                                                     className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-3 !py-1.5 !text-sm"
                                                 >
@@ -996,7 +996,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                         variant="secondary"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            if (teamTournamentRootId) onNavigateToTeamTournamentConfiguration(teamTournamentRootId);
+                                                            if (teamTournamentRootId) onNavigateToTeamTournamentConfiguration?.(teamTournamentRootId);
                                                         }}
                                                         className={tournamentActionButtonClass}
                                                         aria-label="Edit Team Tournament"
@@ -1038,19 +1038,19 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                         if (groupRepresentsTeamTournament) {
                                                             if (teamTournamentRootId) {
                                                                 if (isTeamTournamentCompleted) {
-                                                                    onNavigateToTeamTournamentSummary(teamTournamentRootId);
+                                                                    onNavigateToTeamTournamentSummary?.(teamTournamentRootId);
                                                                 } else if (hasActivePlayoffStage) {
                                                                     if (scheduledPlayoffFixtures[0]?.tournamentDayId) {
-                                                                        onNavigateToTeamTournamentMatchdayResults(scheduledPlayoffFixtures[0].tournamentDayId);
+                                                                        onNavigateToTeamTournamentMatchdayResults?.(scheduledPlayoffFixtures[0].tournamentDayId);
                                                                     } else {
-                                                                        onNavigateToNewTeamTournamentMatchday(teamTournamentRootId);
+                                                                        onNavigateToNewTeamTournamentMatchday?.(teamTournamentRootId);
                                                                     }
                                                                 } else {
-                                                                    onNavigateToNewTeamTournamentMatchday(teamTournamentRootId);
+                                                                    onNavigateToNewTeamTournamentMatchday?.(teamTournamentRootId);
                                                                 }
                                                             }
                                                         } else {
-                                                            onNavigateToNewGiornata(displayName);
+                                                            onNavigateToNewGiornata?.(displayName);
                                                         }
                                                     }}
                                                     className={`${groupRepresentsTeamTournament && isTeamTournamentCompleted ? '!bg-sky-500 hover:!bg-sky-600 !border-sky-600 dark:!border-sky-300/35' : (groupRepresentsTeamTournament && hasActivePlayoffStage ? '!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35' : '!bg-green-600 hover:!bg-green-700 !border-green-700/50 dark:!border-green-300/35')} !text-white !px-3 !py-1.5 !text-sm`}
@@ -1176,7 +1176,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                 {canOpen ? (
                                                                                     <Button
                                                                                         size="sm"
-                                                                                        onClick={() => onNavigateToTeamTournamentMatchdayResults(f.tournamentDayId!)}
+                                                                                        onClick={() => onNavigateToTeamTournamentMatchdayResults?.(f.tournamentDayId!)}
                                                                                         className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs"
                                                                                     >
                                                                                         Inserisci risultati
@@ -1194,7 +1194,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                 ) : (
                                                                                     <Button
                                                                                         size="sm"
-                                                                                        onClick={() => onNavigateToTeamTournamentFixture(teamTournamentRootId, f.id)}
+                                                                                        onClick={() => onNavigateToTeamTournamentFixture?.(teamTournamentRootId, f.id)}
                                                                                         disabled={!ready}
                                                                                         className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs disabled:!border-slate-200/45 disabled:!bg-slate-100/80 disabled:!text-slate-400 dark:disabled:!border-white/10 dark:disabled:!bg-white/15 dark:disabled:!text-white/50"
                                                                                     >
@@ -1323,7 +1323,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                     ) : null}
                                                                     {day.status === 'scheduled' && day.type !== TournamentType.EliminazioneDiretta && (
                                                                         <button
-                                                                            onClick={() => onNavigateToTeamTournamentMatchdayResults(day.id)}
+                                                                            onClick={() => onNavigateToTeamTournamentMatchdayResults?.(day.id)}
                                                                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-colors cursor-pointer"
                                                                         >
                                                                             In Corso - Inserisci Risultati
@@ -1336,9 +1336,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                         variant="secondary"
                                                                         onClick={() => {
                                                                             if (day.type === TournamentType.TorneoASquadre && day.giornataName) {
-                                                                                onNavigateToTeamTournamentMatchdayResults(day.id);
+                                                                                onNavigateToTeamTournamentMatchdayResults?.(day.id);
                                                                             } else if (day.type === TournamentType.TorneoASquadre) {
-                                                                                onNavigateToTeamTournamentConfiguration(day.teamTournamentRootId || day.id);
+                                                                                onNavigateToTeamTournamentConfiguration?.(day.teamTournamentRootId || day.id);
                                                                             } else {
                                                                                 handleEdit(day);
                                                                             }
@@ -1460,9 +1460,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                             variant="secondary"
                                                                             onClick={() => {
                                                                                 if (day.type === TournamentType.TorneoASquadre && day.giornataName) {
-                                                                                    onNavigateToTeamTournamentMatchdayResults(day.id);
+                                                                                    onNavigateToTeamTournamentMatchdayResults?.(day.id);
                                                                                 } else if (day.type === TournamentType.TorneoASquadre) {
-                                                                                    onNavigateToTeamTournamentConfiguration(day.teamTournamentRootId || day.id);
+                                                                                    onNavigateToTeamTournamentConfiguration?.(day.teamTournamentRootId || day.id);
                                                                                 } else {
                                                                                     handleEdit(day);
                                                                                 }
@@ -1649,9 +1649,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                     variant="secondary"
                                                                     onClick={() => {
                                                                         if (day.type === TournamentType.TorneoASquadre && day.giornataName) {
-                                                                            onNavigateToTeamTournamentMatchdayResults(day.id);
+                                                                            onNavigateToTeamTournamentMatchdayResults?.(day.id);
                                                                         } else if (day.type === TournamentType.TorneoASquadre) {
-                                                                            onNavigateToTeamTournamentConfiguration(day.teamTournamentRootId || day.id);
+                                                                            onNavigateToTeamTournamentConfiguration?.(day.teamTournamentRootId || day.id);
                                                                         } else {
                                                                             handleEdit(day);
                                                                         }
@@ -1673,9 +1673,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                         variant="secondary"
                                                         onClick={() => {
                                                             if (day.type === TournamentType.TorneoASquadre && day.giornataName) {
-                                                                onNavigateToTeamTournamentMatchdayResults(day.id);
+                                                                onNavigateToTeamTournamentMatchdayResults?.(day.id);
                                                             } else if (day.type === TournamentType.TorneoASquadre) {
-                                                                onNavigateToTeamTournamentConfiguration(day.teamTournamentRootId || day.id);
+                                                                onNavigateToTeamTournamentConfiguration?.(day.teamTournamentRootId || day.id);
                                                             } else {
                                                                 handleEdit(day);
                                                             }

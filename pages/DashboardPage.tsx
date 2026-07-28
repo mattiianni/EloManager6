@@ -223,7 +223,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                     <div className="py-2 text-center text-ios-label-secondary">Nessuna giornata completata</div>
                 ) : (
                     <div className="divide-y divide-slate-100 dark:divide-white/5">
-                        <div className="flex justify-between items-center py-2.5 cursor-pointer first:pt-0" onClick={() => onNavigateToTournaments(lastGiornata.id)}>
+                        <div className="flex justify-between items-center py-2.5 cursor-pointer first:pt-0" onClick={() => onNavigateToTournaments?.(lastGiornata.id)}>
                             <div className="flex items-center gap-3">
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', background: 'var(--ios-systemOrange)', borderRadius: '6px' }} className="shrink-0">
                                     <SFIcon name="trophy.fill" size={16} color="white" />

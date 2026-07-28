@@ -1,3 +1,6 @@
+## v6.1.7 — 2026-07-28
+- Codebase Hardening & Callback Safety: Applicato l'optional chaining `?.` su tutte le invocazioni dei callback di navigazione in `TournamentsPage.tsx`, `DashboardPage.tsx` e `MatchesPage.tsx` per prevenire `TypeError` da funzioni opzionali o mancanti. Verificata la compilazione e la stabilità con build di produzione Vite superata con successo.
+
 ## v6.1.6 — 2026-07-27
 - Hotfix Runtime Errors: Corretta l'ulteriore chiamata a `toggleMatchday` rimasta alla riga 1634 di `pages/TournamentsPage.tsx` sostituendola con `toggleExpandedMatchday`. Aggiunto l'optional chaining `?.` su tutti i callback di navigazione di `TournamentsPage` prevenendo crash a runtime.
 
