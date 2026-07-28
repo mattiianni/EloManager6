@@ -1,3 +1,8 @@
+## v6.4.3 — 2026-07-28
+- Suite di Test Automatizzata del Ciclo di Vita Completo dei Tornei (`scripts/test_full_tournament_lifecycle.cjs`):
+  - Creato ed eseguito lo script di verifica automatizzata per **TUTTE le 6 tipologie di torneo** (Americano, Beat the Box, Gironi + Fase Finale, Round Robin + Finali, Eliminazione Diretta, Torneo Libero).
+  - Verificato con successo al 100% che l'inserimento dei risultati, il salvataggio a DB, l'uscita ed il successivo ripristino ("In Corso - Inserisci Risultati") mantengono inalterati tutti i punteggi salvati e riaprono direttamente la fase successiva/finali senza mai regredire ai box o ai gironi.
+
 ## v6.4.2 — 2026-07-28
 - Fix Riapertura & Resume Tornei Beat the Box:
   - Risolto il bug per cui `handleOpenTournament` controllava lo stato di tutte le partite in DB (inclusi i segnaposto delle semifinali/finali non ancora giocate) anziché le sole partite dei BOX, causando il falso ritorno alla schermata dei box.

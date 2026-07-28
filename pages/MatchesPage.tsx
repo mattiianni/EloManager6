@@ -892,10 +892,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setShowBeatBoxStandingsModal(true);
  } else {
  // Finals/Semifinals exist in DB, populate state & resume from appropriate phase
- const allFinalsCompleted = existingFinalsMatches.every(m => m.winner && m.sets.length > 0);
- if (allFinalsCompleted) {
+ const is4OrMoreBoxes = numBoxes >= 4;
+ const totalExpectedFinalMatches = is4OrMoreBoxes ? 6 : (numBoxes === 3 ? 3 : 2);
+
+ const hasAllExpectedFinalMatches = existingFinalsMatches.length >= totalExpectedFinalMatches;
+ const allFinalsCompleted = hasAllExpectedFinalMatches && existingFinalsMatches.every(m => m.winner && m.sets.length > 0);
+
+ if (allFinalsCompleted && tournament.status === 'completed') {
  setEditingTournament(tournament);
- } else if (numBoxes >= 4 && existingFinalsMatches.length >= 2) {
+ } else if (is4OrMoreBoxes && existingFinalsMatches.length >= 2) {
  const semiMatches = existingFinalsMatches.slice(0, 2);
  const finalMatchesInDb = existingFinalsMatches.slice(2);
  const allSemisCompleted = semiMatches.every(m => m.winner && m.sets.length > 0);
