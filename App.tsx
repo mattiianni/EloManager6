@@ -53,6 +53,17 @@ const App: React.FC = () => {
             defaultTheme = 'dark';
         }
         setTheme(defaultTheme);
+
+        // Auto Cache buster for new version releases
+        const savedVersion = localStorage.getItem('app_version');
+        if (savedVersion !== APP_VERSION) {
+            localStorage.setItem('app_version', APP_VERSION);
+            if (savedVersion && 'serviceWorker' in navigator) {
+                caches.keys().then(names => {
+                    for (let name of names) caches.delete(name);
+                });
+            }
+        }
     }, []);
 
     useEffect(() => {

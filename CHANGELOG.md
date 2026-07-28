@@ -1,3 +1,16 @@
+## v6.4.9 — 2026-07-28
+- Verifica Distinzione Flussi Torneo Singolo vs Multi Giornata:
+  - **Torneo Singolo**: Richiede ed assegna esclusivamente il Nome del Torneo Singolo senza proporre l'opzione di aggancio ad altri tornei.
+  - **Multi Giornata**: Mostra l'opzione **[ Nuovo | Esistente ]** per consentire sia la creazione di una nuova serie sia il collegamento della giornata ad un torneo già esistente nell'elenco dei campionati.
+
+## v6.4.8 — 2026-07-28
+- Verifica ed Allineamento Flussi tra Multi Giornata e Torneo Singolo:
+  - Corretto il routing del formato selezionato in `handleFormatSelection` (`TournamentFlow.tsx`): sia che il torneo venga avviato da **Torneo Singolo** sia da **Multi Giornata**, ciascun formato (*Round Robin + Finali*, *Americano*, *Gironi + Fase Finale*, *Eliminazione Diretta TPRA*, *Torneo Libero*, *Beat the Box*) viene guidato al 100% alla rispettiva schermata di setup e configurazione (scelta campi, andata/ritorno, playoff, ecc.).
+
+## v6.4.7 — 2026-07-28
+- Auto Cache Invalidation & Instant Service Worker Refresh:
+  - Inserita la pulizia automatica `caches.delete()` in `App.tsx` che invalida la vecchia cache PWA salvata sul dispositivo dell'utente all'apertura, forzando l'aggiornamento immediato al nuovo pacchetto `v6.4.7`.
+
 ## v6.4.6 — 2026-07-28
 - Rimozione del vecchio Alert di Blocco ("Torneo in preparazione"):
   - Rimosso il vecchio controllo obsoleto in `TournamentFlow.tsx` che mostrava l'avviso `"Torneo in preparazione!"` quando l'utente selezionava formati come *Beat the Box*, *Gironi + Fase Finale* o *Eliminazione Diretta*. Tutti i formati dell'applicazione sono ora sbloccati al 100%.

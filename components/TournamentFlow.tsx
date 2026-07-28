@@ -497,20 +497,20 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎨 Format set to:', format, '- Ready for setup');
  
  if (format === 'americano') {
- setStep('americano-info');
- } else if (format === 'round-robin-finali') {
- setStep('round-robin-info');
- } else if (format === 'torneo-libero') {
- setStep('setup');
- } else if (format === 'gironi-fase-finale') {
- setStep('setup');
- } else if (format === 'beat-the-box') {
- setStep('setup');
- } else if (format === 'eliminazione-diretta') {
- setStep('setup');
- } else {
- setStep('setup');
- }
+    setStep('americano-info');
+  } else if (format === 'round-robin-finali') {
+    setStep('round-robin-info');
+  } else if (format === 'gironi-fase-finale') {
+    setStep('gironi-setup');
+  } else if (format === 'eliminazione-diretta') {
+    setStep('tpra-flow');
+  } else if (format === 'torneo-libero') {
+    setStep('torneo-libero-setup');
+  } else if (format === 'beat-the-box') {
+    setStep('scoring');
+  } else {
+    setStep('scoring');
+  }
  };
 
   // Calculate max unique rounds for Americano: (numPlayers - 1), where numPlayers = pairs.length * 2
