@@ -913,7 +913,8 @@ export const printTournamentReport = (
     americanoFields?: number,
     americanoScoringType?: 'games-diff' | 'points',
     roundRobinMatchCount?: number,  // Numero di partite del round robin (se presente)
-    displayNameOverride?: string
+    displayNameOverride?: string,
+    roundRobinFields?: number  // Numero di campi per Round Robin
 ) => {
     const displayName = displayNameOverride || tournament.name;
     const isAmericano = tournament.type === TournamentType.Americano || 

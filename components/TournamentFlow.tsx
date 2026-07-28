@@ -382,6 +382,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [roundRobinScores, setRoundRobinScores] = useState<Record<number, SetScore[]>>({});
  const [roundRobinStandings, setRoundRobinStandings] = useState<TournamentStandingEntry[]>([]);
  const [finalsMatches, setFinalsMatches] = useState<Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[]>([]);
+ const [roundRobinFields, setRoundRobinFields] = useState<number>(2);
+ const [roundRobinHomeAway, setRoundRobinHomeAway] = useState<boolean>(false);
+ const [roundRobinPlayoffType, setRoundRobinPlayoffType] = useState<'no_finals' | 'finals_only' | 'semifinals'>('semifinals');
  
  // Torneo Libero specific states
  const [numeroPartite, setNumeroPartite] = useState<number>(1);
@@ -3289,7 +3292,8 @@ tournamentName={tournamentName || 'Torneo TPRA'}
  selectedFormat === 'americano' ? americanoFields : undefined, 
  selectedFormat === 'americano' ? americanoScoringType : undefined,
  isRoundRobinFinali ? roundRobinMatchCount : undefined,
- displayName
+ displayName,
+ isRoundRobinFinali ? roundRobinFields : undefined
  );
  }
  }} variant="secondary" className="w-full sm:w-auto">Stampa Report</Button>
