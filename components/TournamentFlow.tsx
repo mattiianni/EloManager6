@@ -316,6 +316,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       if (initialFormat) {
         switch (initialFormat) {
           case 'americano': return 'americano-info';
+          case 'round-robin-finali': return 'round-robin-info';
           case 'torneo-libero': return 'torneo-libero-setup';
           case 'gironi-fase-finale': return 'gironi-setup';
           case 'eliminazione-diretta': return 'tpra-flow';
@@ -497,6 +498,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  if (format === 'americano') {
  setStep('americano-info');
+ } else if (format === 'round-robin-finali') {
+ setStep('round-robin-info');
  } else if (format === 'torneo-libero') {
  setStep('setup');
  } else if (format === 'gironi-fase-finale') {
@@ -1185,8 +1188,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     alert('Per favore inserisci il Nome del Torneo.');
     return;
   }
- 
- // For Torneo Libero, go to torneo-libero-setup
+  // For Round Robin + Finali, go to round-robin-info
+  if (selectedFormat === 'round-robin-finali') {
+    setStep('round-robin-info');
+    return;
+  }
+
+  // For Torneo Libero, go to torneo-libero-setup
  if (selectedFormat === 'torneo-libero') {
  setStep('torneo-libero-setup');
  return;
@@ -1886,10 +1894,16 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
             </Button>
             <Button
               type="button"
-              onClick={() => setStep('setup')}
+              onClick={() => {
+                const matches = generateRoundRobinMatches(pairs, roundRobinFields, roundRobinHomeAway);
+                setRoundRobinMatches(matches);
+                setRoundRobinScores({});
+                setRoundRobinMatchCount(matches.length);
+                setStep('scoring');
+              }}
               className="flex-1"
             >
-              Continua
+              Procedi
             </Button>
           </div>
         </div>
@@ -2801,68 +2815,137 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onFinish={onFinish}
  tournamentDate={tournamentDate}
  clubName={clubName}
- tournamentName={tournamentName || 'Torneo TPRA'}
+tournamentName={tournamentName || 'Torneo TPRA'}
  />
  );
  }
 
  if (step === 'scoring') {
- // Render Beat the Box dedicated flow
- if (selectedFormat === 'beat-the-box') {
- return (
- <BeatTheBoxFlow
- pairs={pairs}
- onFinish={onFinish}
- tournamentDate={tournamentDate}
- clubName={clubName}
- tournamentName={isCreatingNew ? tournamentName : selectedTournamentName}
- giornataName={undefined}
- />
- );
- }
- 
- return (
- <>
- <Card title={
- <div className="flex justify-between items-center">
- <span>Inserisci Risultati - {getFormatDisplayName(selectedFormat!)}</span>
- <Button onClick={handlePrintBlank} variant="ghost" size="sm">
- <span className="flex items-center gap-1"><PrintIcon /> Stampa Tabellone Vuoto</span>
- </Button>
- </div>
- }>
- {isRoundRobinFinali ? (
- <div>
- <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-ios-blue/20">
- <h3 className="font-semibold text-ios-blue dark:text-ios-blue">Round Robin - Fase a Gironi</h3>
- <p className="text-sm text-ios-blue dark:text-ios-blue">Inserisci i risultati di tutte le partite. Le prime 4 squadre passeranno alle finali.</p>
- </div>
- <div className="space-y-6 px-4">
- {roundRobinMatches.map((match, index) => {
- const team1 = getTeamPlayers(match.team1);
- const team2 = getTeamPlayers(match.team2);
- if (!team1 || !team2) return null;
+    // Render Beat the Box dedicated flow
+    if (selectedFormat === 'beat-the-box') {
+      return (
+        <BeatTheBoxFlow
+          pairs={pairs}
+          onFinish={onFinish}
+          tournamentDate={tournamentDate}
+          clubName={clubName}
+          tournamentName={isCreatingNew ? tournamentName : selectedTournamentName}
+          giornataName={undefined}
+        />
+      );
+    }
 
- return (
- <div key={index} className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
- <div className="text-right">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
- </div>
- <MatchScoreInput
- sets={roundRobinScores[index] || [{team1: 0, team2: 0}]}
- onSetsChange={(sets) => handleRoundRobinSetsChange(index, sets)}
- />
- <div>
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
- </div>
- </div>
- );
- })}
- </div>
- </div>
- ) : (
+    return (
+      <>
+        <Card title={
+          <div className="flex justify-between items-center">
+            <span>Inserisci Risultati - {getFormatDisplayName(selectedFormat!)}</span>
+            <Button onClick={handlePrintBlank} variant="ghost" size="sm">
+              <span className="flex items-center gap-1"><PrintIcon /> Stampa Tabellone Vuoto</span>
+            </Button>
+          </div>
+        }>
+          {isRoundRobinFinali ? (
+            <div>
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-ios-blue/20">
+                <h3 className="font-semibold text-ios-blue dark:text-ios-blue">Round Robin - Fase a Gironi</h3>
+                <p className="text-sm text-ios-blue dark:text-ios-blue">Inserisci i risultati di tutte le partite suddivise per giornate. In ciascuna giornata viene indicato il campo e l'eventuale riposo.</p>
+              </div>
+              <div className="space-y-6 px-4">
+                {(() => {
+                  const roundsMap = new Map<number, { match: typeof roundRobinMatches[0]; originalIndex: number }[]>();
+                  roundRobinMatches.forEach((match, index) => {
+                    const r = match.roundNumber || 1;
+                    if (!roundsMap.has(r)) roundsMap.set(r, []);
+                    roundsMap.get(r)!.push({ match, originalIndex: index });
+                  });
+
+                  const totalRounds = roundsMap.size;
+                  const isHomeAway = roundRobinHomeAway;
+
+                  const allTeamsMap = new Map<string, [Player, Player]>();
+                  roundRobinMatches.forEach(m => {
+                    const t1 = getTeamPlayers(m.team1);
+                    const t2 = getTeamPlayers(m.team2);
+                    if (t1) allTeamsMap.set(m.team1.join(','), t1);
+                    if (t2) allTeamsMap.set(m.team2.join(','), t2);
+                  });
+
+                  return Array.from(roundsMap.entries()).sort((a, b) => a[0] - b[0]).map(([roundNum, roundItems]) => {
+                    let roundLabel = `Giornata ${roundNum} di ${totalRounds}`;
+                    if (isHomeAway && totalRounds > 1 && totalRounds % 2 === 0) {
+                      const half = totalRounds / 2;
+                      if (roundNum <= half) {
+                        roundLabel = `${roundNum}ª Giornata di Andata`;
+                      } else {
+                        roundLabel = `${roundNum - half}ª Giornata di Ritorno`;
+                      }
+                    }
+
+                    const activeTeamKeys = new Set<string>();
+                    roundItems.forEach(({ match }) => {
+                      activeTeamKeys.add(match.team1.join(','));
+                      activeTeamKeys.add(match.team2.join(','));
+                    });
+
+                    const restingTeams: [Player, Player][] = [];
+                    allTeamsMap.forEach((pair, key) => {
+                      if (!activeTeamKeys.has(key)) {
+                        restingTeams.push(pair);
+                      }
+                    });
+
+                    return (
+                      <div key={roundNum} className="space-y-3 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                          <h4 className="font-bold text-base text-gray-900 dark:text-white">{roundLabel}</h4>
+                          {restingTeams.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                                ☕ Riposo: {restingTeams.map(t => `${t[0].name} & ${t[1].name}`).join(' | ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          {roundItems.map(({ match, originalIndex }, idx) => {
+                            const team1 = getTeamPlayers(match.team1);
+                            const team2 = getTeamPlayers(match.team2);
+                            if (!team1 || !team2) return null;
+                            const maxCourts = roundRobinFields || 2;
+                            const courtNum = (idx % maxCourts) + 1;
+
+                            return (
+                              <div key={originalIndex} className="bg-white dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm space-y-2">
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 flex items-center justify-between">
+                                  <span>Campo {courtNum}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-2">
+                                  <div className="text-right">
+                                    <p className="font-semibold text-sm">{team1[0].name} & {team1[1].name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+                                  </div>
+                                  <MatchScoreInput
+                                    sets={roundRobinScores[originalIndex] || [{team1: 0, team2: 0}]}
+                                    onSetsChange={(sets) => handleRoundRobinSetsChange(originalIndex, sets)}
+                                  />
+                                  <div>
+                                    <p className="font-semibold text-sm">{team2[0].name} & {team2[1].name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          ) : (
  <div className="space-y-6 px-4">
  {tournamentMatches.map((match, index) => {
  const team1 = getTeamPlayers(match.team1);

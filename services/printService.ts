@@ -980,10 +980,12 @@ export const printTournamentReport = (
             
             let court = '-';
             if (isFinal && finalsIndex >= 0) {
-                // Per le finali, mostra il tipo di finale
                 court = finalsIndex === 0 ? 'Finale 1°-2°' : 'Finale 3°-4°';
             } else if (tournament.type === TournamentType.TorneOtto) {
                 court = `Campo ${(index % 2) + 1}`;
+            } else if (isRoundRobin) {
+                const maxCourts = roundRobinFields || 2;
+                court = `Campo ${(index % maxCourts) + 1}`;
             }
 
             return `
@@ -1015,9 +1017,8 @@ export const printTournamentReport = (
     const isHomeAway = tournament.roundRobinHomeAway || false;
 
     if (isAmericano || isRoundRobin) {
-        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
         const roundsMap = new Map<number, typeof roundRobinMatches>();
-        roundRobinMatches.forEach((m, index) => {
+        roundRobinMatches.forEach((m) => {
             const r = m.roundNumber || 1;
             if (!roundsMap.has(r)) roundsMap.set(r, []);
             roundsMap.get(r)!.push(m);
@@ -1025,6 +1026,27 @@ export const printTournamentReport = (
 
         const totalRoundsCount = roundsMap.size;
         let currentRound = 0;
+
+        // Build list of all teams or players in tournament
+        const allTeamsMap = new Map<string, [Player, Player]>();
+        roundRobinMatches.forEach(m => {
+            const k1 = m.team1.join(',');
+            const k2 = m.team2.join(',');
+            if (!allTeamsMap.has(k1)) {
+                allTeamsMap.set(k1, [
+                    getPlayerById(m.team1[0]) || ({ id: m.team1[0], name: 'Giocatore', surname: '1' } as Player),
+                    getPlayerById(m.team1[1]) || ({ id: m.team1[1], name: 'Giocatore', surname: '2' } as Player)
+                ]);
+            }
+            if (!allTeamsMap.has(k2)) {
+                allTeamsMap.set(k2, [
+                    getPlayerById(m.team2[0]) || ({ id: m.team2[0], name: 'Giocatore', surname: '1' } as Player),
+                    getPlayerById(m.team2[1]) || ({ id: m.team2[1], name: 'Giocatore', surname: '2' } as Player)
+                ]);
+            }
+        });
+
+        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
 
         roundRobinContent = roundRobinMatches.map((match, index) => {
             const r = match.roundNumber || 1;
@@ -1048,13 +1070,26 @@ export const printTournamentReport = (
                 }
 
                 const matchesInRound = roundsMap.get(currentRound) || [];
-                const playersInRound = new Set(matchesInRound.flatMap(m => [...m.team1, ...m.team2]));
-                const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
-                
                 let restingText = '';
-                if (restingPlayers.length > 0) {
-                    restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-bottom: 4px; border-radius: 4px; font-weight: normal;"><b>Riposo:</b>${restingPlayers.map(p => `<div style="margin-top: 1px;">${p.name} ${p.surname}</div>`).join('')}</div>`;
+
+                if (isAmericano) {
+                    const playersInRound = new Set(matchesInRound.flatMap(m => [...m.team1, ...m.team2]));
+                    const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
+                    const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
+                    if (restingPlayers.length > 0) {
+                        restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-top: 4px; border-radius: 4px; font-weight: normal;"><b>Giocatori a Riposo:</b> ${restingPlayers.map(p => `${p.name} ${p.surname}`).join(', ')}</div>`;
+                    }
+                } else if (isRoundRobin) {
+                    const teamsInRoundKeys = new Set(matchesInRound.flatMap(m => [m.team1.join(','), m.team2.join(',')]));
+                    const restingTeams: string[] = [];
+                    allTeamsMap.forEach((pair, key) => {
+                        if (!teamsInRoundKeys.has(key)) {
+                            restingTeams.push(`${pair[0].name} ${pair[0].surname} & ${pair[1].name} ${pair[1].surname}`);
+                        }
+                    });
+                    if (restingTeams.length > 0) {
+                        restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-top: 4px; border-radius: 4px; font-weight: normal;"><b>Coppie a Riposo:</b> ${restingTeams.join(' | ')}</div>`;
+                    }
                 }
 
                 rowHtml += `

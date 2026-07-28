@@ -1,3 +1,10 @@
+## v6.4.5 — 2026-07-28
+- Fix Completo Setup e Visualizzazione Round Robin + Finali:
+  - **Attivazione Step Setup Round Robin**: Collegato lo step `round-robin-info` in `TournamentFlow.tsx` che permette all'utente di scegliere il numero di campi (1-6), la spunta per Andata e Ritorno e la scelta della Fase Conclusiva ("Solo Girone", "Solo Finale", "Semifinali + Finali").
+  - **Generazione Parametrizzata**: `generateRoundRobinMatches` viene ora invocata passando i campi selezionati ed il flag andata/ritorno, assegnando correttamente i numeri di giornata e di campo a ciascuna partita.
+  - **Visualizzazione UI per Giornate e Riposi**: Raggruppate le partite di Round Robin per `Giornata 1`, `Giornata 2`..., mostrando visivamente il campo di ciascuna partita ed in evidenza il badge delle **Coppie a Riposo** in ciascuna giornata.
+  - **Stampa PDF con Giornate, Campi e Riposi**: Aggiornato `printService.ts` affinché il report PDF del Round Robin formatti le intestazioni delle Giornate (`1ª Giornata di Andata`, `1ª Giornata di Ritorno`...), il numero del Campo per ciascun match e le **Coppie a Riposo**.
+
 ## v6.4.4 — 2026-07-28
 - PWA Auto-Update & Immediate Cache Busting:
   - Inserito in `index.html` ed in `vite.config.ts` il meccanismo di aggiornamento forzato del Service Worker PWA per invalidare istantaneamente le vecchie risorse memorizzate nella cache dei dispositivi mobili e browser desktop alla consegna della nuova versione.
