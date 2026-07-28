@@ -1361,11 +1361,11 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
         const eloCache = {}; // player_id -> current_elo
 
         // Preload all players for name-based lookup
-        const allPlayersRes = await sql`SELECT id, name, surname, current_elo, workspace_id FROM players`;
+        const allPlayersRes = await sql`SELECT id, name, surname, initial_elo, current_elo, workspace_id FROM players`;
         const nameToIdMap = {}; // workspace_id -> "name surname" -> id
         
         for (const p of allPlayersRes) {
-            eloCache[p.id] = parseFloat(p.current_elo);
+            eloCache[p.id] = parseFloat(p.initial_elo);
             if (!nameToIdMap[p.workspace_id]) nameToIdMap[p.workspace_id] = {};
             const key = `${p.name.trim().toLowerCase()} ${p.surname.trim().toLowerCase()}`;
             nameToIdMap[p.workspace_id][key] = p.id;

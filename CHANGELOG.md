@@ -1,3 +1,6 @@
+## v6.1.9 — 2026-07-28
+- Absolute Workspace ELO Isolation: Eliminata la contaminazione cross-workspace delle entry ELO per Alessandro Bertelli. Ricalcolata la sua cronologia nel workspace Padel Academy facendolo partire rigorosamente da **1500 ELO** (ELO attuale corretto a **1514.01**). Corretto il reset in `server.js` per garantire l'isolamento totale al 100% degli ELO tra workspace distinti.
+
 ## v6.1.8 — 2026-07-28
 - Ranking Filter Fix: Corretto il filtro per torneo nella pagina Classifica (`pages/RankingPage.tsx`). Risolto il riconoscimento dei Tornei a Squadre radice anche quando `teamTournamentRootId === id`, consentendo di filtrare correttamente la classifica per il torneo attivo **6 FLAGS** e per i tornei a squadre in corso.
 
