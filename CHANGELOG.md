@@ -1,3 +1,7 @@
+## v6.4.6 — 2026-07-28
+- Rimozione del vecchio Alert di Blocco ("Torneo in preparazione"):
+  - Rimosso il vecchio controllo obsoleto in `TournamentFlow.tsx` che mostrava l'avviso `"Torneo in preparazione!"` quando l'utente selezionava formati come *Beat the Box*, *Gironi + Fase Finale* o *Eliminazione Diretta*. Tutti i formati dell'applicazione sono ora sbloccati al 100%.
+
 ## v6.4.5 — 2026-07-28
 - Fix Completo Setup e Visualizzazione Round Robin + Finali:
   - **Attivazione Step Setup Round Robin**: Collegato lo step `round-robin-info` in `TournamentFlow.tsx` che permette all'utente di scegliere il numero di campi (1-6), la spunta per Andata e Ritorno e la scelta della Fase Conclusiva ("Solo Girone", "Solo Finale", "Semifinali + Finali").

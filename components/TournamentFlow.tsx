@@ -1224,12 +1224,6 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  
- // For non-implemented formats, show"in preparation" message
- if (selectedFormat !== 'torneotto-30' && selectedFormat !== 'americano' && selectedFormat !== 'round-robin-finali') {
- alert(`Torneo"${getFormatDisplayName(selectedFormat!)}" in preparazione!`);
- return;
- }
- 
  // For Round Robin + Finali, generate Round Robin matches
  if (isRoundRobinFinali) {
  console.log('🎯 Generating Round Robin matches for', pairs.length, 'pairs');
