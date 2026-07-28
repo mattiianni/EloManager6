@@ -1,3 +1,6 @@
+## v6.1.8 — 2026-07-28
+- Ranking Filter Fix: Corretto il filtro per torneo nella pagina Classifica (`pages/RankingPage.tsx`). Risolto il riconoscimento dei Tornei a Squadre radice anche quando `teamTournamentRootId === id`, consentendo di filtrare correttamente la classifica per il torneo attivo **6 FLAGS** e per i tornei a squadre in corso.
+
 ## v6.1.7 — 2026-07-28
 - Codebase Hardening & Callback Safety: Applicato l'optional chaining `?.` su tutte le invocazioni dei callback di navigazione in `TournamentsPage.tsx`, `DashboardPage.tsx` e `MatchesPage.tsx` per prevenire `TypeError` da funzioni opzionali o mancanti. Verificata la compilazione e la stabilità con build di produzione Vite superata con successo.
 

@@ -15,7 +15,9 @@ interface RankingPageProps {
     theme: 'light' | 'dark';
 }
 
-const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
+const isTeamRoot = (t: Tournament) => t.type === TournamentType.TorneoASquadre && (!t.teamTournamentRootId || t.teamTournamentRootId === t.id);
+
+const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
     const { players, matches, eloHistory, tournaments, loading, fetchData } = usePadelStore();
     const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
     const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
@@ -44,9 +46,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
             return;
         }
         
-        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
         if (isTeamTournament) {
-            const rootTournament = tournaments.find(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+            const rootTournament = tournaments.find(t => t.name === selectedTournamentId && isTeamRoot(t));
             if (rootTournament) {
                 getTeamTournamentMatchdays(rootTournament.id).then(matchdays => {
                     setSelectedTeamTournamentMatchdayIds(matchdays.map(m => m.id));
@@ -66,9 +68,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
     // Calculate giornate for selected tournament SERIES (by seriesKey = giornataName || name)
     const tournamentGiornate = useMemo(() => {
         if (!selectedTournamentId) return [];
-        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
         if (isTeamTournament) {
-            const rootId = tournaments.find(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId)?.id;
+            const rootId = tournaments.find(t => t.name === selectedTournamentId && isTeamRoot(t))?.id;
             const tournamentRecords = tournaments.filter(t => t.teamTournamentRootId === rootId);
             return tournamentRecords.map(t => new Date(t.date).toISOString().split('T')[0]).sort();
         }
@@ -86,7 +88,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
         let filteredPlayers = players;
         
         if (selectedTournamentId) {
-            const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+            const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
             const playersInTournament = new Set<string>();
             
             if (isTeamTournament) {
@@ -135,7 +137,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     return tournament?.status === 'completed';
                 });
                 
-                const isTeamTournament = selectedTournamentId && tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+                const isTeamTournament = selectedTournamentId && tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
                 
                 let matchesPlayed = playerMatches.length;
                 let matchesWon = 0;
@@ -284,13 +286,13 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
         const tournamentMap = new Map<string, Tournament>();
         tournaments
             .filter(t => {
-                if (t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId) {
+                if (isTeamRoot(t)) {
                     return true; // Always show root team tournaments
                 }
-                return t.status === 'completed' && t.type !== TournamentType.TorneoASquadre;
+                return t.type !== TournamentType.TorneoASquadre;
             })
             .forEach(t => {
-                const seriesKey = (t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId) ? t.name : (t.giornataName || t.name);
+                const seriesKey = isTeamRoot(t) ? t.name : (t.giornataName || t.name);
                 if (!tournamentMap.has(seriesKey)) {
                     tournamentMap.set(seriesKey, t);
                 }
