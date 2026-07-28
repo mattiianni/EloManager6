@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { calculateTeamTournamentStandings } from '../services/teamTournamentService.ts';
-import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printTorneoLiberoComplete, printGironiTournament, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport } from '../services/printService.ts';
+import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport } from '../services/printService.ts';
 import { calculateAllBoxStandings, createFinalsMatches, groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, TeamTournamentFixture, TeamTournamentTeam, TeamTournamentMatchday } from '../types.ts';
 import Card from '../components/ui/Card.tsx';
@@ -601,8 +601,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             ? tournamentMatches.length - 2
             : undefined;
         
-        // Handle Gironi + Fase Finale tournaments
-        if (tournament.type === TournamentType.GironiFaseFinale) {
+        // Handle Eliminazione Diretta (TPRA) & Gironi + Fase Finale tournaments
+        if (tournament.type === TournamentType.EliminazioneDiretta) {
+            printTpraTournamentReport(tournament, tournamentMatches, getPlayerById as any, displayName);
+        } else if (tournament.type === TournamentType.GironiFaseFinale) {
             printGironiTournament(tournament, tournamentMatches, getPlayerById, displayName);
         } else {
             printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, displayName);

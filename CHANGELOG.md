@@ -1,3 +1,9 @@
+## v6.4.0 — 2026-07-28
+- Redesign PDF Report Torneo TPRA (Eliminazione Diretta Singolo): Creato il report PDF dedicato `printTpraTournamentReport` in `services/printService.ts`.
+  - Inserito il **Tabellone ad Albero Orizzontale (A4 Landscape)** con le colonne dei turni (`Ottavi di Finale`, `Quarti di Finale`, `Semifinali`, `FINALE 🏆`) e badge dei punteggi/set disputati.
+  - **Rimosso del tutto la tabella classifica a punti** (inutile per un torneo ad eliminazione diretta).
+  - Inserita la sezione **Albo d'Oro e Statistiche Finali**: Box in evidenza per **🏆 VINCITORI (1° Posto)**, **🥈 FINALISTI (2° Posto)**, **🥉 SEMIFINALISTI**, partite disputate e games totali.
+
 ## v6.3.3 — 2026-07-28
 - Rimosso Bottone "In Corso" nei Tornei TPRA: Trovata e rimossa la dicitura/pulsante "In Corso" nei tornei ad Eliminazione Diretta (TPRA) in `TournamentsPage.tsx`. L'inserimento ed la modifica dei risultati nei tornei TPRA avviene ora esclusivamente tramite clic diretto sulle singole card delle partite del tabellone.
 

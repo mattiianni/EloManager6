@@ -3,6 +3,7 @@ import { calculateTeamTournamentStandings, TeamTournamentStandingRow } from './t
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { APP_MONTH, APP_VERSION } from '../constants.ts';
 import { buildPlayerEloTimeline, formatLabel } from './eloEventsService.ts';
+import { BracketNode, generateTpraBracket } from './tpraService.ts';
 
 const getTournamentTypeDisplayName = (type: TournamentType): string => {
     switch (type) {
@@ -4629,6 +4630,249 @@ export const printGironiTournament = (
     
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Gironi e Fase Finale, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
+
+// Funzione per stampare il report del torneo TPRA (Eliminazione Diretta Singolo) con Tabellone ad Albero ed Albo d'Oro
+export const printTpraTournamentReport = (
+    tournament: Tournament,
+    matches: Match[],
+    getPlayerById: (id: string) => Player | undefined,
+    displayNameOverride?: string
+) => {
+    const displayName = displayNameOverride || tournament.name;
+
+    const formatTeamName = (team?: [Player, Player]) => {
+        if (!team || !team[0] || !team[1]) return 'TBD';
+        return `${team[0].surname || team[0].name} & ${team[1].surname || team[1].name}`;
+    };
+
+    const findMatchWinner = (team1: [Player, Player], team2: [Player, Player]) => {
+        const match = matches.find(m => {
+            const mTeam1Ids = [m.team1[0], m.team1[1]].sort().join(',');
+            const mTeam2Ids = [m.team2[0], m.team2[1]].sort().join(',');
+            const t1Ids = [team1[0].id, team1[1].id].sort().join(',');
+            const t2Ids = [team2[0].id, team2[1].id].sort().join(',');
+            return (mTeam1Ids === t1Ids && mTeam2Ids === t2Ids) || (mTeam1Ids === t2Ids && mTeam2Ids === t1Ids);
+        });
+        if (!match || !match.winner || match.winner === 'draw') return { winner: undefined, match: undefined };
+        const matchTeam1Ids = [match.team1[0], match.team1[1]].sort().join(',');
+        const nodeTeam1Ids = [team1[0].id, team1[1].id].sort().join(',');
+        const winner = matchTeam1Ids === nodeTeam1Ids ? match.winner : (match.winner === 'team1' ? 'team2' : 'team1');
+        return { winner, match };
+    };
+
+    let initialRound: BracketNode[] = [];
+    if (tournament.finalStandings && (tournament.finalStandings as any).bracket) {
+        initialRound = (tournament.finalStandings as any).bracket as BracketNode[];
+    } else {
+        const pairMap = new Map<string, [Player, Player]>();
+        matches.forEach(m => {
+            const p1 = getPlayerById(m.team1[0]);
+            const p2 = getPlayerById(m.team1[1]);
+            const p3 = getPlayerById(m.team2[0]);
+            const p4 = getPlayerById(m.team2[1]);
+            if (p1 && p2) pairMap.set([p1.id, p2.id].sort().join('-'), [p1, p2]);
+            if (p3 && p4) pairMap.set([p3.id, p4.id].sort().join('-'), [p3, p4]);
+        });
+        initialRound = generateTpraBracket(Array.from(pairMap.values()));
+    }
+
+    const computedRounds: BracketNode[][] = [];
+    let currentRound: BracketNode[] = initialRound.map(node => {
+        if (node.isBye) {
+            const autoWinner = node.team1 ? 'team1' : 'team2';
+            return { ...node, winner: autoWinner };
+        }
+        let winner = node.winner;
+        let match = node.match;
+        if (node.team1 && node.team2) {
+            const res = findMatchWinner(node.team1, node.team2);
+            if (res.winner) winner = res.winner;
+            if (res.match) match = res.match;
+        }
+        return { ...node, winner, match };
+    });
+
+    computedRounds.push(currentRound);
+    let rIdx = 0;
+    while (currentRound.length > 1) {
+        const nextRound: BracketNode[] = [];
+        for (let i = 0; i < currentRound.length; i += 2) {
+            const n1 = currentRound[i];
+            const n2 = currentRound[i + 1];
+            const w1 = n1.winner === 'team1' ? n1.team1 : (n1.winner === 'team2' ? n1.team2 : undefined);
+            const w2 = n2.winner === 'team1' ? n2.team1 : (n2.winner === 'team2' ? n2.team2 : undefined);
+            let nextWinner: 'team1' | 'team2' | undefined = undefined;
+            let nextMatch: Match | undefined = undefined;
+            if (w1 && w2) {
+                const res = findMatchWinner(w1, w2);
+                nextWinner = res.winner;
+                nextMatch = res.match;
+            }
+            nextRound.push({
+                id: `r${rIdx + 1}_p${i / 2}`,
+                round: rIdx + 1,
+                position: i / 2,
+                team1: w1,
+                team2: w2,
+                isBye: false,
+                winner: nextWinner,
+                match: nextMatch
+            });
+        }
+        computedRounds.push(nextRound);
+        currentRound = nextRound;
+        rIdx++;
+    }
+
+    const totalRounds = computedRounds.length;
+    const getRoundTitle = (idx: number) => {
+        const distFromFinal = totalRounds - 1 - idx;
+        if (distFromFinal === 0) return 'FINALE 🏆';
+        if (distFromFinal === 1) return 'Semifinali';
+        if (distFromFinal === 2) return 'Quarti di Finale';
+        if (distFromFinal === 3) return 'Ottavi di Finale';
+        return `Turno ${idx + 1}`;
+    };
+
+    const columnsHtml = computedRounds.map((roundNodes, idx) => {
+        const isFinalCol = idx === totalRounds - 1;
+        const roundTitle = getRoundTitle(idx);
+
+        const cards = roundNodes.map((node, nIdx) => {
+            const isFinalNode = isFinalCol;
+            const isBye = node.isBye;
+
+            let badge = '';
+            let scoreText = '';
+            if (isBye) {
+                badge = `<span style="font-size: 8px; font-weight: 900; background: #e2e8f0; color: #475569; padding: 2px 5px; border-radius: 3px;">BYE</span>`;
+            } else if (node.match && node.match.sets && node.match.sets.length > 0) {
+                scoreText = node.match.sets.map(s => `${s.team1}-${s.team2}`).join(' ');
+                badge = `<span style="font-size: 8px; font-weight: 900; background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 3px;">${scoreText}</span>`;
+            } else if (node.winner) {
+                badge = `<span style="font-size: 8px; font-weight: 900; background: #dcfce7; color: #166534; padding: 2px 5px; border-radius: 3px;">CONCLUSA</span>`;
+            }
+
+            const t1Name = node.team1 ? formatTeamName(node.team1) : 'TBD';
+            const t2Name = node.team2 ? formatTeamName(node.team2) : 'TBD';
+
+            const t1Win = node.winner === 'team1';
+            const t2Win = node.winner === 'team2';
+
+            return `
+                <div style="border: 1px solid ${isFinalNode ? '#f59e0b' : '#cbd5e1'}; background: ${isFinalNode ? '#fffbeb' : '#ffffff'}; padding: 6px 8px; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 8px; font-weight: 800; color: #64748b; text-transform: uppercase;">Match ${nIdx + 1}</span>
+                        ${badge}
+                    </div>
+                    <div style="font-size: 10px; padding: 2px 0; font-weight: ${t1Win ? '900' : '500'}; color: ${t1Win ? '#0f172a' : '#64748b'};">
+                        ${t1Win ? '🏆 ' : ''}${t1Name}
+                    </div>
+                    <div style="border-top: 1px dashed #e2e8f0; margin: 2px 0;"></div>
+                    <div style="font-size: 10px; padding: 2px 0; font-weight: ${t2Win ? '900' : '500'}; color: ${t2Win ? '#0f172a' : '#64748b'};">
+                        ${t2Win ? '🏆 ' : ''}${t2Name}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="flex: 1; min-width: 140px; margin: 0 4px;">
+                <div style="text-align: center; font-size: 10px; font-weight: 900; color: #0f172a; background: #f1f5f9; padding: 5px; margin-bottom: 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${roundTitle}
+                </div>
+                ${cards}
+            </div>
+        `;
+    }).join('');
+
+    const finalNode = computedRounds[computedRounds.length - 1]?.[0];
+    let winnersText = 'Da disputare';
+    let runnersUpText = 'Da disputare';
+    let semiFinalistsText = 'Da disputare';
+
+    if (finalNode && finalNode.winner) {
+        const winnerTeam = finalNode.winner === 'team1' ? finalNode.team1 : finalNode.team2;
+        const runnerTeam = finalNode.winner === 'team1' ? finalNode.team2 : finalNode.team1;
+        if (winnerTeam) winnersText = `${winnerTeam[0].name} ${winnerTeam[0].surname} & ${winnerTeam[1].name} ${winnerTeam[1].surname}`;
+        if (runnerTeam) runnersUpText = `${runnerTeam[0].name} ${runnerTeam[0].surname} & ${runnerTeam[1].name} ${runnerTeam[1].surname}`;
+    }
+
+    if (computedRounds.length >= 2) {
+        const semis = computedRounds[computedRounds.length - 2];
+        const semiTeams: string[] = [];
+        semis.forEach(sf => {
+            if (sf.winner && sf.team1 && sf.team2) {
+                const loserTeam = sf.winner === 'team1' ? sf.team2 : sf.team1;
+                semiTeams.push(`${loserTeam[0].name} ${loserTeam[0].surname} & ${loserTeam[1].name} ${loserTeam[1].surname}`);
+            }
+        });
+        if (semiTeams.length > 0) semiFinalistsText = semiTeams.join(' | ');
+    }
+
+    const totalMatchesCount = matches.length;
+    const completedMatchesCount = matches.filter(m => m.winner && m.sets.length > 0).length;
+    const totalGamesPlayed = matches.reduce((sum, m) => sum + (m.sets || []).reduce((sSum, s) => sSum + s.team1 + s.team2, 0), 0);
+
+    const honorRollHtml = `
+        <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div style="border: 2px solid #f59e0b; background: #fffbeb; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 10px; font-weight: 900; color: #b45309; text-transform: uppercase;">🏆 VINCITORI (1° POSTO)</div>
+                <div style="font-size: 12px; font-weight: 900; color: #78350f; margin-top: 4px;">${winnersText}</div>
+            </div>
+            <div style="border: 1px solid #94a3b8; background: #f8fafc; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 10px; font-weight: 900; color: #475569; text-transform: uppercase;">🥈 FINALISTI (2° POSTO)</div>
+                <div style="font-size: 12px; font-weight: 800; color: #1e293b; margin-top: 4px;">${runnersUpText}</div>
+            </div>
+            <div style="border: 1px solid #cbd5e1; background: #ffffff; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase;">🥉 SEMIFINALISTI</div>
+                <div style="font-size: 11px; font-weight: 700; color: #334155; margin-top: 4px;">${semiFinalistsText}</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 12px; border: 1px solid #e2e8f0; background: #f8fafc; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-around; font-size: 11px; color: #475569;">
+            <div><strong>Partite Completate:</strong> ${completedMatchesCount} di ${totalMatchesCount}</div>
+            <div><strong>Games Disputati:</strong> ${totalGamesPlayed}</div>
+            <div><strong>Formato:</strong> TPRA Eliminazione Diretta</div>
+        </div>
+    `;
+
+    const content = `
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            body {
+                font-family: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 11px;
+                margin: 0;
+                padding: 0;
+                background: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            h1 { font-size: 20px; margin: 0 0 2px 0; color: #0f172a; font-weight: 900; }
+            h2 { font-size: 12px; margin: 0; color: #64748b; font-weight: 600; }
+        </style>
+        
+        <div style="text-align: center; margin-bottom: 12px;">
+            <h1>${displayName}</h1>
+            <h2>${tournament.club} — Torneo TPRA ad Eliminazione Diretta (${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')})</h2>
+        </div>
+        
+        <div style="border-bottom: 2px solid #0f172a; margin-bottom: 12px;"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            ${columnsHtml}
+        </div>
+
+        ${honorRollHtml}
+    `;
+
+    return openPrintWindow(`${displayName}, Torneo TPRA Tabellone, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+};
+
 // Funzione per stampare le statistiche del torneo
 export const printTournamentStatistics = (stats: any) => {
     // Generate top 5 rows
