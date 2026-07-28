@@ -1,3 +1,12 @@
+## v6.4.1 — 2026-07-28
+- Resume Torneo & Auto-Scroll alla Prima Partita da Inserire:
+  - Il pulsante "In corso - Inserisci Risultati" per i tornei multi-fase (`Gironi + Fase Finale`, `Round Robin + Finali`, `Beat the Box`) riapre direttamente l'ultima fase in corso o la prima partita non completata.
+  - Aggiunto l'auto-scroll automatico con evidenziazione visiva temporanea sulla prima partita da compilare.
+- Standardizzazione Etichette Tasti nei Flussi Tornei:
+  - Mantenuto sempre il tasto **"Indietro"** / **"Annulla"** per poter tornare alle schermate o modali precedenti.
+  - Sostituite tutte le diciture fuorvianti dei tasti di avanzamento con il termine univoco e chiaro **"Procedi"**.
+  - Riservata la denominazione conclusiva **"Completa Torneo"** esclusivamente all'ultima azione finale della Finale del torneo.
+
 ## v6.4.0 — 2026-07-28
 - Redesign PDF Report Torneo TPRA (Eliminazione Diretta Singolo): Creato il report PDF dedicato `printTpraTournamentReport` in `services/printService.ts`.
   - Inserito il **Tabellone ad Albero Orizzontale (A4 Landscape)** con le colonne dei turni (`Ottavi di Finale`, `Quarti di Finale`, `Semifinali`, `FINALE 🏆`) e badge dei punteggi/set disputati.

@@ -665,7 +665,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  setStep('finals');
  }
  }}>
- Procedi {playoffType === 'semifinals' ? 'alle Semifinali' : 'alle Finali'}
+ Procedi
  </Button>
  </div>
  </div>
@@ -907,7 +907,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  onClick={handleSemifinalsComplete}
  className="flex-1"
  >
- Avanti - Finali
+ Procedi
  </Button>
  </div>
  </div>

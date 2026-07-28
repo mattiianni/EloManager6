@@ -352,32 +352,52 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  // Expand the tournament name group
  setExpandedItems(prev => {
  const newSet = new Set(prev);
- newSet.add(`name_${tournament.name}`);
- newSet.add(`day_${tournament.id}`);
- return newSet;
- });
+         newSet.add(`name_${tournament.name}`);
+         newSet.add(`day_${tournament.id}`);
+         return newSet;
+         });
 
- // Use smart open handler (handles resume for multi-phase tournaments)
- handleOpenTournament(tournament);
- }
- // Clear the tournamentToOpen flag
- if (setTournamentToOpen) {
- setTournamentToOpen(null);
- }
- }
- }, [tournamentToOpen, tournaments, setTournamentToOpen, matches, getPlayerById]);
+         // Use smart open handler (handles resume for multi-phase tournaments)
+         handleOpenTournament(tournament);
+         }
+         if (setTournamentToOpen) {
+             setTournamentToOpen(null);
+         }
+         }
+         }, [tournamentToOpen, tournaments, setTournamentToOpen, matches, getPlayerById]);
  
  // Debug effect for finals phase
  useEffect(() => {
- console.log(`🔍 isInFinalsPhase changed to:`, isInFinalsPhase);
- console.log(`🔍 editingTournament:`, editingTournament?.name);
- console.log(`🔍 finalsFlowTournament:`, finalsFlowTournament?.name);
- console.log(`🔍 Modal should be:`, isInFinalsPhase && !!(finalsFlowTournament || editingTournament) ? 'OPEN' : 'CLOSED');
+     console.log(`🔍 isInFinalsPhase changed to:`, isInFinalsPhase);
+     console.log(`🔍 editingTournament:`, editingTournament?.name);
+     console.log(`🔍 finalsFlowTournament:`, finalsFlowTournament?.name);
+     console.log(`🔍 Modal should be:`, isInFinalsPhase && !!(finalsFlowTournament || editingTournament) ? 'OPEN' : 'CLOSED');
  }, [isInFinalsPhase, editingTournament, finalsFlowTournament]);
-
+ 
+ // Auto-scroll to first incomplete match when opening modal
+ useEffect(() => {
+     if (editingTournament) {
+         const timer = setTimeout(() => {
+             const tournamentMatches = matches.filter(m => m.tournamentId === editingTournament.id);
+             const firstUnfilled = tournamentMatches.find(m => !m.winner || !m.sets || m.sets.length === 0 || (m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
+             if (firstUnfilled) {
+                 const el = document.getElementById(`match-card-${firstUnfilled.id}`);
+                 if (el) {
+                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                     el.classList.add('ring-2', 'ring-orange-500', 'bg-orange-50/40', 'dark:bg-orange-950/20');
+                     setTimeout(() => {
+                         el.classList.remove('ring-2', 'ring-orange-500', 'bg-orange-50/40', 'dark:bg-orange-950/20');
+                     }, 3000);
+                 }
+             }
+         }, 250);
+         return () => clearTimeout(timer);
+     }
+ }, [editingTournament, matches]);
+ 
  const selectedPlayers = [team1Player1, team1Player2, team2Player1, team2Player2].filter(Boolean);
  const sortedPlayers = [...players].sort((a,b) => a.name.localeCompare(b.name));
-
+ 
  const resetForm = () => {
  setTeam1Player1('');
  setTeam1Player2('');
@@ -912,43 +932,65 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  return;
  }
-
+ 
  // ===== GIRONI + FASE FINALE RESUME =====
  if (isGironiFaseFinale) {
  setFinalsFlowTournament(tournament);
-
  const standings = calculateGironiStandings(tournamentMatches);
  setGironiStandings(standings);
-
- const semifinals = generateGironiSemifinalMatches(standings, tournament);
- if (semifinals.length < 2) {
- console.error('Failed to generate Gironi semifinals during resume');
- alert('Errore: impossibile generare le semifinali.');
- return;
+ 
+ const gironiMatchCount = tournamentMatches.length > 4 ? tournamentMatches.length - 4 : tournamentMatches.length;
+ const phaseMatchesInDb = tournamentMatches.slice(gironiMatchCount);
+ 
+ if (phaseMatchesInDb.length >= 2) {
+ const semiInDb = phaseMatchesInDb.slice(0, 2);
+ const finalInDb = phaseMatchesInDb.slice(2);
+ const allSemisCompleted = semiInDb.every(m => m.winner && m.sets.length > 0);
+ 
+ setGironiSemifinalMatches(semiInDb);
+ 
+ if (allSemisCompleted) {
+ if (finalInDb.length > 0) {
+ setGironiFinalMatches(finalInDb);
+ } else {
+ const generatedFinals = generateGironiFinalMatches(semiInDb, tournament);
+ setGironiFinalMatches(generatedFinals);
  }
+ setIsInGironiFinalsPhase(true);
+ } else {
+ setIsInGironiSemifinalsPhase(true);
+ }
+ } else {
+ const semifinals = generateGironiSemifinalMatches(standings, tournament);
  setGironiSemifinalMatches(semifinals);
  setGironiFinalMatches([]);
-
  setShowGironiStandingsModal(true);
+ }
  return;
  }
-
+ 
  // ===== ROUND ROBIN + FINALI RESUME =====
  if (isRoundRobinFinali) {
  setFinalsFlowTournament(tournament);
-
  const standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
  setRoundRobinStandings(standings);
-
+ 
+ const rrMatchCount = tournamentMatches.length > 2 ? tournamentMatches.length - 2 : tournamentMatches.length;
+ const finalsInDb = tournamentMatches.slice(rrMatchCount);
+ 
+ if (finalsInDb.length > 0) {
+ setFinalsMatches(finalsInDb);
+ setIsInFinalsPhase(true);
+ } else {
  const top4 = standings.slice(0, 4);
  const finals = generateFinalsMatches(top4, tournament);
  setFinalsMatches(finals);
  setFinalsScores({});
-
  setShowFinalsStandingsModal(true);
+ }
  return;
  }
-
+ 
  // Fallback
  setEditingTournament(tournament);
  };
@@ -2145,7 +2187,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                          if (!team1[0] || !team2[0]) return null;
 
                          return (
-                             <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                             <div key={match.id} id={`match-card-${match.id}`} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                                  <div className="text-right text-sm">
                                      <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
                                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
@@ -2219,20 +2261,20 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
           let actionText = "Procedi";
           
           if (editingTournament?.type === TournamentType.RoundRobinFinali) {
-              title = "Chiudi Round Robin";
-              message = "Hai inserito tutti i risultati? Vuoi calcolare le classifiche e procedere alla fase finale?";
-              actionText = "Calcola Classifica";
+              title = "Procedi alle Finali";
+              message = "Hai inserito i risultati dei gironi? Vuoi procedere alla fase finale?";
+              actionText = "Procedi";
           } else if (editingTournament?.type === TournamentType.BeatTheBox) {
-              title = "Chiudi Fase a Box";
-              message = "Confermi di voler chiudere la fase a Box e generare i tabelloni finali?";
-              actionText = "Calcola Qualificati";
+              title = "Procedi alla Fase Finale";
+              message = "Confermi di voler procedere ai tabelloni finali?";
+              actionText = "Procedi";
           } else if (editingTournament?.type === TournamentType.GironiFaseFinale) {
-              title = "Chiudi Gironi";
-              message = "Hai inserito tutti i risultati? Vuoi calcolare le classifiche e procedere alle semifinali?";
-              actionText = "Calcola Semifinalisti";
+              title = "Procedi alle Semifinali";
+              message = "Hai inserito tutti i risultati dei gironi? Vuoi procedere alle semifinali?";
+              actionText = "Procedi";
           } else {
-              title = "Chiudi Giornata";
-              message = "Confermi di voler chiudere definitivamente la giornata? Gli ELO verranno aggiornati.";
+              title = "Completa Torneo";
+              message = "Confermi di voler chiudere definitivamente il torneo ed aggiornare l'ELO?";
               actionText = "Completa Torneo";
           }
           
@@ -2245,15 +2287,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
           });
       }} disabled={isSubmitting} className={editingTournament?.status === 'scheduled' ? "flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35" : "flex-1"}>
           {isSubmitting ? 'Salvataggio...' : (
-              editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.RoundRobinFinali
-                  ? 'Calcola Classifica'
-                  : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.BeatTheBox
-                      ? 'Calcola Qualificati'
-                      : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.GironiFaseFinale
-                          ? 'Calcola Semifinalisti'
-                          : editingTournament?.status === 'scheduled' 
-                              ? 'Chiudi Giornata' 
-                              : 'Salva Modifiche'
+              editingTournament?.status === 'scheduled' && (
+                  editingTournament?.type === TournamentType.RoundRobinFinali ||
+                  editingTournament?.type === TournamentType.BeatTheBox ||
+                  editingTournament?.type === TournamentType.GironiFaseFinale
+              )
+                  ? 'Procedi'
+                  : editingTournament?.status === 'scheduled' 
+                      ? 'Completa Torneo' 
+                      : 'Salva'
           )}
       </Button>
   </div>
@@ -2298,11 +2340,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Annulla
  </Button>
  <Button 
- onClick={handleProceedToFinalsPhase} 
- className="flex-1"
- >
- Procedi alle Finali
- </Button>
+ onClick={handleProceedToFinalsPhase}  className="flex-1"
+  >
+  Procedi
+  </Button>
  </div>
  </div>
  </HIGSheet>
@@ -2577,7 +2618,6 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={() => {
  console.log('✅ Procedi cliccato - finalsFlowTournament:', finalsFlowTournament);
  setShowBeatBoxStandingsModal(false);
- // NON azzerare finalsFlowTournament hir!
  setTimeout(() => {
  if (beatBoxSemifinalMatches.length > 0) {
  setIsInBeatBoxSemifinalsPhase(true);
@@ -2808,7 +2848,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  className="flex-1"
  disabled={isSubmitting}
  >
- Finalizza Torneo
+ Completa Torneo
  </Button>
  </div>
  </div>

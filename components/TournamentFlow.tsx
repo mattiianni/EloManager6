@@ -1770,7 +1770,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onClick={handleAmericanoInfoContinue}
  className="flex-1"
  >
- Avanti
+ Procedi
  </Button>
  </div>
  </div>
