@@ -284,12 +284,44 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
     const completedTournaments = useMemo(() => {
         const tournamentMap = new Map<string, Tournament>();
+        const tourneysWithResults = new Set<string>();
+
+        // Collect tournament names/series keys that have ELO variations
+        eloHistory.forEach(h => {
+            if (h.sourceLabel && h.sourceLabel.trim()) {
+                tourneysWithResults.add(h.sourceLabel.trim().toLowerCase());
+            }
+        });
+
+        // Collect tournament names/series keys from completed matches
+        matches.forEach(m => {
+            if (m.winner && m.tournamentId) {
+                const t = tournaments.find(tourney => tourney.id === m.tournamentId);
+                if (t) {
+                    if (t.name) tourneysWithResults.add(t.name.trim().toLowerCase());
+                    if (t.giornataName) tourneysWithResults.add(t.giornataName.trim().toLowerCase());
+                }
+            }
+        });
+
         tournaments
             .filter(t => {
-                if (isTeamRoot(t)) {
-                    return true; // Always show root team tournaments
+                const isTeam = isTeamRoot(t);
+                const seriesKey = isTeam ? t.name : (t.giornataName || t.name);
+                if (!seriesKey) return false;
+                
+                const normKey = seriesKey.trim().toLowerCase();
+                if (tourneysWithResults.has(normKey)) return true;
+
+                // For root team tournaments, check if any matchday has ELO entries or results
+                if (isTeam) {
+                    const childIds = new Set(tournaments.filter(c => c.teamTournamentRootId === t.id).map(c => c.id));
+                    const hasEloForChild = eloHistory.some(h => childIds.has(h.eventId));
+                    const hasMatchForChild = matches.some(m => m.tournamentId && childIds.has(m.tournamentId) && Boolean(m.winner));
+                    if (hasEloForChild || hasMatchForChild) return true;
                 }
-                return t.type !== TournamentType.TorneoASquadre;
+
+                return false;
             })
             .forEach(t => {
                 const seriesKey = isTeamRoot(t) ? t.name : (t.giornataName || t.name);
@@ -298,7 +330,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                 }
             });
         return Array.from(tournamentMap.values());
-    }, [tournaments]);
+    }, [tournaments, eloHistory, matches]);
 
     const getMedalIcon = (index: number) => {
         switch (index) {

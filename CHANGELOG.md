@@ -1,3 +1,6 @@
+## v6.2.1 — 2026-07-28
+- Ranking Tournament Filter Refinement: Aggiornata la lista dei tornei filtrabili nella pagina Classifica (`pages/RankingPage.tsx`). Mostrati **esclusivamente** i tornei che hanno almeno un risultato o una variazione ELO già registrata.
+
 ## v6.2.0 — 2026-07-28
 - Fix Ranking Fallback Error: Risolto il `ReferenceError: Can't find variable: targetTournamentMatches` alla riga 203 di `pages/RankingPage.tsx`. Corretto l'ordinamento in `playerMatches` per il calcolo in tempo reale dell'ELO nei tornei in corso o senza risultati conclusi.
 
