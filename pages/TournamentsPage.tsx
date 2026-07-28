@@ -1436,7 +1436,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                         <span className={roundRobinDayPillClass}>
                                                                             Giornata {normalTournamentDayOrder.get(day.id)} di {normalTournamentTotalDays}
                                                                         </span>
-                                                                        {day.status === 'scheduled' && (
+                                                                        {day.status === 'scheduled' && day.type !== TournamentType.EliminazioneDiretta && (
                                                                             <button
                                                                                 onClick={() => {
                                                                                     if (!expandedMatchdays.has(day.id)) {
@@ -1444,18 +1444,13 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     }
                                                                                     if (day.type === TournamentType.TorneoASquadre) {
                                                                                         onNavigateToTeamTournamentMatchdayResults?.(day.id);
-                                                                                    } else if (day.type === TournamentType.EliminazioneDiretta) {
-                                                                                        setTimeout(() => {
-                                                                                            const el = document.getElementById(`tournament-card-${day.id}`);
-                                                                                            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                                        }, 100);
                                                                                     } else {
                                                                                         onNavigateToResults?.(day.id);
                                                                                     }
                                                                                 }}
                                                                                 className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-colors cursor-pointer"
                                                                             >
-                                                                                {day.type === TournamentType.EliminazioneDiretta ? 'In Corso - Tabellone TPRA' : 'In Corso - Inserisci Risultati'}
+                                                                                In Corso - Inserisci Risultati
                                                                             </button>
                                                                         )}
                                                                     </div>
@@ -1649,7 +1644,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             })()}
                                                         </div>
                                                     )}
-                                                    {day.status === 'scheduled' && !(day.type === TournamentType.TorneoASquadre && day.giornataName) && !(normalTournamentTotalDays > 1 && normalTournamentDayOrder.has(day.id)) && (
+                                                    {day.status === 'scheduled' && day.type !== TournamentType.EliminazioneDiretta && !(day.type === TournamentType.TorneoASquadre && day.giornataName) && !(normalTournamentTotalDays > 1 && normalTournamentDayOrder.has(day.id)) && (
                                                         <div className="mt-3 flex items-center justify-between gap-3">
                                                             <button
                                                                 onClick={() => {

@@ -1,3 +1,6 @@
+## v6.3.3 — 2026-07-28
+- Rimosso Bottone "In Corso" nei Tornei TPRA: Trovata e rimossa la dicitura/pulsante "In Corso" nei tornei ad Eliminazione Diretta (TPRA) in `TournamentsPage.tsx`. L'inserimento ed la modifica dei risultati nei tornei TPRA avviene ora esclusivamente tramite clic diretto sulle singole card delle partite del tabellone.
+
 ## v6.3.2 — 2026-07-28
 - Fix Beat the Box Semifinals & Finals Resume: Risolto l'azzeramento dei punteggi a `0-0` quando si riapriva un torneo Beat the Box nelle semifinali o finali. Popolati correttamente gli stati `beatBoxSemifinalMatches` e `beatBoxFinalMatches` in `pages/MatchesPage.tsx` con i risultati precedentemente salvati a database Neon.
 
