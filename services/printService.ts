@@ -1578,7 +1578,7 @@ export const printTournamentReport = (
         ${!isAmericano ? `
         <div class="section-block">
             <h3 style="font-size: ${isGironiFaseFinale ? '11px' : '13px'}; font-weight: bold; margin: ${isGironiFaseFinale ? '8px' : '10px'} 0 3px 0;">SQUADRE</h3>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: ${isGironiFaseFinale ? '12px' : '12px'};">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; margin-bottom: ${isGironiFaseFinale ? '12px' : '12px'};">
                 ${teamsContent}
             </div>
         </div>
