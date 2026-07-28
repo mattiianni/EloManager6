@@ -169,71 +169,103 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
 
     if (rounds.length === 0) return null;
 
-    const isTournamentFinished = rounds.length > 0 && !!rounds[rounds.length - 1][0].winner;
+    const finalRound = rounds[rounds.length - 1];
+    const isTournamentFinished = finalRound && finalRound.length === 1 && !!finalRound[0].winner;
+
+    const getRoundTitle = (nodeCount: number, rIndex: number) => {
+        if (nodeCount === 1) return "FINALE 🏆";
+        if (nodeCount === 2) return "Semifinali";
+        if (nodeCount === 4) return "Quarti di Finale";
+        if (nodeCount === 8) return "Ottavi di Finale";
+        return `Turno ${rIndex + 1}`;
+    };
 
     return (
-        <div className="overflow-x-auto py-8">
-            <div className="flex gap-12 min-w-max px-4">
-                {rounds.map((roundNodes, rIndex) => (
-                    <div key={rIndex} className="flex flex-col justify-around gap-4 w-64">
-                        {roundNodes.map(node => {
-                            const isClickable = node.team1 && node.team2 && !node.isBye;
-                            const existingMatch = matches.find(m => {
-                                if (!node.team1 || !node.team2) return false;
-                                const mTeam1 = [m.team1[0], m.team1[1]].sort().join(',');
-                                const mTeam2 = [m.team2[0], m.team2[1]].sort().join(',');
-                                const t1 = [node.team1[0].id, node.team1[1].id].sort().join(',');
-                                const t2 = [node.team2[0].id, node.team2[1].id].sort().join(',');
-                                return (mTeam1 === t1 && mTeam2 === t2) || (mTeam1 === t2 && mTeam2 === t1);
-                            });
+        <div className="overflow-x-auto py-6">
+            <div className="mb-4 px-4">
+                {isTournamentFinished ? (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-center">
+                        <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                            🎉 La Finale è stata completata! Ora puoi concludere il torneo e calcolare gli ELO.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="p-3 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-xl text-center">
+                        <p className="text-xs sm:text-sm font-medium text-sky-800 dark:text-sky-300">
+                            🏆 Torneo ad Eliminazione Diretta in corso: clicca su ciascun match per inserire i risultati e far avanzare automaticamente le coppie vincenti fino alla Finale.
+                        </p>
+                    </div>
+                )}
+            </div>
 
-                            return (
-                                <div 
-                                    key={node.id} 
-                                    onClick={() => handleNodeClick(node)}
-                                    className={`bg-white dark:bg-gray-800 border ${isClickable ? 'border-sky-500 hover:border-sky-600 shadow-md cursor-pointer hover:scale-[1.02]' : 'border-gray-200 dark:border-gray-700'} rounded-xl p-3 shadow-sm relative transition-all`}
-                                >
-                                    <div className={`text-sm flex justify-between items-center ${node.winner === 'team1' ? 'font-bold text-green-600 dark:text-green-400' : (node.winner === 'team2' ? 'opacity-50' : '')}`}>
-                                        <span>{node.team1 ? `${node.team1[0].surname} / ${node.team1[1].surname}` : 'BYE'}</span>
-                                        {existingMatch && existingMatch.sets && existingMatch.sets.length > 0 && (
-                                            <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 ml-2">
-                                                {existingMatch.sets.map(s => s.team1).join('-')}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-2"></div>
-                                    <div className={`text-sm flex justify-between items-center ${node.winner === 'team2' ? 'font-bold text-green-600 dark:text-green-400' : (node.winner === 'team1' ? 'opacity-50' : '')}`}>
-                                        <span>{node.team2 ? `${node.team2[0].surname} / ${node.team2[1].surname}` : 'BYE'}</span>
-                                        {existingMatch && existingMatch.sets && existingMatch.sets.length > 0 && (
-                                            <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 ml-2">
-                                                {existingMatch.sets.map(s => s.team2).join('-')}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {isClickable && (
-                                        <div className="mt-2 pt-1 border-t border-gray-100 dark:border-gray-700/50 flex justify-end">
-                                            {node.winner ? (
-                                                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                    ✏️ Modifica Risultato
-                                                </span>
-                                            ) : (
-                                                <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1">
-                                                    ⚡ Inserisci Risultato
+            <div className="flex gap-8 min-w-max px-4">
+                {rounds.map((roundNodes, rIndex) => (
+                    <div key={rIndex} className="flex flex-col gap-4 w-64">
+                        <div className="text-center py-2 px-3 bg-gray-100 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                                {getRoundTitle(roundNodes.length, rIndex)}
+                            </span>
+                        </div>
+                        <div className="flex flex-col justify-around gap-4 flex-1">
+                            {roundNodes.map(node => {
+                                const isClickable = node.team1 && node.team2 && !node.isBye;
+                                const existingMatch = matches.find(m => {
+                                    if (!node.team1 || !node.team2) return false;
+                                    const mTeam1 = [m.team1[0], m.team1[1]].sort().join(',');
+                                    const mTeam2 = [m.team2[0], m.team2[1]].sort().join(',');
+                                    const t1 = [node.team1[0].id, node.team1[1].id].sort().join(',');
+                                    const t2 = [node.team2[0].id, node.team2[1].id].sort().join(',');
+                                    return (mTeam1 === t1 && mTeam2 === t2) || (mTeam1 === t2 && mTeam2 === t1);
+                                });
+
+                                return (
+                                    <div 
+                                        key={node.id} 
+                                        onClick={() => isClickable && handleNodeClick(node)}
+                                        className={`bg-white dark:bg-gray-800 border ${isClickable ? 'border-sky-500 hover:border-sky-600 shadow-md cursor-pointer hover:scale-[1.02]' : 'border-gray-200 dark:border-gray-700 opacity-80'} rounded-xl p-3 shadow-sm relative transition-all`}
+                                    >
+                                        <div className={`text-sm flex justify-between items-center ${node.winner === 'team1' ? 'font-bold text-green-600 dark:text-green-400' : (node.winner === 'team2' ? 'opacity-50' : '')}`}>
+                                            <span>{node.team1 ? `${node.team1[0].surname} / ${node.team1[1].surname}` : 'BYE'}</span>
+                                            {existingMatch && existingMatch.sets && existingMatch.sets.length > 0 && (
+                                                <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 ml-2">
+                                                    {existingMatch.sets.map(s => s.team1).join('-')}
                                                 </span>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                        <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-2"></div>
+                                        <div className={`text-sm flex justify-between items-center ${node.winner === 'team2' ? 'font-bold text-green-600 dark:text-green-400' : (node.winner === 'team1' ? 'opacity-50' : '')}`}>
+                                            <span>{node.team2 ? `${node.team2[0].surname} / ${node.team2[1].surname}` : 'BYE'}</span>
+                                            {existingMatch && existingMatch.sets && existingMatch.sets.length > 0 && (
+                                                <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 ml-2">
+                                                    {existingMatch.sets.map(s => s.team2).join('-')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {isClickable && (
+                                            <div className="mt-2 pt-1 border-t border-gray-100 dark:border-gray-700/50 flex justify-end">
+                                                {node.winner ? (
+                                                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                        ✏️ Modifica Risultato
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                                                        ⚡ Inserisci Risultato
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 ))}
             </div>
 
             {tournament.status === 'scheduled' && isTournamentFinished && (
                 <div className="mt-8 px-4 flex justify-center">
-                    <Button onClick={handleComplete} size="lg" className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
-                        Concludi Torneo TPRA (Calcola ELO)
+                    <Button onClick={handleComplete} size="lg" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 font-bold">
+                        🏆 Concludi Torneo TPRA (Calcola ELO)
                     </Button>
                 </div>
             )}
@@ -241,7 +273,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
             <HIGSheet 
                 isOpen={isScoreModalOpen} 
                 onClose={() => setIsScoreModalOpen(false)}
-                title="Inserisci Risultato"
+                title="Inserisci Risultato Match"
             >
                 <div className="p-4 space-y-4">
                     {selectedNode?.team1 && selectedNode?.team2 && (
@@ -260,7 +292,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
                     
                     <MatchScoreInput
                         sets={currentSets}
-                        onChange={setCurrentSets}
+                        onSetsChange={setCurrentSets}
                         disabled={false}
                     />
 

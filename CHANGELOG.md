@@ -1,3 +1,8 @@
+## v6.3.1 — 2026-07-28
+- Fix TPRA TypeError & Score Input: Risolto il `TypeError: t is not a function` in `TpraBracketView.tsx` correggendo la prop `onSetsChange` in `MatchScoreInput.tsx` e proteggendo i callback con optional chaining.
+- TPRA Bracket Flow & Turn Progression: Corretta la condizione di completamento torneo in `TpraBracketView.tsx`. Il torneo TPRA non viene più contrassegnato come completato ai Quarti o alle Semifinali, ma **soltanto dopo che la Finale è stata disputata ed ha un vincitore**.
+- Tabellone TPRA & UI Guidance: Aggiunti i titoli espliciti sopra ciascuna colonna del tabellone (`Quarti di Finale`, `Semifinali`, `FINALE 🏆`), badge visivo di avanzamento turno, e pulsante `"In Corso - Tabellone TPRA"` in `TournamentsPage.tsx`. Ripristinato il torneo `TEST TPRA` a stato in corso (`scheduled`).
+
 ## v6.3.0 — 2026-07-28
 - Round Robin + Finali Enhancement: Introduzione della selezione personalizzata dei campi disponibili ($1, 2, 3, \dots$), dell'opzione **Andata e Ritorno** (con diciture `1ª Giornata di Andata` $\dots$ `1ª Giornata di Ritorno`), e della scelta flessibile della fase conclusiva a 3 opzioni (*Solo Girone*, *Solo Finale*, *Semifinali + Finali*).
 - Rotazione Equa Riposi: Implementato l'algoritmo di **Berger Table (Circle Method)** per garantire la rotazione equa al 100% dei riposi e delle partite tra le coppie.

@@ -1444,13 +1444,18 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     }
                                                                                     if (day.type === TournamentType.TorneoASquadre) {
                                                                                         onNavigateToTeamTournamentMatchdayResults?.(day.id);
-                                                                                    } else if (day.type !== TournamentType.EliminazioneDiretta) {
+                                                                                    } else if (day.type === TournamentType.EliminazioneDiretta) {
+                                                                                        setTimeout(() => {
+                                                                                            const el = document.getElementById(`tournament-card-${day.id}`);
+                                                                                            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                                        }, 100);
+                                                                                    } else {
                                                                                         onNavigateToResults?.(day.id);
                                                                                     }
                                                                                 }}
                                                                                 className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-colors cursor-pointer"
                                                                             >
-                                                                                In Corso - Inserisci Risultati
+                                                                                {day.type === TournamentType.EliminazioneDiretta ? 'In Corso - Tabellone TPRA' : 'In Corso - Inserisci Risultati'}
                                                                             </button>
                                                                         )}
                                                                     </div>

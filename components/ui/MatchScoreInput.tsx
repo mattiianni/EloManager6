@@ -5,13 +5,13 @@ import { MaterialIcon } from './Icons.tsx';
 
 interface MatchScoreInputProps {
     sets: SetScore[];
-    onSetsChange: (sets: SetScore[]) => void;
+    onSetsChange?: (sets: SetScore[]) => void;
     disabled?: boolean;
 }
 
 const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, disabled = false }) => {
     // Assicurati che ci sia sempre almeno un set
-    const displaySets = sets.length === 0 ? [{ team1: 0, team2: 0 }] : sets;
+    const displaySets = !sets || sets.length === 0 ? [{ team1: 0, team2: 0 }] : sets;
     
     const handleScoreChange = (setIndex: number, team: 'team1' | 'team2', value: string) => {
         const newSets = [...displaySets];
@@ -20,18 +20,18 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
             ...newSets[setIndex],
             [team]: isNaN(score) ? 0 : score,
         };
-        onSetsChange(newSets);
+        onSetsChange?.(newSets);
     };
 
     const addSet = () => {
         if (displaySets.length < 3) {
-            onSetsChange([...displaySets, { team1: 0, team2: 0 }]);
+            onSetsChange?.([...displaySets, { team1: 0, team2: 0 }]);
         }
     };
 
     const removeSet = (setIndex: number) => {
         if (displaySets.length > 1) {
-            onSetsChange(displaySets.filter((_, index) => index !== setIndex));
+            onSetsChange?.(displaySets.filter((_, index) => index !== setIndex));
         }
     };
 
