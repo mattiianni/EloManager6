@@ -1,3 +1,9 @@
+## v6.4.2 — 2026-07-28
+- Fix Riapertura & Resume Tornei Beat the Box:
+  - Risolto il bug per cui `handleOpenTournament` controllava lo stato di tutte le partite in DB (inclusi i segnaposto delle semifinali/finali non ancora giocate) anziché le sole partite dei BOX, causando il falso ritorno alla schermata dei box.
+  - Corretto l'algoritmo `groupMatchesByPlayerSets` in `beatTheBoxService.ts` isolando chirurgicamente le 3 partite dei box da qualsiasi partita di fase finale o semifinale.
+  - Inserita la chiamata `await fetchData()` in `savePhaseMatches` per sincronizzare istantaneamente le partite di semifinale/finale appena salvate nel DB con lo store locale del frontend.
+
 ## v6.4.1 — 2026-07-28
 - Resume Torneo & Auto-Scroll alla Prima Partita da Inserire:
   - Il pulsante "In corso - Inserisci Risultati" per i tornei multi-fase (`Gironi + Fase Finale`, `Round Robin + Finali`, `Beat the Box`) riapre direttamente l'ultima fase in corso o la prima partita non completata.

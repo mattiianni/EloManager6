@@ -107,29 +107,32 @@ export function calculateBoxStandings(boxMatches: Match[], boxPlayers: Player[])
 }
 
 export function groupMatchesByPlayerSets(matches: Match[]): { boxes: Map<number, Match[]>, phaseMatches: Match[] } {
-    const groups = new Map<number, Match[]>();
+    const quadGroups = new Map<string, Match[]>();
+
     matches.forEach(match => {
-        const matchPlayerIds = [...match.team1, ...match.team2];
-        for (const [groupNum, groupMatches] of groups.entries()) {
-            const groupPlayerIds = new Set(groupMatches.flatMap(m => [...m.team1, ...m.team2]));
-            if (matchPlayerIds.every(id => groupPlayerIds.has(id))) {
-                groupMatches.push(match);
-                return;
-            }
+        const quadKey = [...match.team1, ...match.team2].sort().join(',');
+        if (!quadGroups.has(quadKey)) {
+            quadGroups.set(quadKey, []);
         }
-        groups.set(groups.size + 1, [match]);
+        quadGroups.get(quadKey)!.push(match);
     });
+
     const boxes = new Map<number, Match[]>();
     const phaseMatches: Match[] = [];
     let boxNum = 1;
-    groups.forEach(groupMatches => {
+
+    quadGroups.forEach((groupMatches) => {
         const uniquePlayers = new Set(groupMatches.flatMap(m => [...m.team1, ...m.team2]));
         if (groupMatches.length >= 3 && uniquePlayers.size === 4) {
-            boxes.set(boxNum++, groupMatches);
+            boxes.set(boxNum++, groupMatches.slice(0, 3));
+            if (groupMatches.length > 3) {
+                phaseMatches.push(...groupMatches.slice(3));
+            }
         } else {
             phaseMatches.push(...groupMatches);
         }
     });
+
     return { boxes, phaseMatches };
 }
 

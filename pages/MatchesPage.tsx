@@ -835,13 +835,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
 
  const tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
- // Check if ALL matches have real results (not 0-0 placeholders)
- const allMatchesHaveResults = tournamentMatches.length > 0 &&
- tournamentMatches.every(m => m.winner && m.sets.length > 0 &&
+ const { boxes } = groupMatchesByPlayerSets(tournamentMatches);
+ const initialPhaseMatches = boxes.size > 0 ? Array.from(boxes.values()).flat() : tournamentMatches;
+
+ // Controlla se le partite della fase iniziale (box/gironi) sono tutte completate
+ const initialPhaseCompleted = initialPhaseMatches.length > 0 &&
+ initialPhaseMatches.every(m => m.winner && m.sets.length > 0 &&
  !(m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
 
- if (!allMatchesHaveResults) {
- // Initial phase not complete, open normal editing modal
+ if (!initialPhaseCompleted) {
  setEditingTournament(tournament);
  return;
  }
@@ -1674,6 +1676,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                 }
             }
             setMatchesList(newMatchesList);
+            await fetchData();
             setShowSaveSuccess(true);
         } catch (e) {
             alert('Errore nel salvataggio. Riprova.');
