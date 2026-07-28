@@ -200,7 +200,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         const currentCumElo = new Map<string, number>();
 
                         // Sort matches by round
-                        const sortedMatches = [...targetTournamentMatches].sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1));
+                        const sortedMatches = [...playerMatches].sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1));
 
                         sortedMatches.forEach(m => {
                             if (!m.winner) return;

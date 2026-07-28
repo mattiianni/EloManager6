@@ -1,3 +1,6 @@
+## v6.2.0 — 2026-07-28
+- Fix Ranking Fallback Error: Risolto il `ReferenceError: Can't find variable: targetTournamentMatches` alla riga 203 di `pages/RankingPage.tsx`. Corretto l'ordinamento in `playerMatches` per il calcolo in tempo reale dell'ELO nei tornei in corso o senza risultati conclusi.
+
 ## v6.1.9 — 2026-07-28
 - Absolute Workspace ELO Isolation: Eliminata la contaminazione cross-workspace delle entry ELO per Alessandro Bertelli. Ricalcolata la sua cronologia nel workspace Padel Academy facendolo partire rigorosamente da **1500 ELO** (ELO attuale corretto a **1514.01**). Corretto il reset in `server.js` per garantire l'isolamento totale al 100% degli ELO tra workspace distinti.
 
