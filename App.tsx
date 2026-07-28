@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { APP_VERSION } from './constants.ts';
 import { PadelStoreProvider } from './hooks/usePadelStore.tsx';
 import Sidebar from './components/layout/Sidebar.tsx';
 import Header from './components/layout/Header.tsx';
