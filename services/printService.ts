@@ -6356,7 +6356,7 @@ export const printTorneoLiberoComplete = (
         coppieSection = `
             <div class="section-block">
             <h3 style="margin-top: 12px;">COPPIE SORTEGGIATE</h3>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 12px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; margin-bottom: 12px;">
                 ${teamsContent}
             </div>
             </div>
