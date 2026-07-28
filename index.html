@@ -95,5 +95,15 @@
 }
 </script>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      // Clear outdated PWA caches on version change
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.update();
+          }
+        });
+      }
+    </script>
 </body>
 </html>

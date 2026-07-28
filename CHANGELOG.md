@@ -1,3 +1,7 @@
+## v6.4.4 — 2026-07-28
+- PWA Auto-Update & Immediate Cache Busting:
+  - Inserito in `index.html` ed in `vite.config.ts` il meccanismo di aggiornamento forzato del Service Worker PWA per invalidare istantaneamente le vecchie risorse memorizzate nella cache dei dispositivi mobili e browser desktop alla consegna della nuova versione.
+
 ## v6.4.3 — 2026-07-28
 - Suite di Test Automatizzata del Ciclo di Vita Completo dei Tornei (`scripts/test_full_tournament_lifecycle.cjs`):
   - Creato ed eseguito lo script di verifica automatizzata per **TUTTE le 6 tipologie di torneo** (Americano, Beat the Box, Gironi + Fase Finale, Round Robin + Finali, Eliminazione Diretta, Torneo Libero).
