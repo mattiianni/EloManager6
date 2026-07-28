@@ -50,6 +50,9 @@ export interface Tournament {
     status: 'scheduled' | 'completed';
     americanoFields?: number; // Numero di campi per tornei Americano
     americanoScoringType?: 'games-diff' | 'points'; // Tipo di scoring per Americano
+    roundRobinFields?: number; // Numero di campi per Round Robin
+    roundRobinHomeAway?: boolean; // Andata e Ritorno
+    roundRobinPlayoffType?: 'no_finals' | 'finals_only' | 'semifinals'; // Tipo di fase finale per Round Robin
     giornataName?: string; // Nome della giornata per Torneo Libero
     finalStandings?: any; // Classifiche finali salvate (per Beat the Box e altri tornei)
     numGironi?: number; // Numero di gironi per Gironi + Fase Finale

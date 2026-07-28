@@ -1010,27 +1010,44 @@ export const printTournamentReport = (
         : [];
     
     let roundRobinContent = '';
-    
-    if (isAmericano) {
-        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
-        const numPlayers = allPlayersIds.size;
-        const matchesPerRound = Math.min(americanoFields || 2, Math.floor(numPlayers / 4));
+    const isRoundRobin = tournament.type === TournamentType.RoundRobinFinali;
+    const isHomeAway = tournament.roundRobinHomeAway || false;
 
+    if (isAmericano || isRoundRobin) {
+        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
+        const roundsMap = new Map<number, typeof roundRobinMatches>();
+        roundRobinMatches.forEach((m, index) => {
+            const r = m.roundNumber || 1;
+            if (!roundsMap.has(r)) roundsMap.set(r, []);
+            roundsMap.get(r)!.push(m);
+        });
+
+        const totalRoundsCount = roundsMap.size;
         let currentRound = 0;
+
         roundRobinContent = roundRobinMatches.map((match, index) => {
-            const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
+            const r = match.roundNumber || 1;
             let rowHtml = '';
             
             if (r !== currentRound) {
                 currentRound = r;
                 
-                const playersInRound = new Set(
-                    roundRobinMatches
-                        .filter((m, i) => (m.roundNumber || (matchesPerRound > 0 ? Math.floor(i / matchesPerRound) + 1 : 1)) === currentRound)
-                        .flatMap(m => [...m.team1, ...m.team2])
-                );
-                
-                const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
+                let roundTitle = `Turno ${currentRound}`;
+                if (isRoundRobin) {
+                    if (isHomeAway && totalRoundsCount > 1 && totalRoundsCount % 2 === 0) {
+                        const half = totalRoundsCount / 2;
+                        if (currentRound <= half) {
+                            roundTitle = `${currentRound}ª Giornata di Andata`;
+                        } else {
+                            roundTitle = `${currentRound - half}ª Giornata di Ritorno`;
+                        }
+                    } else {
+                        roundTitle = `Giornata ${currentRound} di ${totalRoundsCount}`;
+                    }
+                }
+
+                const matchesInRound = roundsMap.get(currentRound) || [];
+                const playersInRound = new Set(matchesInRound.flatMap(m => [...m.team1, ...m.team2]));
                 const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
                 const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
                 
@@ -1042,7 +1059,7 @@ export const printTournamentReport = (
                 rowHtml += `
                     <tr>
                         <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
-                            Turno ${currentRound}
+                            ${roundTitle}
                             ${restingText}
                         </td>
                     </tr>

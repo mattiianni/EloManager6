@@ -1,3 +1,8 @@
+## v6.3.0 — 2026-07-28
+- Round Robin + Finali Enhancement: Introduzione della selezione personalizzata dei campi disponibili ($1, 2, 3, \dots$), dell'opzione **Andata e Ritorno** (con diciture `1ª Giornata di Andata` $\dots$ `1ª Giornata di Ritorno`), e della scelta flessibile della fase conclusiva a 3 opzioni (*Solo Girone*, *Solo Finale*, *Semifinali + Finali*).
+- Rotazione Equa Riposi: Implementato l'algoritmo di **Berger Table (Circle Method)** per garantire la rotazione equa al 100% dei riposi e delle partite tra le coppie.
+- Distinzione Giornate UI & PDF: Visualizzazione distinta delle giornate e del box evidenziato delle coppie/giocatori a riposo in `TournamentsPage`, `MatchesPage` e nei report PDF di stampa.
+
 ## v6.2.1 — 2026-07-28
 - Ranking Tournament Filter Refinement: Aggiornata la lista dei tornei filtrabili nella pagina Classifica (`pages/RankingPage.tsx`). Mostrati **esclusivamente** i tornei che hanno almeno un risultato o una variazione ELO già registrata.
 

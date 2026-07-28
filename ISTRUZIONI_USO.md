@@ -56,7 +56,7 @@ Dopo il draw entri nel flow torneo:
 
 - Match Singolo
 - TorneOtto 30'
-- Round Robin + Finali
+- Round Robin + Finali (Gestione campi, Andata/Ritorno, Riposi equi e 3 opzioni di fase finale: Solo Girone, Solo Finale, Semifinali + Finali)
 - Americano
 - Torneo Libero
 - Gironi + Fase Finale

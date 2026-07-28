@@ -23,7 +23,7 @@ interface TournamentFlowProps {
  initialFormat?: TournamentFormat;
 }
 
-type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
+type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
 
 type TournamentFormat = 
  | 'match-singolo'
@@ -69,91 +69,59 @@ const groupMatchesIntoBoxes = (matches: Match[]) => {
 
 const createTeamIds = (pair: [Player, Player]): [string, string] => [pair[0].id, pair[1].id];
 
-// Generate round-robin matches with better scheduling to avoid consecutive appearances
-const generateRoundRobinMatches = (pairs: [Player, Player][]): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
- if (pairs.length < 2) return [];
- 
- const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
- 
- if (pairs.length === 2) {
- // Simple case: just one match
- matches.push({
- team1: createTeamIds(pairs[0]),
- team2: createTeamIds(pairs[1]),
- });
- return matches;
- }
- 
- if (pairs.length === 3) {
- // 3 pairs: each plays against the other two
- const allMatches = [
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[1]) },
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[2]) },
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[2]) },
- ];
- 
- // Shuffle to avoid consecutive appearances
- const shuffled = [...allMatches].sort(() => Math.random() - 0.5);
- return shuffled;
- }
- 
- if (pairs.length === 4) {
- // 4 pairs: use Berger table for optimal rotation (no team plays 3 consecutive matches)
- const schedule = [
- // Match 1: (1,2) vs riposo (3,4)
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[1]) },
- // Match 2: (3,4) vs riposo (1,2) 
- { team1: createTeamIds(pairs[2]), team2: createTeamIds(pairs[3]) },
- // Match 3: (1,3) vs riposo (2,4)
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[2]) },
- // Match 4: (2,4) vs riposo (1,3)
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[3]) },
- // Match 5: (1,4) vs riposo (2,3)
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[3]) },
- // Match 6: (2,3) vs riposo (1,4)
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[2]) },
- ];
- return schedule;
- }
- 
- if (pairs.length === 5) {
- // 5 pairs: more complex scheduling
- const allMatches = [
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[1]) },
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[2]) },
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[3]) },
- { team1: createTeamIds(pairs[0]), team2: createTeamIds(pairs[4]) },
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[2]) },
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[3]) },
- { team1: createTeamIds(pairs[1]), team2: createTeamIds(pairs[4]) },
- { team1: createTeamIds(pairs[2]), team2: createTeamIds(pairs[3]) },
- { team1: createTeamIds(pairs[2]), team2: createTeamIds(pairs[4]) },
- { team1: createTeamIds(pairs[3]), team2: createTeamIds(pairs[4]) },
- ];
- 
- // Try to minimize consecutive appearances
- return optimizeMatchOrder(allMatches);
- }
- 
- // For 6+ pairs, use a more sophisticated algorithm
- if (pairs.length >= 6) {
- const allMatches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
- 
- // Generate all possible combinations
- for (let i = 0; i < pairs.length; i++) {
- for (let j = i + 1; j < pairs.length; j++) {
- allMatches.push({
- team1: createTeamIds(pairs[i]),
- team2: createTeamIds(pairs[j]),
- });
- }
- }
- 
- // Optimize order to minimize consecutive appearances
- return optimizeMatchOrder(allMatches);
- }
- 
- return matches;
+// Generate round-robin matches using Berger Table scheduling for fixed pairs
+// Supports custom fields, Home/Away (Andata/Ritorno), and fair rest rotation for odd pairs or limited fields
+const generateRoundRobinMatches = (
+  pairs: [Player, Player][],
+  fields: number = 2,
+  homeAway: boolean = false
+): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
+  if (pairs.length < 2) return [];
+
+  const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
+  const n = pairs.length;
+  const isOdd = n % 2 !== 0;
+  const listCount = isOdd ? n + 1 : n;
+
+  const teamList: ([Player, Player] | null)[] = [...pairs];
+  if (isOdd) teamList.push(null);
+
+  const numRounds = listCount - 1;
+  const totalLegs = homeAway ? 2 : 1;
+
+  for (let leg = 0; leg < totalLegs; leg++) {
+    const isReturnLeg = leg === 1;
+    const currentTeams = [...teamList];
+
+    for (let r = 0; r < numRounds; r++) {
+      const currentRoundNumber = leg * numRounds + (r + 1);
+      const half = listCount / 2;
+
+      for (let i = 0; i < half; i++) {
+        const teamA = currentTeams[i];
+        const teamB = currentTeams[listCount - 1 - i];
+
+        if (teamA && teamB) {
+          const t1 = isReturnLeg ? createTeamIds(teamB) : createTeamIds(teamA);
+          const t2 = isReturnLeg ? createTeamIds(teamA) : createTeamIds(teamB);
+
+          matches.push({
+            team1: t1,
+            team2: t2,
+            roundNumber: currentRoundNumber,
+          });
+        }
+      }
+
+      // Rotate list keeping element 0 fixed (Berger Circle Method)
+      const fixed = currentTeams[0];
+      const rest = currentTeams.slice(1);
+      const last = rest.pop()!;
+      currentTeams.splice(0, currentTeams.length, fixed, last, ...rest);
+    }
+  }
+
+  return matches;
 };
 
 // Helper function to optimize match order and minimize consecutive appearances
@@ -1810,6 +1778,125 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  );
  }
  
+  if (step === 'round-robin-info') {
+    return (
+      <Card title="Info Round Robin + Finali">
+        <div className="space-y-6 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+              Formato Selezionato: Round Robin + Finali
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Numero di campi disponibili
+            </label>
+            <div className="flex items-center flex-wrap gap-2">
+              {[1, 2, 3, 4, 5, 6].map(num => (
+                <Button
+                  key={num}
+                  type="button"
+                  variant={roundRobinFields === num ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setRoundRobinFields(num)}
+                  className="!px-4"
+                >
+                  {num} {num === 1 ? 'Campo' : 'Campi'}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Formula di svolgimento
+            </label>
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div>
+                <span className="font-semibold text-sm text-gray-900 dark:text-white block">Andata e Ritorno</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 block">Raddoppia il numero delle giornate di campionato</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={roundRobinHomeAway}
+                onChange={(e) => setRoundRobinHomeAway(e.target.checked)}
+                className="w-5 h-5 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Scelta Fase Conclusiva
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div
+                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                  roundRobinPlayoffType === 'no_finals'
+                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                }`}
+                onClick={() => setRoundRobinPlayoffType('no_finals')}
+              >
+                <h4 className="font-bold text-base mb-1">Solo Girone</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Classifica diretta senza playoff finale.
+                </p>
+              </div>
+
+              <div
+                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                  roundRobinPlayoffType === 'finals_only'
+                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                }`}
+                onClick={() => setRoundRobinPlayoffType('finals_only')}
+              >
+                <h4 className="font-bold text-base mb-1">Solo Finale</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Finale secca 1° vs 2° classificata.
+                </p>
+              </div>
+
+              <div
+                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                  roundRobinPlayoffType === 'semifinals'
+                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                }`}
+                onClick={() => setRoundRobinPlayoffType('semifinals')}
+              >
+                <h4 className="font-bold text-base mb-1">Semifinali + Finali</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  1° vs 4° e 2° vs 3° prima della finale.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setStep('tournament-selection')}
+              className="flex-1"
+            >
+              Indietro
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setStep('setup')}
+              className="flex-1"
+            >
+              Continua
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
  if (step === 'gironi-setup') {
  // Determina opzioni di gironi disponibili in base al numero di coppie
  const gironiOptions = [];

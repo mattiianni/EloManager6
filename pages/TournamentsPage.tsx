@@ -1511,14 +1511,32 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     
                                                                                     const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
 
+                                                                                    const totalRoundsCount = roundsMap.size;
+                                                                                    const isRoundRobin = day.type === TournamentType.RoundRobinFinali;
+                                                                                    const isHomeAway = day.roundRobinHomeAway || false;
+
                                                                                     return Array.from(roundsMap.entries()).sort((a,b)=>a[0]-b[0]).map(([r, matchesForRound]) => {
+                                                                                        let roundTitle = `Turno ${r}`;
+                                                                                        if (isRoundRobin) {
+                                                                                            if (isHomeAway && totalRoundsCount > 1 && totalRoundsCount % 2 === 0) {
+                                                                                                const half = totalRoundsCount / 2;
+                                                                                                if (r <= half) {
+                                                                                                    roundTitle = `${r}ª Giornata di Andata`;
+                                                                                                } else {
+                                                                                                    roundTitle = `${r - half}ª Giornata di Ritorno`;
+                                                                                                }
+                                                                                            } else {
+                                                                                                roundTitle = `Giornata ${r} di ${totalRoundsCount}`;
+                                                                                            }
+                                                                                        }
+
                                                                                         const playersInRound = new Set(matchesForRound.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
                                                                                         const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
                                                                                         
                                                                                         return (
                                                                                             <div key={`round-${r}`} className="mb-4">
                                                                                                 <div className="flex justify-between items-start mb-2">
-                                                                                                    <h4 className="font-semibold text-gray-800 dark:text-gray-200">Turno {r}</h4>
+                                                                                                    <h4 className="font-semibold text-gray-800 dark:text-gray-200">{roundTitle}</h4>
                                                                                                     {restingPlayers.length > 0 && (
                                                                                                         <div className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-2.5 py-1 rounded-md text-right">
                                                                                                             <span className="font-semibold block">Riposo:</span>
