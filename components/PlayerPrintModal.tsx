@@ -98,37 +98,40 @@ export default function PlayerPrintModal({
                     placeholder="Cerca giocatori..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                    className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-sm transition-all"
                 />
 
-                <div className="flex justify-between items-center text-sm px-1">
-                    <button onClick={handleSelectAll} className="text-sky-600 dark:text-sky-400 font-medium hover:underline min-h-[44px]">
+                <div className="flex justify-between items-center text-xs font-semibold px-1">
+                    <button onClick={handleSelectAll} className="text-sky-600 dark:text-sky-400 hover:underline py-1.5">
                         Seleziona Tutti
                     </button>
-                    <button onClick={handleDeselectAll} className="text-gray-500 dark:text-gray-400 hover:underline min-h-[44px]">
+                    <button onClick={handleDeselectAll} className="text-slate-500 dark:text-slate-400 hover:underline py-1.5">
                         Deseleziona Tutti
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                <div className="grid grid-cols-1 gap-y-1.5 max-h-[48vh] overflow-y-auto pr-1">
                     {filteredPlayers.length === 0 ? (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">Nessun giocatore trovato.</p>
+                        <p className="text-center text-slate-500 dark:text-slate-400 py-6 text-sm">Nessun giocatore trovato.</p>
                     ) : (
                         filteredPlayers.map(p => (
-                            <label key={p.id} className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent dark:border-gray-800 min-h-[44px]">
-                                <input 
-                                    type="checkbox" 
-                                    checked={selectedIds.has(p.id)} 
-                                    onChange={() => toggleSelection(p.id)} 
-                                    className="form-checkbox h-5 w-5 rounded text-sky-500 bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-sky-500" 
-                                />
-                                <span className="text-base text-gray-900 dark:text-gray-100">{p.name} {p.surname} <span className="text-sm text-gray-500 dark:text-gray-400">({p.currentElo.toFixed(0)})</span></span>
+                            <label key={p.id} className={`flex items-center justify-between cursor-pointer p-3 rounded-xl border transition-all ${selectedIds.has(p.id) ? 'border-sky-500/50 bg-sky-500/10' : 'border-slate-200/60 dark:border-white/10 bg-white/60 dark:bg-slate-800/40 hover:bg-slate-100/70 dark:hover:bg-white/5'}`}>
+                                <div className="flex items-center space-x-3">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedIds.has(p.id)} 
+                                        onChange={() => toggleSelection(p.id)} 
+                                        className="h-4 w-4 rounded text-sky-500 border-slate-300 dark:border-slate-600 focus:ring-sky-500" 
+                                    />
+                                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{p.name} {p.surname}</span>
+                                </div>
+                                <span className="text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">ELO {p.currentElo.toFixed(0)}</span>
                             </label>
                         ))
                     )}
                 </div>
 
-                <div className="pt-2 flex flex-col space-y-3">
+                <div className="pt-2 flex flex-col space-y-2">
                     <Button 
                         onClick={handlePrintSelected} 
                         variant="primary" 

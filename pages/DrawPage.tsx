@@ -14,6 +14,7 @@ import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilar
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
 import TournamentFormatSelector, { SingleTournamentFormat } from '../components/TournamentFormatSelector.tsx';
+import PlayerAvatar from '../components/ui/PlayerAvatar.tsx';
 
 interface DrawPageProps {
     setActivePage: (page: 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments') => void;
@@ -507,6 +508,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
 
     const openPairsFlow = () => {
         setEntryChoice('pairs');
+        setSelectedFormatForNewFlow(null);
         handleFlowChange('pairs');
         setNewGiornataForTournament(null);
     };
@@ -532,6 +534,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
         setError(null);
         setNewGiornataForTournament(selectedExistingTournamentName);
         setEntryChoice('pairs');
+        setSelectedFormatForNewFlow(null);
         setActiveFlow('pairs');
     };
 
@@ -1001,7 +1004,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
     if (activeFlow === 'single-tournament-format-first' && !selectedFormatForNewFlow) {
         return (
             <TournamentFormatSelector
-                onSelectFormat={(format) => setSelectedFormatForNewFlow(format)}
+                onSelectFormat={(format) => {
+                    setSelectedFormatForNewFlow(format);
+                    setActiveFlow('pairs');
+                }}
                 onBack={() => {
                     setActiveFlow('pairs');
                     setEntryChoice('menu');
@@ -1010,80 +1016,188 @@ const DrawPage: React.FC<DrawPageProps> = ({
         );
     }
 
-    if (!teamTournamentToConfigure && entryChoice === 'menu') {
+    if (drawnPairs && !isShuffling) {
+        const totalTournamentElo = drawnPairs.reduce((sum, p) => sum + p[0].currentElo + p[1].currentElo, 0);
+        const avgTournamentElo = (totalTournamentElo / (drawnPairs.length * 2)).toFixed(0);
+
         return (
-            <div className="mx-auto max-w-3xl space-y-4">
-                <div className="text-left mb-3 px-1">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Cosa vuoi organizzare oggi?</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Seleziona il formato del torneo o aggiungi una giornata</p>
+            <div className="mx-auto max-w-3xl space-y-6 py-2 pb-24 relative min-h-[calc(100vh-6rem)] flex flex-col justify-between">
+                <div>
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 px-1">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="px-3 py-1 text-xs font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-full border border-sky-500/20">
+                                    {mode === 'Manual' ? 'Selezione Manuale' : 'Sorteggio completato'}
+                                </span>
+                                {selectedFormatForNewFlow && (
+                                    <span className="px-3 py-1 text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
+                                        {selectedFormatForNewFlow}
+                                    </span>
+                                )}
+                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                {mode === 'Manual' ? 'Coppie Confermate' : 'Risultati Sorteggio'}
+                            </h2>
+                            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                                {drawnPairs.length} coppie formate • ELO Medio Torneo: <span className="font-bold text-sky-600 dark:text-sky-400">{avgTournamentElo}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Pairs Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {drawnPairs.map((pair, index) => {
+                            const pairAvgElo = ((pair[0].currentElo + pair[1].currentElo) / 2).toFixed(0);
+                            return (
+                                <div key={index} className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-600/5 border border-slate-200/70 dark:border-white/10 shadow-md hover:shadow-xl hover:border-sky-500/50 backdrop-blur-2xl transition-all duration-300">
+                                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60 dark:border-white/10">
+                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sm">
+                                            Coppia {index + 1}
+                                        </span>
+                                        <div className="flex items-center gap-1.5 bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20">
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">ELO</span>
+                                            <span className="text-xs font-black text-sky-600 dark:text-sky-400">{pairAvgElo}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2.5 my-1">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <PlayerAvatar name={pair[0].name} surname={pair[0].surname} id={pair[0].id} elo={pair[0].currentElo} size="lg" />
+                                                <span className="font-bold text-slate-900 dark:text-white text-lg leading-tight">
+                                                    {pair[0].name} {pair[0].surname}
+                                                </span>
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-400 shrink-0">{pair[0].currentElo.toFixed(0)}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-center py-1">
+                                            <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800 relative">
+                                                <span className="absolute left-1/2 -top-2.5 -translate-x-1/2 bg-slate-100 dark:bg-slate-800 text-[11px] font-extrabold text-slate-400 px-2 rounded-full">
+                                                    &
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <PlayerAvatar name={pair[1].name} surname={pair[1].surname} id={pair[1].id} elo={pair[1].currentElo} size="lg" />
+                                                <span className="font-bold text-slate-900 dark:text-white text-lg leading-tight">
+                                                    {pair[1].name} {pair[1].surname}
+                                                </span>
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-400 shrink-0">{pair[1].currentElo.toFixed(0)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
+                {/* Fixed Floating Bottom Action Bar */}
+                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl p-3.5 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl z-40 flex items-center gap-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => setDrawnPairs(null)}
+                        className="flex-1 h-12 text-sm font-bold rounded-2xl"
+                    >
+                        {mode === 'Manual' ? 'Modifica Coppie' : 'Ripeti Sorteggio'}
+                    </Button>
+                    <Button 
+                        onClick={() => setShowTournamentFlow(true)}
+                        className="flex-1 h-12 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-sky-500/25"
+                    >
+                        {selectedFormatForNewFlow ? 'Avanti - Impostazioni Torneo' : 'Avanti - Scelta Torneo'}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!teamTournamentToConfigure && entryChoice === 'menu') {
+        return (
+            <div className="mx-auto max-w-3xl space-y-6 py-2">
+                <div className="text-left mb-2 px-1">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Cosa vuoi organizzare oggi?</h2>
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Seleziona la tipologia di evento per avviare il sorteggio e la configurazione</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                     {/* Card 1: Multi Giornata */}
                     <div
                         onClick={openPairsFlow}
-                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-sky-500/10 via-transparent to-blue-600/5 border border-slate-200/70 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 shadow-md hover:shadow-xl hover:shadow-sky-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/30">
                                 <CalendarIcon className="w-6 h-6" />
                             </div>
-                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-4 h-4" />
+                            </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Multi Giornata</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Tornei a coppie, con più giornate e diverse modalità</p>
+                            <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">Multi Giornata</h3>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Tornei a coppie distribuiti su più giornate di gioco</p>
                         </div>
                     </div>
 
                     {/* Card 2: Torneo Squadre */}
                     <div
                         onClick={openTeamFlow}
-                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-600/5 border border-slate-200/70 dark:border-white/10 hover:border-indigo-500/80 dark:hover:border-indigo-400/80 shadow-md hover:shadow-xl hover:shadow-indigo-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30">
                                 <UsersIcon className="w-6 h-6" />
                             </div>
-                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-4 h-4" />
+                            </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Torneo a Squadre</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Tornei a squadre</p>
+                            <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Torneo a Squadre</h3>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Campionati e tornei per club a squadre</p>
                         </div>
                     </div>
 
                     {/* Card 3: Torneo Singolo */}
                     <div
-                        onClick={() => { setEntryChoice('pairs'); setActiveFlow('single-tournament-format-first'); }}
-                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                        onClick={() => { setEntryChoice('pairs'); setSelectedFormatForNewFlow(null); setActiveFlow('single-tournament-format-first'); }}
+                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-600/5 border border-slate-200/70 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-md hover:shadow-xl hover:shadow-amber-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/30">
                                 <TrophyIcon className="w-6 h-6" />
                             </div>
-                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-4 h-4" />
+                            </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Torneo Singolo</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Eventi a coppie in un singolo appuntamento</p>
+                            <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors">Torneo Singolo</h3>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Eventi ed esibizioni in un singolo appuntamento</p>
                         </div>
                     </div>
 
                     {/* Card 4: Nuova Giornata */}
                     <div
                         onClick={openExistingTournamentDayFlow}
-                        className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/80 hover:border-sky-500 dark:hover:border-sky-400 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] min-h-[155px] sm:min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-emerald-500/10 via-transparent to-teal-600/5 border border-slate-200/70 dark:border-white/10 hover:border-emerald-500/80 dark:hover:border-emerald-400/80 shadow-md hover:shadow-xl hover:shadow-emerald-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30">
                                 <PlusIcon className="w-6 h-6" />
                             </div>
-                            <ArrowUpRightIcon className="w-5 h-5 text-gray-400 group-hover:text-sky-500 transition-colors" />
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-4 h-4" />
+                            </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Nuova Giornata</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">Aggiungi giornate ai tornei attivi</p>
+                            <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Nuova Giornata</h3>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Aggiungi nuove giornate ai tornei attivi</p>
                         </div>
                     </div>
                 </div>

@@ -26,7 +26,7 @@ const mobileNavPages: Array<{ id: Page; label: string; icon: string }> = [
     { id: 'Tournaments', label: 'Tornei', icon: 'emoji_events' },
     { id: 'Ranking', label: 'Classifiche', icon: 'leaderboard' },
     { id: 'Players', label: 'Giocatori', icon: 'groups' },
-    { id: 'Draw', label: 'Sorteggi', icon: 'shuffle' },
+    { id: 'Statistiche', label: 'Stats', icon: 'bar_chart' },
 ];
 
 const App: React.FC = () => {
@@ -239,7 +239,7 @@ const App: React.FC = () => {
             case 'HIGDemo':
                 return <HIGDemoPage />;
             default:
-                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} />;
+                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} onOpenDrawLauncher={handleOpenDrawLauncher} />;
         }
     };
 

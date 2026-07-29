@@ -14,13 +14,7 @@ const Card: React.FC<CardProps> = ({ children, className = '', title, bodyClassN
             {title && (
                 typeof title === 'string' ? (
                     <div
-                        style={{
-                            font: '400 13px/18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                            color: 'var(--ios-secondaryLabel)',
-                            textTransform: 'uppercase',
-                            padding: '6px 4px 4px',
-                            letterSpacing: '0.02em',
-                        }}
+                        className="font-semibold text-[12px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 py-1.5 flex items-center gap-2"
                     >
                         {title}
                     </div>
@@ -33,15 +27,9 @@ const Card: React.FC<CardProps> = ({ children, className = '', title, bodyClassN
             
             {children && (
                 <div
-                    className={bodyClassName}
-                    style={{
-                        background: 'var(--ios-secondarySystemGroupedBackground)',
-                        borderRadius: '10px',
-                        overflow: 'hidden',
-                        margin: '0',
-                    }}
+                    className={`rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl shadow-sm dark:shadow-slate-950/40 overflow-hidden transition-all duration-200 ${bodyClassName}`}
                 >
-                    <div className="p-3 md:p-4">
+                    <div className="p-3.5 md:p-5">
                         {children}
                     </div>
                 </div>

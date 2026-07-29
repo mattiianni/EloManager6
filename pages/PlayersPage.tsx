@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import { HIGAlert } from '../components/ui/HIGAlert';
+import PlayerAvatar from '../components/ui/PlayerAvatar.tsx';
 
 const PlayersPage: React.FC = () => {
     const { workspace } = useAuth();
@@ -248,9 +249,7 @@ const PlayersPage: React.FC = () => {
                         sortedPlayers.map((player) => (
                             <div key={player.id} className="flex justify-between items-center py-2.5 first:pt-0 last:pb-0">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-ios-label-secondary shrink-0">
-                                        <SFIcon name="person.fill" size={16} />
-                                    </div>
+                                    <PlayerAvatar name={player.name} surname={player.surname} id={player.id} elo={player.currentElo} size="md" />
                                     <div className="min-w-0">
                                         <div className="font-semibold text-ios-label text-[15px] truncate">
                                             {sortIndex === 1 ? `${player.surname} ${player.name}` : `${player.name} ${player.surname}`}

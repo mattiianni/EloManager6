@@ -311,23 +311,20 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
   
   const getInitialStep = (): Step => {
-    // If preselected tournament exists, go straight to format step
-    if (preselectedTournamentName) {
-      if (initialFormat) {
-        switch (initialFormat) {
-          case 'americano': return 'americano-info';
-          case 'round-robin-finali': return 'round-robin-info';
-          case 'torneo-libero': return 'torneo-libero-setup';
-          case 'gironi-fase-finale': return 'gironi-setup';
-          case 'eliminazione-diretta': return 'tpra-flow';
-          default: return 'setup';
-        }
+    // If an initial format was explicitly passed (e.g. from Torneo Singolo format-first flow)
+    if (initialFormat) {
+      switch (initialFormat) {
+        case 'americano': return 'americano-info';
+        case 'round-robin-finali': return 'round-robin-info';
+        case 'torneo-libero': return 'torneo-libero-setup';
+        case 'gironi-fase-finale': return 'gironi-setup';
+        case 'eliminazione-diretta': return 'tpra-flow';
+        default: return 'setup';
       }
-      return 'tournament-selection';
     }
 
-    // ALWAYS go to setup first for new tournaments so user can enter the Tournament Name
-    return 'setup';
+    // For Multi Giornata (where format is chosen AFTER pairs draw), start at 'tournament-selection'!
+    return 'tournament-selection';
   };
 
  const [step, setStep] = useState<Step>(getInitialStep());
@@ -485,36 +482,33 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  const handleFormatSelection = (format: TournamentFormat) => {
- console.log('🎨 handleFormatSelection called with:', format);
- 
- // Set the selected format
- setSelectedFormat(format);
- 
- // Reset tournament state but keep the format
- setSavedTournamentType('');
- setSelectedTournamentName('');
- setClubName('');
- setTournamentName('');
- setIsCreatingNew(true);
- 
- console.log('🎨 Format set to:', format, '- Ready for setup');
- 
- if (format === 'americano') {
-    setStep('americano-info');
-  } else if (format === 'round-robin-finali') {
-    setStep('round-robin-info');
-  } else if (format === 'gironi-fase-finale') {
-    setStep('gironi-setup');
-  } else if (format === 'eliminazione-diretta') {
-    setStep('tpra-flow');
-  } else if (format === 'torneo-libero') {
-    setStep('torneo-libero-setup');
-  } else if (format === 'beat-the-box') {
-    setStep('scoring');
-  } else {
-    setStep('scoring');
-  }
- };
+    console.log('🎨 handleFormatSelection called with:', format);
+    
+    // Set the selected format
+    setSelectedFormat(format);
+    
+    // Reset tournament state but keep the format
+    setSavedTournamentType('');
+    setSelectedTournamentName('');
+    setClubName('');
+    setTournamentName('');
+    setIsCreatingNew(true);
+    
+    // Route to format-specific info/setup screen if required:
+    if (format === 'americano') {
+      setStep('americano-info');
+    } else if (format === 'round-robin-finali') {
+      setStep('round-robin-info');
+    } else if (format === 'torneo-libero') {
+      setStep('torneo-libero-setup');
+    } else if (format === 'gironi-fase-finale') {
+      setStep('gironi-setup');
+    } else if (format === 'eliminazione-diretta') {
+      setStep('tpra-flow');
+    } else {
+      setStep('setup');
+    }
+  };
 
   // Calculate max unique rounds for Americano: (numPlayers - 1), where numPlayers = pairs.length * 2
   const maxAmericanoRounds = pairs.length * 2 - 1;
@@ -609,7 +603,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  );
  
  setGironiMatches(allGironiMatches);
- setStep('gironi-phase');
+ setStep('setup');
  };
 
  const handleGironiComplete = () => {
@@ -1223,6 +1217,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  // Il componente BeatTheBoxFlow verrà renderizzato separatamente
+ if (selectedFormat === 'gironi-fase-finale') {
+    if (!gironiMatches || gironiMatches.length === 0) {
+      handleGenerateGironi();
+    }
+    setStep('gironi-phase');
+    return;
+  }
+ 
  setStep('scoring'); // Usa 'scoring' come trigger
  return;
  }
@@ -1547,32 +1549,42 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  const handlePrintBlank = () => {
- const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
- const tournamentDetails = {
- name: finalName,
- club: clubName,
- date: tournamentDate,
- type: selectedFormat === 'americano' ? TournamentType.Americano : 
- selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali : 
- TournamentType.TorneOtto,
- };
- 
- // Create a local getPlayerById that works with both pairs and database
- const localGetPlayerById = (id: string): Player | undefined => {
- // First try to find in pairs (for unsaved tournaments)
- const allPlayers = pairs.flat();
- const playerFromPairs = allPlayers.find(p => p.id === id);
- if (playerFromPairs) return playerFromPairs;
- 
- // Fallback to database getPlayerById
- return getPlayerById(id);
- };
- 
- // For Round Robin + Finali, use Round Robin matches for printing
- const matchesToPrint = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
- 
- printBlankScoreSheet(tournamentDetails, pairs, matchesToPrint, localGetPlayerById, selectedFormat === 'americano' ? americanoFields : undefined);
- };
+    const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
+    const tournamentDetails: Tournament = {
+      id: 'scheduled-temp',
+      name: finalName || 'Nuovo Torneo',
+      club: clubName || 'Circolo Padel',
+      date: tournamentDate || new Date().toISOString().split('T')[0],
+      type: selectedFormat === 'americano' ? TournamentType.Americano : 
+            selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali : 
+            TournamentType.TorneOtto,
+      matchIds: [],
+      status: 'scheduled'
+    };
+    
+    // Create a local getPlayerById that works with both pairs and database
+    const localGetPlayerById = (id: string): Player | undefined => {
+      const allPlayers = pairs.flat();
+      const playerFromPairs = allPlayers.find(p => p.id === id);
+      if (playerFromPairs) return playerFromPairs;
+      return getPlayerById(id);
+    };
+    
+    // For Round Robin + Finali, use Round Robin matches for printing
+    const matchesToPrint = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
+    
+    printTournamentReport(
+      tournamentDetails,
+      [], // empty standings for blank tabellone
+      matchesToPrint,
+      localGetPlayerById,
+      selectedFormat === 'americano' ? americanoFields : undefined,
+      selectedFormat === 'americano' ? americanoScoringType : undefined,
+      roundRobinMatches.length,
+      finalName,
+      roundRobinFields
+    );
+  };
 
  const handlePrintTorneoLiberoBlank = () => {
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
@@ -1764,13 +1776,19 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
 
  <div className="flex gap-3 mt-6">
- <Button 
- onClick={() => setStep('tournament-selection')}
- variant="outline"
- className="flex-1"
- >
- Indietro
- </Button>
+  <Button 
+  onClick={() => {
+    if (initialFormat) {
+      onFinish();
+    } else {
+      setStep('tournament-selection');
+    }
+  }}
+  variant="outline"
+  className="flex-1"
+  >
+  Indietro
+  </Button>
  <Button 
  onClick={handleAmericanoInfoContinue}
  className="flex-1"
@@ -2005,13 +2023,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Button>
  <Button
  onClick={() => {
- // Genera gironi e inizia la fase
+ // Genera gironi e passa alla scelta nome o aggancio torneo
  handleGenerateGironi();
  }}
  className="flex-1"
  disabled={useSeeds && selectedSeeds.length !== numGironi}
  >
- Genera Gironi e Inizia
+  Avanti - Impostazioni Torneo
  </Button>
  </div>
  </div>
@@ -2580,8 +2598,35 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  placeholder="es. Padel Club Milano"
  className="mt-1 block w-full min-w-0 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-sm"
  />
+ <div className="flex gap-3 pt-2">
+ <Button
+ variant="outline"
+ onClick={() => {
+ if (selectedFormat === 'americano') {
+ setStep('americano-info');
+ } else if (selectedFormat === 'round-robin-finali') {
+ setStep('round-robin-info');
+ } else if (selectedFormat === 'torneo-libero') {
+ setStep('torneo-libero-setup');
+ } else if (selectedFormat === 'gironi-fase-finale') {
+ setStep('gironi-setup');
+ } else if (selectedFormat === 'eliminazione-diretta') {
+ setStep('tpra-flow');
+ } else if (initialFormat) {
+ onFinish();
+ } else {
+ setStep('tournament-selection');
+ }
+ }}
+ className="flex-1"
+ >
+ Indietro
+ </Button>
+ <Button onClick={handleStartScoring} className="flex-1">
+ Inizia Partite
+ </Button>
  </div>
- <Button onClick={handleStartScoring} className="w-full">Inizia Inserimento Punteggi</Button>
+ </div>
  </div>
  </Card>
  );

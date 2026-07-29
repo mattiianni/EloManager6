@@ -41,26 +41,30 @@ interface TournamentFormatSelectorProps {
 
 const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onSelectFormat, onBack }) => {
     return (
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-3xl space-y-4">
             <Card title="Seleziona Formato Torneo">
-                <div className="space-y-6">
-                    <p className="text-sm text-app-muted">
-                        Scegli il tipo di torneo che vuoi organizzare. Il numero di giocatori selezionabili dipenderà dal formato scelto.
+                <div className="space-y-5">
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+                        Scegli la tipologia di formato per la giornata. Ogni formato si adatta al numero di coppie e campi disponibili.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {ALL_FORMATS.map((format) => (
-                            <Button
+                            <button
                                 key={format}
                                 onClick={() => onSelectFormat(format)}
-                                className="w-full justify-center py-4 text-base font-semibold"
-                                variant="primary"
+                                className="flex items-center justify-between p-4 rounded-2xl bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 hover:bg-sky-500/5 shadow-sm hover:shadow-md backdrop-blur-xl transition-all duration-200 cursor-pointer text-left group active:scale-[0.98]"
                             >
-                                {getFormatDisplayName(format)}
-                            </Button>
+                                <span className="font-bold text-base text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">
+                                    {getFormatDisplayName(format)}
+                                </span>
+                                <span className="w-8 h-8 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm group-hover:bg-sky-500 group-hover:text-white transition-all">
+                                    →
+                                </span>
+                            </button>
                         ))}
                     </div>
-                    <div className="pt-4 flex justify-center">
-                        <Button variant="secondary" onClick={onBack}>
+                    <div className="pt-2 flex justify-center">
+                        <Button variant="secondary" onClick={onBack} className="!rounded-2xl border border-slate-200/60 dark:border-white/10">
                             Torna indietro
                         </Button>
                     </div>

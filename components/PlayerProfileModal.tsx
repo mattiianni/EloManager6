@@ -6,6 +6,7 @@ import { Player } from '../types.ts';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { XIcon, ArrowUpIcon, ArrowDownIcon, ArrowStableIcon } from './ui/Icons.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
+import PlayerAvatar from './ui/PlayerAvatar.tsx';
 
 interface PlayerProfileModalProps {
     player: Player | null;
@@ -313,8 +314,9 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         >
             <div className="w-full flex flex-col">
                 {/* Custom header info */}
-                <div className="flex items-center justify-between px-6 py-2 border-b border-[var(--ios-separator)]">
+                <div className="flex items-center justify-between px-6 py-2.5 border-b border-[var(--ios-separator)]">
                     <div className="flex items-center gap-3">
+                        <PlayerAvatar name={player.name} surname={player.surname} id={player.id} size="md" />
                         <span className="text-lg font-bold text-sky-600 dark:text-sky-400">
                             ELO: {player.currentElo.toFixed(2)}
                         </span>

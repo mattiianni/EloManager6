@@ -40,12 +40,12 @@ const PlayerSelect: React.FC<{
  <select
  value={value}
  onChange={onChange}
- className="block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+ className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-sm font-medium transition-all"
  disabled={disabled}
  >
- <option value="">Select Player</option>
+ <option value="" className="bg-white dark:bg-slate-900">Seleziona Giocatore</option>
  {players.map(p => (
- <option key={p.id} value={p.id} disabled={selectedPlayers.includes(p.id) && p.id !== value}>
+ <option key={p.id} value={p.id} disabled={selectedPlayers.includes(p.id) && p.id !== value} className="bg-white dark:bg-slate-900">
  {p.name} {p.surname}
  </option>
  ))}

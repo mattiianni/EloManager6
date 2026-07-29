@@ -351,11 +351,14 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
     const presenceLabels = ['Tutti', '50%', '60%', '70%', '80%', '90%'];
 
     return (
-        <div className="px-0 py-4 space-y-5">
+        <div className="px-0 py-2 space-y-6">
             
             {/* Header / Actions */}
             <div className="flex justify-between items-center mb-1">
-                <h2 className="text-[1.62rem] font-black leading-none tracking-tight text-sky-500 dark:text-sky-300 sm:text-[1.78rem] md:text-[2.25rem]">Classifica</h2>
+                <div>
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Classifica ELO</h2>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Ranking ufficiale dei giocatori di Padel</p>
+                </div>
                 <HIGButton 
                     variant="gray"
                     onClick={() => printRanking(
@@ -370,29 +373,32 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         teamMatchdaysCache
                     )}
                     disabled={loading || rankingData.length === 0}
+                    className="!rounded-2xl border border-slate-200/60 dark:border-white/10"
                 >
                     <SFIcon name="printer" size={18} />
                 </HIGButton>
             </div>
 
             {/* Filters */}
-            <Card title="Filtri">
-                <div className="flex items-center bg-transparent">
-                    <SFIcon name="trophy.fill" size={18} color="var(--ios-systemOrange)" className="mr-3" />
+            <Card title="Filtri Torneo">
+                <div className="flex items-center gap-3 bg-slate-50/70 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-white/10">
+                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        <SFIcon name="trophy.fill" size={18} color="var(--ios-systemOrange)" />
+                    </div>
                     <select
                         value={selectedTournamentId || ''}
                         onChange={(e) => {
                             setSelectedTournamentId(e.target.value || null);
                             setPresenceThreshold(0);
                         }}
-                        className="flex-1 bg-transparent text-ios-label focus:outline-none sf-body appearance-none font-sans"
+                        className="flex-1 bg-transparent text-slate-900 dark:text-white font-bold text-sm focus:outline-none cursor-pointer"
                     >
-                        <option value="">Generale</option>
+                        <option value="" className="bg-white dark:bg-slate-900">Classifica Generale (Tutti i tornei)</option>
                         {completedTournaments.map(tournament => {
                             const isTeamTourney = tournament.type === TournamentType.TorneoASquadre && !tournament.teamTournamentRootId;
                             const key = isTeamTourney ? tournament.name : (tournament.giornataName || tournament.name);
                             return (
-                                <option key={key} value={key}>
+                                <option key={key} value={key} className="bg-white dark:bg-slate-900">
                                     {key}
                                 </option>
                             );
@@ -404,7 +410,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
             {selectedTournamentId && tournamentGiornate.length > 1 && (
                 <div className="mb-2">
-                    <div className="text-xs text-ios-label-secondary uppercase tracking-wider mb-2 font-semibold px-1">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 font-bold px-1">
                         Presenza Minima ({tournamentGiornate.length} giornate)
                     </div>
                     <HIGSegmentedControl 
@@ -415,12 +421,48 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                 </div>
             )}
 
+            {/* PODIO 3D (Se ci sono almeno 3 giocatori) */}
+            {rankingData.length >= 3 && !selectedTournamentId && (
+                <div className="grid grid-cols-3 gap-2 pt-2 items-end">
+                    {/* 2° Posto */}
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[1])}>
+                        <div className="w-12 h-12 rounded-full border-2 border-slate-300 bg-slate-100 dark:bg-slate-800 dark:border-slate-500 flex items-center justify-center text-lg font-black shadow-md mb-2">
+                            🥈
+                        </div>
+                        <div className="w-full bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-300 dark:border-white/10 rounded-t-2xl p-3 text-center h-28 flex flex-col justify-between">
+                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{rankingData[1].name}</p>
+                            <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 bg-sky-500/10 py-0.5 px-2 rounded-full border border-sky-500/20">{rankingData[1].currentElo.toFixed(0)}</span>
+                        </div>
+                    </div>
+                    {/* 1° Posto */}
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[0])}>
+                        <div className="w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center text-2xl font-black shadow-xl mb-2 animate-bounce">
+                            🥇
+                        </div>
+                        <div className="w-full bg-gradient-to-b from-amber-500/20 to-sky-500/10 backdrop-blur-xl border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-lg">
+                            <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{rankingData[0].name}</p>
+                            <span className="text-base font-black text-amber-600 dark:text-amber-400 bg-amber-500/20 py-1 px-2.5 rounded-full border border-amber-500/30">{rankingData[0].currentElo.toFixed(0)}</span>
+                        </div>
+                    </div>
+                    {/* 3° Posto */}
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[2])}>
+                        <div className="w-12 h-12 rounded-full border-2 border-amber-700 bg-orange-100 dark:bg-slate-800 dark:border-amber-700 flex items-center justify-center text-lg font-black shadow-md mb-2">
+                            🥉
+                        </div>
+                        <div className="w-full bg-orange-100/60 dark:bg-slate-800/80 backdrop-blur-xl border border-orange-200 dark:border-white/10 rounded-t-2xl p-3 text-center h-24 flex flex-col justify-between">
+                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{rankingData[2].name}</p>
+                            <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 bg-sky-500/10 py-0.5 px-2 rounded-full border border-sky-500/20">{rankingData[2].currentElo.toFixed(0)}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Ranking List */}
             <Card 
                 title={
                     <div className="flex justify-between items-center w-full">
-                        <span>Giocatori</span>
-                        <span className="text-[12px] text-ios-label-secondary font-normal normal-case">
+                        <span className="font-bold text-sm tracking-wide text-slate-900 dark:text-white">Posizioni in Classifica</span>
+                        <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium normal-case">
                             {selectedTournamentId && presenceThreshold > 0 
                                 ? `Sotto soglia ${presenceThreshold}% in basso`
                                 : `Totale: ${rankingData.length}`}
@@ -428,9 +470,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     </div>
                 }
             >
-                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                <div className="divide-y divide-slate-200/60 dark:divide-white/10">
                     {loading && !players.length ? (
-                        <div className="py-6 text-center text-ios-label-secondary">Caricamento...</div>
+                        <div className="py-6 text-center text-slate-400 text-sm">Caricamento classifica...</div>
                     ) : (
                         (showAllPlayers ? rankingData : rankingData.slice(0, 10)).map((player, idx) => {
                             const isExpanded = expandedPlayerId === player.id;
@@ -453,26 +495,26 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                             return (
                                 <React.Fragment key={player.id}>
                                     {showSeparator && (
-                                        <div className="py-2 my-2 bg-ios-fill flex items-center justify-center gap-2 rounded">
+                                        <div className="py-2 my-2 bg-amber-500/10 border border-amber-500/20 flex items-center justify-center gap-2 rounded-xl">
                                             <SFIcon name="arrow.down.to.line" size={12} color="var(--ios-label-secondary)" />
-                                            <span className="text-[11px] font-bold text-ios-label-secondary uppercase tracking-wider">
+                                            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                                                 Sotto Soglia {presenceThreshold}%
                                             </span>
                                         </div>
                                     )}
                                     
-                                    <div className="py-3 first:pt-0 last:pb-0">
-                                        <div className="flex justify-between items-center cursor-pointer" onClick={() => handleToggleExpand(player.id)}>
+                                    <div className="py-3 px-1">
+                                        <div className="flex justify-between items-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 p-1 rounded-xl transition-colors" onClick={() => handleToggleExpand(player.id)}>
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                                <div className="w-7 h-7 flex items-center justify-center shrink-0">
                                                     {getMedalIcon(idx)}
                                                 </div>
-                                                <span className="font-medium text-ios-label text-[15px] truncate">{player.name} {player.surname}</span>
+                                                <span className="font-semibold text-slate-900 dark:text-white text-[15px] truncate">{player.name} {player.surname}</span>
                                             </div>
                                             <div className="flex items-center gap-3 shrink-0">
-                                                <span className="font-semibold text-ios-blue text-[15px]">{player.currentElo.toFixed(0)}</span>
+                                                <span className="font-extrabold text-sky-600 dark:text-sky-400 text-[15px] bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20">{player.currentElo.toFixed(0)}</span>
                                                 {getTrendIcon(player.lastDelta)}
-                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green p-1" aria-label="Info">
+                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 p-1 hover:bg-sky-500/10 rounded-lg transition-colors" aria-label="Info">
                                                     <SFIcon name="info.circle" size={16} />
                                                 </button>
                                                 <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={12} color="var(--ios-label-tertiary)" />
@@ -480,18 +522,18 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                         </div>
 
                                         {isExpanded && playerHistory.length > 0 && (
-                                            <div className="mt-3 bg-ios-fill p-3 rounded-lg space-y-1.5">
-                                                <div className="text-[11px] text-ios-label-secondary font-bold uppercase tracking-wider mb-2">Storico ELO</div>
+                                            <div className="mt-3 bg-slate-100/70 dark:bg-slate-800/70 p-3.5 rounded-xl border border-slate-200/60 dark:border-white/10 space-y-2 backdrop-blur-md">
+                                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Storico Partite ELO</div>
                                                 {playerHistory.map(entry => {
                                                     const labelText = formatLabel(entry, !selectedTournamentId);
                                                     const deltaSign = entry.delta >= 0 ? '+' : '';
                                                     return (
-                                                        <div key={entry.key} className="flex justify-between items-center text-[13px]">
-                                                            <div className="text-ios-label">
+                                                        <div key={entry.key} className="flex justify-between items-center text-[13px] py-1 border-b border-slate-200/40 dark:border-white/5 last:border-none">
+                                                            <div className="text-slate-800 dark:text-slate-200 font-medium">
                                                                 <span>{labelText}</span> 
-                                                                <span className="text-ios-label-secondary ml-1">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
+                                                                <span className="text-slate-400 dark:text-slate-500 ml-1 text-xs">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
                                                             </div>
-                                                            <div className={`font-mono font-semibold ${entry.delta >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>
+                                                            <div className={`font-mono font-bold ${entry.delta >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                 {deltaSign}{entry.delta.toFixed(1)}
                                                             </div>
                                                         </div>
@@ -509,14 +551,14 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
             {!showAllPlayers && rankingData.length > 10 && (
                 <div className="mt-2">
-                    <HIGButton variant="gray" fullWidth onClick={() => setShowAllPlayers(true)}>
+                    <HIGButton variant="gray" fullWidth onClick={() => setShowAllPlayers(true)} className="!rounded-2xl border border-slate-200/60 dark:border-white/10">
                         Mostra tutti i {rankingData.length} giocatori
                     </HIGButton>
                 </div>
             )}
 
             {rankingData.length === 0 && !loading && (
-                <div className="text-center py-8 text-ios-label-secondary">Nessun giocatore in classifica.</div>
+                <div className="text-center py-8 text-slate-400 text-sm">Nessun giocatore in classifica.</div>
             )}
 
             <div className="mt-4">

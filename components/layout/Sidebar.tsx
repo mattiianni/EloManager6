@@ -19,8 +19,8 @@ const NavItem: React.FC<{
     onClick: () => void;
 }> = ({ icon, label, isActive, onClick }) => {
     const itemClassName = isActive
-        ? 'bg-[var(--ios-systemBlue)] text-white'
-        : 'text-[var(--ios-label)] hover:bg-[var(--ios-systemFill)]';
+        ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/25 font-bold'
+        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 font-medium';
 
     return (
         <li>
@@ -30,7 +30,7 @@ const NavItem: React.FC<{
                     e.preventDefault();
                     onClick();
                 }}
-                className={`flex items-center gap-3 rounded-[10px] px-3 py-2 transition-colors duration-200 ${itemClassName}`}
+                className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all duration-200 ${itemClassName}`}
             >
                 <div className="flex w-6 items-center justify-center">
                     <SFIcon 
@@ -39,7 +39,7 @@ const NavItem: React.FC<{
                         color={isActive ? '#FFFFFF' : 'var(--ios-systemBlue)'} 
                     />
                 </div>
-                <span className="font-medium text-[15px]">{label}</span>
+                <span className="text-[15px]">{label}</span>
             </a>
         </li>
     );
@@ -70,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
         <>
             {/* Overlay for mobile */}
             <div
-                className={`fixed inset-0 z-30 bg-[#020817]/75 backdrop-blur-sm md:hidden transition-opacity ${
+                className={`fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-md md:hidden transition-opacity duration-300 ${
                     isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
                 onClick={() => setIsOpen(false)}
@@ -78,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 z-40 flex h-full w-[min(82vw,300px)] flex-col bg-[var(--ios-secondarySystemBackground)] text-[var(--ios-label)] shadow-2xl transform transition-transform md:relative md:w-[260px] md:translate-x-0 md:shadow-[1px_0_0_var(--ios-separator)] ${
+                className={`fixed top-0 left-0 z-40 flex h-full w-[min(82vw,300px)] flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl text-slate-900 dark:text-white border-r border-slate-200/60 dark:border-white/10 shadow-2xl transform transition-transform duration-300 md:relative md:w-[260px] md:translate-x-0 ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
