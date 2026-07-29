@@ -167,7 +167,7 @@ const App: React.FC = () => {
     const renderPage = () => {
         switch (activePage) {
             case 'Dashboard':
-                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} />;
+                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} onOpenDrawLauncher={handleOpenDrawLauncher} onNavigateToPage={setActivePage} />;
             case 'Ranking':
                 return <RankingPage theme={theme} />;
             case 'Players':
