@@ -239,7 +239,7 @@ const App: React.FC = () => {
             case 'HIGDemo':
                 return <HIGDemoPage />;
             default:
-                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} onOpenDrawLauncher={handleOpenDrawLauncher} />;
+                return <DashboardPage onNavigateToTournaments={handleNavigateToTournamentsWithExpand} onOpenDrawLauncher={handleOpenDrawLauncher} onNavigateToPage={setActivePage} />;
         }
     };
 

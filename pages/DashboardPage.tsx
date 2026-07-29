@@ -14,9 +14,10 @@ import Button from '../components/ui/Button.tsx';
 interface DashboardPageProps {
     onNavigateToTournaments: (tournamentId: string) => void;
     onOpenDrawLauncher?: () => void;
+    onNavigateToPage?: (page: 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'Statistiche') => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, onOpenDrawLauncher }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, onOpenDrawLauncher, onNavigateToPage }) => {
     const { players, matches, tournaments, eloHistory, getPlayerById } = usePadelStore();
     const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -132,7 +133,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             icon: 'person.2.fill',
             bgGradient: 'from-indigo-500/10 via-transparent to-purple-600/5',
             borderColor: 'hover:border-indigo-500/80 dark:hover:border-indigo-400/80 hover:shadow-indigo-500/10',
-            iconBadge: 'from-indigo-500 to-purple-600 shadow-indigo-500/30'
+            iconBadge: 'from-indigo-500 to-purple-600 shadow-indigo-500/30',
+            targetPage: 'Ranking' as const,
         },
         { 
             label: 'Partite', 
@@ -140,7 +142,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             icon: 'sportscourt',
             bgGradient: 'from-sky-500/10 via-transparent to-blue-600/5',
             borderColor: 'hover:border-sky-500/80 dark:hover:border-sky-400/80 hover:shadow-sky-500/10',
-            iconBadge: 'from-sky-500 to-blue-600 shadow-sky-500/30'
+            iconBadge: 'from-sky-500 to-blue-600 shadow-sky-500/30',
+            targetPage: 'Statistiche' as const,
         },
         { 
             label: 'Giornate', 
@@ -148,7 +151,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             icon: 'calendar',
             bgGradient: 'from-emerald-500/10 via-transparent to-teal-600/5',
             borderColor: 'hover:border-emerald-500/80 dark:hover:border-emerald-400/80 hover:shadow-emerald-500/10',
-            iconBadge: 'from-emerald-500 to-teal-600 shadow-emerald-500/30'
+            iconBadge: 'from-emerald-500 to-teal-600 shadow-emerald-500/30',
+            targetPage: 'Statistiche' as const,
         },
     ];
 
@@ -167,7 +171,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             {/* KPI Grid - 3 cards affiancate sia su Mobile che su Desktop */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
                 {kpiItems.map((kpi, idx) => (
-                    <div key={idx} className={`group relative flex flex-col justify-between p-2.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br ${kpi.bgGradient} border border-slate-200/70 dark:border-white/10 ${kpi.borderColor} shadow-md hover:shadow-xl backdrop-blur-2xl transition-all duration-300`}>
+                    <div 
+                        key={idx} 
+                        onClick={() => onNavigateToPage?.(kpi.targetPage)}
+                        className={`cursor-pointer group relative flex flex-col justify-between p-2.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br ${kpi.bgGradient} border border-slate-200/70 dark:border-white/10 ${kpi.borderColor} shadow-md hover:shadow-xl backdrop-blur-2xl transition-all duration-300 active:scale-95`}
+                    >
                         <div className="flex items-center justify-between gap-1 mb-1 sm:mb-2">
                             <div className={`p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-br ${kpi.iconBadge} text-white shadow-md shrink-0`}>
                                 <SFIcon name={kpi.icon} size={16} color="#FFFFFF" />
