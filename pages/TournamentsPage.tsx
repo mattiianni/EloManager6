@@ -1464,7 +1464,6 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         ))}
                                                                                     </div>
                                                                                 ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                
                                                                                 return (
                                                                                     <div 
                                                                                         key={idx} 
@@ -1474,7 +1473,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                             sm.cancelled
                                                                                                 ? 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10'
                                                                                                 : isCompleted
-                                                                                                    ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 hover:border-emerald-600 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 shadow-[0_2px_10px_rgba(16,185,129,0.15)] cursor-pointer'
+                                                                                                    ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-500/50 dark:border-emerald-500/40 hover:border-emerald-500/80 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 cursor-pointer'
                                                                                                     : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] cursor-pointer'
                                                                                         }`}
                                                                                     >
@@ -1483,7 +1482,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         ) : (
                                                                                             <>
                                                                                                 {isCompleted && (
-                                                                                                    <div className="flex items-center justify-between pb-1.5 mb-0.5 border-b border-emerald-500/20">
+                                                                                                    <div className="flex items-center justify-between pb-1.5 mb-0.5 border-b border-emerald-500/30 dark:border-emerald-400/30">
                                                                                                         <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                                                                                                             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
                                                                                                             RISULTATO INSERITO
@@ -1669,7 +1668,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                                 title="Clicca per inserire o modificare il risultato"
                                                                                                                 className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99] ${
                                                                                                                     isCompleted
-                                                                                                                        ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 hover:border-emerald-600 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 shadow-[0_2px_10px_rgba(16,185,129,0.15)]'
+                                                                                                                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-500/50 dark:border-emerald-500/40 hover:border-emerald-500/80 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40'
                                                                                                                         : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08]'
                                                                                                                 }`}
                                                                                                             >
@@ -1738,7 +1737,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                         title="Clicca per inserire o modificare il risultato"
                                                                                                         className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99] ${
                                                                                                             isCompleted
-                                                                                                                ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 hover:border-emerald-600 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 shadow-[0_2px_10px_rgba(16,185,129,0.15)]'
+                                                                                                                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-500/50 dark:border-emerald-500/40 hover:border-emerald-500/80 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40'
                                                                                                                 : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08]'
                                                                                                         }`}
                                                                                                     >
