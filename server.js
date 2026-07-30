@@ -1668,12 +1668,26 @@ app.get('/api/data', async (req, res) => {
             return null;
         };
 
+        const parseSetsJson = (raw) => {
+            if (!raw) return [];
+            if (Array.isArray(raw)) return raw;
+            if (typeof raw === 'string') {
+                try {
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+            return [];
+        };
+
         const normalMatches = matchesResult.map(m => ({
             id: m.id,
             date: m.date,
             team1: [m.team1_p1_id, m.team1_p2_id].filter(Boolean),
             team2: [m.team2_p1_id, m.team2_p2_id].filter(Boolean),
-            sets: m.sets,
+            sets: parseSetsJson(m.sets),
             winner: m.winner,
             tournamentId: m.tournament_id,
             roundNumber: m.round_number || undefined,
@@ -1687,7 +1701,7 @@ app.get('/api/data', async (req, res) => {
                 date: m.date,
                 team1,
                 team2,
-                sets: m.sets,
+                sets: parseSetsJson(m.sets),
                 winner: m.winner,
                 tournamentId: m.tournament_id,
             };

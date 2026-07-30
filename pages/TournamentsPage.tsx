@@ -49,6 +49,20 @@ const TournamentsSkeleton = () => (
 );
 
 
+const parseMatchSets = (raw: any): { team1: number; team2: number }[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+};
+
 // Helper functions for Beat the Box
 const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => Player | undefined) => {
     // Use player-set grouping (order-independent)
@@ -233,7 +247,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
     const handleOpenSingleMatchModal = (m: Match) => {
         setSelectedSingleMatch(m);
-        setSingleMatchSets(m.sets && m.sets.length > 0 ? JSON.parse(JSON.stringify(m.sets)) : [{ team1: 0, team2: 0 }]);
+        const parsed = parseMatchSets(m.sets);
+        setSingleMatchSets(parsed.length > 0 ? parsed : [{ team1: 0, team2: 0 }]);
         setIsSingleMatchModalOpen(true);
     };
 
@@ -1606,18 +1621,20 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                     {matchesForRound.map((m, idx) => {
                                                                                                         const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
                                                                                                         const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
-                                                                                                        const t1SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                        const matchSets = parseMatchSets(m.sets);
+                                                                                                        const hasScores = matchSets.length > 0;
+                                                                                                        const t1SetsDisplay = hasScores ? (
                                                                                                             <div className="flex items-center gap-1.5">
-                                                                                                                {m.sets.map((s, i) => (
+                                                                                                                {matchSets.map((s, i) => (
                                                                                                                     <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
                                                                                                                         {s.team1}
                                                                                                                     </span>
                                                                                                                 ))}
                                                                                                             </div>
                                                                                                         ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                                        const t2SetsDisplay = m.sets && m.sets.length > 0 ? (
+                                                                                                        const t2SetsDisplay = hasScores ? (
                                                                                                             <div className="flex items-center gap-1.5">
-                                                                                                                {m.sets.map((s, i) => (
+                                                                                                                {matchSets.map((s, i) => (
                                                                                                                     <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
                                                                                                                         {s.team2}
                                                                                                                     </span>
