@@ -1438,7 +1438,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                         <span className={roundRobinDayPillClass}>
                                                                             Giornata {normalTournamentDayOrder.get(day.id)} di {normalTournamentTotalDays}
                                                                         </span>
-                                                                        {day.status === 'scheduled' && day.type !== TournamentType.EliminazioneDiretta && (
+                                                                        {day.status === 'scheduled' && (
                                                                             <button
                                                                                 onClick={() => {
                                                                                     if (!expandedMatchdays.has(day.id)) {
@@ -1446,7 +1446,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     }
                                                                                     if (day.type === TournamentType.TorneoASquadre) {
                                                                                         onNavigateToTeamTournamentMatchdayResults?.(day.id);
-                                                                                    } else {
+                                                                                    } else if (day.type !== TournamentType.EliminazioneDiretta) {
                                                                                         onNavigateToResults?.(day.id);
                                                                                     }
                                                                                 }}
@@ -1646,7 +1646,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             })()}
                                                         </div>
                                                     )}
-                                                    {day.status === 'scheduled' && day.type !== TournamentType.EliminazioneDiretta && !(day.type === TournamentType.TorneoASquadre && day.giornataName) && !(normalTournamentTotalDays > 1 && normalTournamentDayOrder.has(day.id)) && (
+                                                    {day.status === 'scheduled' && !(day.type === TournamentType.TorneoASquadre && day.giornataName) && !(normalTournamentTotalDays > 1 && normalTournamentDayOrder.has(day.id)) && (
                                                         <div className="mt-3 flex items-center justify-between gap-3">
                                                             <button
                                                                 onClick={() => {
