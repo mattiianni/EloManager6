@@ -8,6 +8,8 @@ import { calculateAllBoxStandings, createFinalsMatches, groupMatchesByPlayerSets
 import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, TeamTournamentFixture, TeamTournamentTeam, TeamTournamentMatchday } from '../types.ts';
 import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
+import HIGButton from '../components/ui/HIGButton.tsx';
+import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
 import { HIGAlert } from '../components/ui/HIGAlert';
 import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon } from '../components/ui/Icons.tsx';
@@ -221,7 +223,54 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     tournamentToExpand,
     clearTournamentToExpand
 }) => {
-    const { tournaments, matches, deleteTournament, deleteTournamentSeries, getPlayerById, updateTournament, updateTournamentSeriesName, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays } = usePadelStore();
+    const { tournaments, matches, deleteTournament, deleteTournamentSeries, getPlayerById, updateTournament, updateTournamentSeriesName, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays, updateTournamentMatches, completeTournament } = usePadelStore();
+    
+    // State for Single Match Edit Modal
+    const [selectedSingleMatch, setSelectedSingleMatch] = useState<Match | null>(null);
+    const [singleMatchSets, setSingleMatchSets] = useState<{ team1: number; team2: number }[]>([{ team1: 0, team2: 0 }]);
+    const [isSingleMatchModalOpen, setIsSingleMatchModalOpen] = useState(false);
+    const [isSavingSingleMatch, setIsSavingSingleMatch] = useState(false);
+
+    const handleOpenSingleMatchModal = (m: Match) => {
+        setSelectedSingleMatch(m);
+        setSingleMatchSets(m.sets && m.sets.length > 0 ? JSON.parse(JSON.stringify(m.sets)) : [{ team1: 0, team2: 0 }]);
+        setIsSingleMatchModalOpen(true);
+    };
+
+    const handleSaveSingleMatch = async () => {
+        if (!selectedSingleMatch) return;
+        setIsSavingSingleMatch(true);
+        try {
+            const t1Games = singleMatchSets.reduce((sum, s) => sum + (Number(s.team1) || 0), 0);
+            const t2Games = singleMatchSets.reduce((sum, s) => sum + (Number(s.team2) || 0), 0);
+            let winner: 'team1' | 'team2' | 'draw' = 'draw';
+            if (t1Games > t2Games) winner = 'team1';
+            else if (t2Games > t1Games) winner = 'team2';
+
+            await updateTournamentMatches([
+                { matchId: selectedSingleMatch.id, sets: singleMatchSets, winner }
+            ]);
+
+            // Check if all matches of this tournament are complete
+            const parentTournament = tournaments.find(t => t.id === selectedSingleMatch.tournamentId);
+            if (parentTournament && parentTournament.status !== 'completed') {
+                const tournamentMatches = matches.filter(m => m.tournamentId === parentTournament.id);
+                const allOtherDone = tournamentMatches
+                    .filter(m => m.id !== selectedSingleMatch.id)
+                    .every(m => m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
+                if (allOtherDone) {
+                    await completeTournament(parentTournament.id);
+                }
+            }
+
+            setIsSingleMatchModalOpen(false);
+            setSelectedSingleMatch(null);
+        } catch (err) {
+            console.error('Error saving single match:', err);
+        } finally {
+            setIsSavingSingleMatch(false);
+        }
+    };
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [deleteAlert, setDeleteAlert] = useState<{
         isOpen: boolean;
@@ -1399,7 +1448,12 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                 ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
                                                                                 
                                                                                 return (
-                                                                                    <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
+                                                                                    <div 
+                                                                                        key={idx} 
+                                                                                        onClick={() => !sm.cancelled && handleOpenSingleMatchModal(sm)}
+                                                                                        title={sm.cancelled ? 'Partita Annullata' : 'Clicca per inserire o modificare il risultato'}
+                                                                                        className={`bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm ${!sm.cancelled ? 'cursor-pointer hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] transition-all active:scale-[0.99]' : ''}`}
+                                                                                    >
                                                                                         {sm.cancelled ? (
                                                                                             <div className="text-center text-sm font-semibold text-orange-600 dark:text-orange-400 py-3">Partita Annullata</div>
                                                                                         ) : (
@@ -1572,7 +1626,12 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                         ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
                                                                                                         
                                                                                                         return (
-                                                                                                            <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
+                                                                                                            <div 
+                                                                                                                key={idx} 
+                                                                                                                onClick={() => handleOpenSingleMatchModal(m)}
+                                                                                                                title="Clicca per inserire o modificare il risultato"
+                                                                                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm cursor-pointer hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] transition-all active:scale-[0.99]"
+                                                                                                            >
                                                                                                                 <div className="flex items-center justify-between gap-3">
                                                                                                                     <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
                                                                                                                     {t1SetsDisplay}
@@ -1619,7 +1678,12 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                 ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
                                                                                                 
                                                                                                 return (
-                                                                                                    <div key={idx} className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm">
+                                                                                                    <div 
+                                                                                                        key={idx} 
+                                                                                                        onClick={() => handleOpenSingleMatchModal(m)}
+                                                                                                        title="Clicca per inserire o modificare il risultato"
+                                                                                                        className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm cursor-pointer hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] transition-all active:scale-[0.99]"
+                                                                                                    >
                                                                                                         <div className="flex items-center justify-between gap-3">
                                                                                                             <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
                                                                                                             {t1SetsDisplay}
@@ -1817,6 +1881,70 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     }
                 ]}
             />
+            {isSingleMatchModalOpen && selectedSingleMatch && (() => {
+                const t1Names = selectedSingleMatch.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ') || 'Squadra 1';
+                const t2Names = selectedSingleMatch.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ') || 'Squadra 2';
+
+                return (
+                    <HIGSheet
+                        isOpen={isSingleMatchModalOpen}
+                        onClose={() => {
+                            if (!isSavingSingleMatch) {
+                                setIsSingleMatchModalOpen(false);
+                                setSelectedSingleMatch(null);
+                            }
+                        }}
+                        title="Risultato Partita"
+                    >
+                        <div className="p-4 flex flex-col gap-5 text-center">
+                            <div className="bg-slate-100 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-col gap-3">
+                                <div className="font-bold text-base text-app dark:text-white leading-tight">
+                                    {t1Names}
+                                </div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                                    vs
+                                </div>
+                                <div className="font-bold text-base text-app dark:text-white leading-tight">
+                                    {t2Names}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 items-center">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    Inserisci Punteggio Set
+                                </label>
+                                <MatchScoreInput 
+                                    sets={singleMatchSets}
+                                    onSetsChange={setSingleMatchSets}
+                                    disabled={isSavingSingleMatch}
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-2">
+                                <HIGButton
+                                    variant="secondary"
+                                    fullWidth
+                                    onClick={() => {
+                                        setIsSingleMatchModalOpen(false);
+                                        setSelectedSingleMatch(null);
+                                    }}
+                                    disabled={isSavingSingleMatch}
+                                >
+                                    Annulla
+                                </HIGButton>
+                                <HIGButton
+                                    variant="primary"
+                                    fullWidth
+                                    onClick={handleSaveSingleMatch}
+                                    disabled={isSavingSingleMatch}
+                                >
+                                    {isSavingSingleMatch ? 'Salvataggio...' : 'Salva Risultato'}
+                                </HIGButton>
+                            </div>
+                        </div>
+                    </HIGSheet>
+                );
+            })()}
         </>
     );
 };
