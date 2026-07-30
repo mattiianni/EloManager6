@@ -4099,8 +4099,8 @@ export const printGironiTournament = (
     let semifinalsMatches: Match[] = [];
     let finalsMatches: Match[] = [];
     
-    // 1. SPLIT MATCHES: Only extract semifinals/finals if tournament is completed and has extra phase matches
-    const hasFinalsMatches = tournament.status === 'completed' && matches.length >= 8;
+    // 1. SPLIT MATCHES: Only extract semifinals/finals if tournament is completed and has played extra phase matches
+    const hasFinalsMatches = tournament.status === 'completed' && matches.length >= 8 && matches.slice(matches.length - 4).some(m => !!m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
     if (hasFinalsMatches) {
         const finalsCount = 4;
         gironiMatchesFlat = matches.slice(0, matches.length - finalsCount);
