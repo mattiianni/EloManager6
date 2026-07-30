@@ -1,8 +1,8 @@
-# Padel ELO Manager (v6.7.1)
+# Padel ELO Manager (v6.7.2)
 
 Applicazione full-stack PWA per la gestione avanzata di tornei di padel con algoritmo ELO dinamico in tempo reale, statistiche approfondite, reportistica PDF, design system Apple HIG e isolamento dati multi-workspace.
 
-Versione documentata: `v6.7.1` (Mese: `Lug 2026`)
+Versione documentata: `v6.7.2` (Mese: `Lug 2026`)
 
 ## Stato attuale
 
