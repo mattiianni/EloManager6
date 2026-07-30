@@ -1441,10 +1441,13 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                             {(md.subMatches || []).map((sm, idx) => {
                                                                                 const t1Name = (sm.team1Players || []).map(p => `${p.name} ${p.surname}`).join(' / ') || 'Squadra 1';
                                                                                 const t2Name = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`).join(' / ') || 'Squadra 2';
-                                                                                
-                                                                                const t1SetsDisplay = sm.sets && sm.sets.length > 0 ? (
+                                                                                const matchSets = parseMatchSets(sm.sets);
+                                                                                const hasScores = matchSets.length > 0 && matchSets.some(s => Number(s.team1) > 0 || Number(s.team2) > 0);
+                                                                                const isCompleted = !!sm.winner || hasScores;
+
+                                                                                const t1SetsDisplay = hasScores ? (
                                                                                     <div className="flex items-center gap-1.5">
-                                                                                        {sm.sets.map((s, i) => (
+                                                                                        {matchSets.map((s, i) => (
                                                                                             <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
                                                                                                 {s.team1}
                                                                                             </span>
@@ -1452,9 +1455,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     </div>
                                                                                 ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
                                                                                 
-                                                                                const t2SetsDisplay = sm.sets && sm.sets.length > 0 ? (
+                                                                                const t2SetsDisplay = hasScores ? (
                                                                                     <div className="flex items-center gap-1.5">
-                                                                                        {sm.sets.map((s, i) => (
+                                                                                        {matchSets.map((s, i) => (
                                                                                             <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
                                                                                                 {s.team2}
                                                                                             </span>
@@ -1467,14 +1470,29 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         key={idx} 
                                                                                         onClick={() => !sm.cancelled && handleOpenSingleMatchModal(sm)}
                                                                                         title={sm.cancelled ? 'Partita Annullata' : 'Clicca per inserire o modificare il risultato'}
-                                                                                        className={`bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm ${!sm.cancelled ? 'cursor-pointer hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] transition-all active:scale-[0.99]' : ''}`}
+                                                                                        className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm transition-all active:scale-[0.99] ${
+                                                                                            sm.cancelled
+                                                                                                ? 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10'
+                                                                                                : isCompleted
+                                                                                                    ? 'bg-emerald-500/10 dark:bg-emerald-500/[0.15] border border-emerald-500/40 dark:border-emerald-500/40 hover:border-emerald-500 hover:bg-emerald-500/20 cursor-pointer'
+                                                                                                    : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] cursor-pointer'
+                                                                                        }`}
                                                                                     >
                                                                                         {sm.cancelled ? (
                                                                                             <div className="text-center text-sm font-semibold text-orange-600 dark:text-orange-400 py-3">Partita Annullata</div>
                                                                                         ) : (
                                                                                             <>
+                                                                                                {isCompleted && (
+                                                                                                    <div className="flex items-center justify-between pb-1.5 mb-0.5 border-b border-emerald-500/20">
+                                                                                                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                                                                                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                                                                                                            RISULTATO INSERITO
+                                                                                                        </span>
+                                                                                                        <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">Modifica</span>
+                                                                                                    </div>
+                                                                                                )}
                                                                                                 <div className="flex items-center justify-between gap-3">
-                                                                                                    <span className={`text-sm ${sm.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'} leading-tight flex-1`}>{t1Name}</span>
+                                                                                                    <span className={`text-sm ${sm.winner === 'team1' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-normal text-gray-500 dark:text-gray-400'} leading-tight flex-1`}>{t1Name}</span>
                                                                                                     {t1SetsDisplay}
                                                                                                 </div>
                                                                                                 <div className="flex items-center gap-2">
@@ -1483,7 +1501,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                     <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
                                                                                                 </div>
                                                                                                 <div className="flex items-center justify-between gap-3">
-                                                                                                    <span className={`text-sm ${sm.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'} leading-tight flex-1`}>{t2Name}</span>
+                                                                                                    <span className={`text-sm ${sm.winner === 'team2' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-normal text-gray-500 dark:text-gray-400'} leading-tight flex-1`}>{t2Name}</span>
                                                                                                     {t2SetsDisplay}
                                                                                                 </div>
                                                                                             </>
@@ -1622,7 +1640,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                         const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
                                                                                                         const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
                                                                                                         const matchSets = parseMatchSets(m.sets);
-                                                                                                        const hasScores = matchSets.length > 0;
+                                                                                                        const hasScores = matchSets.length > 0 && matchSets.some(s => Number(s.team1) > 0 || Number(s.team2) > 0);
+                                                                                                        const isCompleted = !!m.winner || hasScores;
+
                                                                                                         const t1SetsDisplay = hasScores ? (
                                                                                                             <div className="flex items-center gap-1.5">
                                                                                                                 {matchSets.map((s, i) => (
@@ -1647,10 +1667,23 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                                 key={idx} 
                                                                                                                 onClick={() => handleOpenSingleMatchModal(m)}
                                                                                                                 title="Clicca per inserire o modificare il risultato"
-                                                                                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 flex flex-col gap-2 border border-slate-200/60 dark:border-white/10 shadow-sm cursor-pointer hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08] transition-all active:scale-[0.99]"
+                                                                                                                className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99] ${
+                                                                                                                    isCompleted
+                                                                                                                        ? 'bg-emerald-500/10 dark:bg-emerald-500/[0.15] border border-emerald-500/40 dark:border-emerald-500/40 hover:border-emerald-500 hover:bg-emerald-500/20'
+                                                                                                                        : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08]'
+                                                                                                                }`}
                                                                                                             >
+                                                                                                                {isCompleted && (
+                                                                                                                    <div className="flex items-center justify-between pb-1.5 mb-0.5 border-b border-emerald-500/20">
+                                                                                                                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                                                                                                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                                                                                                                            RISULTATO INSERITO
+                                                                                                                        </span>
+                                                                                                                        <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">Modifica</span>
+                                                                                                                    </div>
+                                                                                                                )}
                                                                                                                 <div className="flex items-center justify-between gap-3">
-                                                                                                                    <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
+                                                                                                                    <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
                                                                                                                     {t1SetsDisplay}
                                                                                                                 </div>
                                                                                                                 <div className="flex items-center gap-2">
@@ -1659,7 +1692,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                                                     <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
                                                                                                                 </div>
                                                                                                                 <div className="flex items-center justify-between gap-3">
-                                                                                                                    <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-app dark:text-white' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
+                                                                                                                    <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
                                                                                                                     {t2SetsDisplay}
                                                                                                                 </div>
                                                                                                             </div>

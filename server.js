@@ -1571,6 +1571,7 @@ app.get('/api/data', async (req, res) => {
                 SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number 
                 FROM matches 
                 WHERE workspace_id = ${wsId}
+                ORDER BY id ASC
             `,
             sql`
                 SELECT 
