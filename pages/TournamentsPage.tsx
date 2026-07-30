@@ -1929,7 +1929,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
                             <div className="mt-8 flex items-center gap-3">
                                 <HIGButton
-                                    variant="secondary"
+                                    variant="gray"
+                                    size="large"
                                     fullWidth
                                     onClick={() => {
                                         setIsSingleMatchModalOpen(false);
@@ -1940,7 +1941,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                     Annulla
                                 </HIGButton>
                                 <HIGButton
-                                    variant="primary"
+                                    variant="filled"
+                                    size="large"
                                     fullWidth
                                     onClick={handleSaveSingleMatch}
                                     disabled={isSavingSingleMatch}
