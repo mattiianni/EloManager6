@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface HIGSheetProps {
   isOpen: boolean;
@@ -100,15 +101,15 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
 
   if (!shouldRender) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div 
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.4)',
-          zIndex: 50,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999,
           opacity: isAnimating && dragOffset < 150 ? 1 : 0,
           transition: 'opacity 400ms ease',
         }}
@@ -122,7 +123,7 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 51,
+          zIndex: 10000,
           pointerEvents: 'none', // Let clicks pass through except on sheet itself
           display: 'flex',
           justifyContent: 'center',
@@ -239,6 +240,7 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };

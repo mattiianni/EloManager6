@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MaterialIcon } from './Icons.tsx';
 
 interface ModalProps {
@@ -42,8 +43,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         return null;
     }
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 dark:bg-black/60 p-3 sm:p-4 backdrop-blur-md transition-all duration-300" role="dialog" aria-modal="true">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/40 dark:bg-black/60 p-3 sm:p-4 backdrop-blur-md transition-all duration-300" role="dialog" aria-modal="true">
             <div ref={modalRef} className="fade-in flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200/70 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 shadow-2xl shadow-sky-950/10 dark:shadow-black/60 backdrop-blur-2xl transition-all">
                 <header className="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 px-5 py-4 bg-slate-50/50 dark:bg-slate-900/50">
                     <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">{title}</h2>
@@ -55,7 +56,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
                     {children}
                 </main>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
