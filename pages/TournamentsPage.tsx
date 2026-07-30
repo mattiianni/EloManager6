@@ -1882,8 +1882,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                 ]}
             />
             {isSingleMatchModalOpen && selectedSingleMatch && (() => {
-                const t1Names = selectedSingleMatch.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ') || 'Squadra 1';
-                const t2Names = selectedSingleMatch.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ') || 'Squadra 2';
+                const team1Players = selectedSingleMatch.team1.map(pId => getPlayerById(pId)).filter(Boolean) as Player[];
+                const team2Players = selectedSingleMatch.team2.map(pId => getPlayerById(pId)).filter(Boolean) as Player[];
 
                 return (
                     <HIGSheet
@@ -1894,33 +1894,40 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                 setSelectedSingleMatch(null);
                             }
                         }}
-                        title="Risultato Partita"
+                        title="Inserisci Risultato Match"
                     >
-                        <div className="p-4 flex flex-col gap-5 text-center">
-                            <div className="bg-slate-100 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 flex flex-col gap-3">
-                                <div className="font-bold text-base text-app dark:text-white leading-tight">
-                                    {t1Names}
+                        <div className="p-4 space-y-4">
+                            <div className="flex justify-between items-center mb-6 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/60 dark:border-white/10">
+                                <div className="text-center w-1/2">
+                                    {team1Players.map((p, idx) => (
+                                        <p key={p.id || idx} className="font-bold text-sm text-app dark:text-white leading-snug">
+                                            {formatPlayerName(p)}
+                                        </p>
+                                    ))}
+                                    {team1Players.length === 0 && (
+                                        <p className="font-bold text-sm text-app dark:text-white">Squadra 1</p>
+                                    )}
                                 </div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                                    vs
-                                </div>
-                                <div className="font-bold text-base text-app dark:text-white leading-tight">
-                                    {t2Names}
+                                <div className="text-sky-600 dark:text-sky-400 font-extrabold text-sm px-2">VS</div>
+                                <div className="text-center w-1/2">
+                                    {team2Players.map((p, idx) => (
+                                        <p key={p.id || idx} className="font-bold text-sm text-app dark:text-white leading-snug">
+                                            {formatPlayerName(p)}
+                                        </p>
+                                    ))}
+                                    {team2Players.length === 0 && (
+                                        <p className="font-bold text-sm text-app dark:text-white">Squadra 2</p>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-2 items-center">
-                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    Inserisci Punteggio Set
-                                </label>
-                                <MatchScoreInput 
-                                    sets={singleMatchSets}
-                                    onSetsChange={setSingleMatchSets}
-                                    disabled={isSavingSingleMatch}
-                                />
-                            </div>
+                            <MatchScoreInput
+                                sets={singleMatchSets}
+                                onSetsChange={setSingleMatchSets}
+                                disabled={isSavingSingleMatch}
+                            />
 
-                            <div className="flex items-center gap-3 mt-2">
+                            <div className="mt-8 flex items-center gap-3">
                                 <HIGButton
                                     variant="secondary"
                                     fullWidth
