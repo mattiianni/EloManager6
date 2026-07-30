@@ -1007,6 +1007,7 @@ export const printTournamentReport = (
     const hasExtraFinals = isRoundRobinFinali && roundRobinMatchCount && matches.length > roundRobinMatchCount;
     const roundRobinMatches = hasExtraFinals ? matches.slice(0, roundRobinMatchCount) : matches;
     const finalsMatches = hasExtraFinals ? matches.slice(roundRobinMatchCount) : [];
+    const isFinalsCompleted = tournament.status === 'completed' && finalsMatches.length > 0 && finalsMatches.some(m => m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
     
     let roundRobinContent = '';
     const isRoundRobin = tournament.type === TournamentType.RoundRobinFinali;
@@ -1604,7 +1605,7 @@ export const printTournamentReport = (
             </table>
         </div>
 
-        ${finalsContent ? `
+        ${isFinalsCompleted && finalsContent ? `
         <div class="section-block">
             <h3 style="margin-top: 12px;">Finali</h3>
             <table>
