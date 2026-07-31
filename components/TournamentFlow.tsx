@@ -16,6 +16,7 @@ import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 import { showHIGAlert } from '../utils/higDialogService.ts';
+import { formatPlayerShortName } from '../utils/format.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -3076,7 +3077,7 @@ tournamentName={tournamentName}
                           {restingTeams.length > 0 && (
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                                ☕ Riposo: {restingTeams.map(t => `${t[0].name} & ${t[1].name}`).join(' | ')}
+                                ☕ Riposo: {restingTeams.map(t => `${formatPlayerShortName(t[0])} & ${formatPlayerShortName(t[1])}`).join(' | ')}
                               </span>
                             </div>
                           )}
@@ -3097,7 +3098,7 @@ tournamentName={tournamentName}
                                 </div>
                                 <div className="grid grid-cols-3 items-center gap-2">
                                   <div className="text-right">
-                                    <p className="font-semibold text-sm">{team1[0].name} & {team1[1].name}</p>
+                                    <p className="font-semibold text-sm">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
                                   </div>
                                   <MatchScoreInput
@@ -3105,7 +3106,7 @@ tournamentName={tournamentName}
                                     onSetsChange={(sets) => handleRoundRobinSetsChange(originalIndex, sets)}
                                   />
                                   <div>
-                                    <p className="font-semibold text-sm">{team2[0].name} & {team2[1].name}</p>
+                                    <p className="font-semibold text-sm">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
                                   </div>
                                 </div>
@@ -3140,7 +3141,7 @@ tournamentName={tournamentName}
  )}
  <div className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
  <div className="text-right">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
  </div>
  <MatchScoreInput
@@ -3148,7 +3149,7 @@ tournamentName={tournamentName}
  onSetsChange={(sets) => handleSetsChange(index, sets)}
  />
  <div>
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
@@ -3218,7 +3219,7 @@ tournamentName={tournamentName}
  {roundRobinStandings.slice(0, 4).map((standing, index) => (
  <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
  <span className="font-medium">
- {index + 1}° - {standing.team[0].name} & {standing.team[1].name}
+ {index + 1}° - {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
  </span>
  <span className="text-sm text-gray-600 dark:text-gray-400">
  {standing.points} punti
@@ -3282,7 +3283,7 @@ tournamentName={tournamentName}
  {index + 1}
  </td>
  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.team[0].name} & {standing.team[1].name}
+ {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
  </td>
  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
  {standing.points}
@@ -3317,7 +3318,7 @@ tournamentName={tournamentName}
  return (
  <div key={index} className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${isFinalePrimoSecondo ? 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600' : 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600'}`}>
  <div className="text-right">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
  </div>
  <div className="text-center">
@@ -3330,7 +3331,7 @@ tournamentName={tournamentName}
  </p>
  </div>
  <div>
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
@@ -3418,7 +3419,7 @@ tournamentName={tournamentName}
  {finalStandings.map((entry, index) => (
  <tr key={entry.teamId} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{index + 1}</td>
- <td className="px-4 py-3">{entry.team[0].name} & {entry.team[1].name}</td>
+ <td className="px-4 py-3">{formatPlayerShortName(entry.team[0])} & {formatPlayerShortName(entry.team[1])}</td>
  <td className="px-4 py-3">{entry.points}</td>
  <td className="px-4 py-3">{entry.gamesWon}</td>
  <td className="px-4 py-3">{entry.gamesLost}</td>

@@ -7,6 +7,7 @@ import { ChevronDownIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player, Tournament, Match, TournamentType, TeamTournamentMatchday, TeamTournamentTeam, TeamTournamentPlayerStatsRow } from '../types.ts';
 import { printTeamTournamentReport, printTeamTournamentStatistics, printTournamentStatistics } from '../services/printService.ts';
+import { formatPlayerShortName } from '../utils/format.ts';
 
 interface TournamentStats {
     tournament: Tournament;
@@ -556,7 +557,7 @@ const StatistichePage: React.FC = () => {
                         const winningTeam = winner === 'team1' ? t1Players : t2Players;
                         const losingTeam = winner === 'team1' ? t2Players : t1Players;
                         const diffElo = Math.abs(team1EloAvg - team2EloAvg).toFixed(2);
-                        upsets.push(`${winningTeam[0].name} & ${winningTeam[1].name} vs ${losingTeam[0].name} & ${losingTeam[1].name} (Δ${diffElo})`);
+                        upsets.push(`${formatPlayerShortName(winningTeam[0])} & ${formatPlayerShortName(winningTeam[1])} vs ${formatPlayerShortName(losingTeam[0])} & ${formatPlayerShortName(losingTeam[1])} (Δ${diffElo})`);
                     }
                 }
             });
@@ -1044,7 +1045,7 @@ const StatistichePage: React.FC = () => {
                     const losingTeam = match.winner === 'team1' ? team2Players : team1Players;
                     const diffElo = Math.abs(team1EloAvg - team2EloAvg).toFixed(2);
                     upsets.push(
-                        `${winningTeam[0].name} & ${winningTeam[1].name} vs ${losingTeam[0].name} & ${losingTeam[1].name} (Δ${diffElo})`
+                        `${formatPlayerShortName(winningTeam[0])} & ${formatPlayerShortName(winningTeam[1])} vs ${formatPlayerShortName(losingTeam[0])} & ${formatPlayerShortName(losingTeam[1])} (Δ${diffElo})`
                     );
                 }
             }
@@ -1916,7 +1917,7 @@ const StatistichePage: React.FC = () => {
                                                 icon={<SFIcon name="person.2.fill" size={14} />}
                                                 entries={stats.coppiaFrequente.length > 0
                                                     ? stats.coppiaFrequente.map(c => 
-                                                        `${c.players[0].name} & ${c.players[1].name} (${c.partite} partite)`
+                                                        `${formatPlayerShortName(c.players[0])} & ${formatPlayerShortName(c.players[1])} (${c.partite} partite)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
@@ -2037,7 +2038,7 @@ const StatistichePage: React.FC = () => {
                                                 icon={<SFIcon name="person.2.fill" size={14} />}
                                                 entries={stats.migliorCoppiaWinRate.length > 0
                                                     ? stats.migliorCoppiaWinRate.map(e =>
-                                                        `${e.players[0].name} & ${e.players[1].name} (${e.winRate.toFixed(1)}% - ${e.partite} partite)`
+                                                        `${formatPlayerShortName(e.players[0])} & ${formatPlayerShortName(e.players[1])} (${e.winRate.toFixed(1)}% - ${e.partite} partite)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }

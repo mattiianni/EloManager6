@@ -13,7 +13,7 @@ import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
-import { formatPlayerName } from '../utils/format.ts';
+import { formatPlayerName, formatPlayerShortName } from '../utils/format.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { 
  calculateAllBoxStandings, 
@@ -2128,7 +2128,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <div key={match.id} className="grid grid-cols-3 items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border">
  <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
  </div>
  <MatchScoreInput
@@ -2137,7 +2137,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  disabled={isSubmitting}
  />
  <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
@@ -2208,7 +2208,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                          return (
                              <div key={match.id} id={`match-card-${match.id}`} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                                  <div className="text-right text-sm">
-                                     <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+                                     <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
                                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
                                  </div>
                                  <MatchScoreInput
@@ -2217,7 +2217,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                                      disabled={isSubmitting}
                                  />
                                  <div className="text-sm">
-                                     <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+                                     <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
                                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
                                  </div>
                              </div>
@@ -2236,7 +2236,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
          return (
              <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                  <div className="text-right text-sm">
-                     <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+                     <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
                  </div>
                  <MatchScoreInput
@@ -2245,7 +2245,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                      disabled={isSubmitting}
                  />
                  <div className="text-sm">
-                     <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+                     <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
                  </div>
              </div>
@@ -2334,7 +2334,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  {roundRobinStandings.slice(0, 4).map((standing, index) => (
  <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
  <span className="font-medium">
- {index + 1}° - {standing.team[0].name} & {standing.team[1].name}
+ {index + 1}° - {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
  </span>
  <span className="text-sm text-gray-600 dark:text-gray-400">
  {standing.points} punti
@@ -2393,7 +2393,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }`}
  >
  <span className={`font-medium ${isQualified ? 'text-green-700 dark:text-green-300 font-bold' : ''}`}>
- {index + 1}° - {standing.pair[0].name} & {standing.pair[1].name}
+ {index + 1}° - {formatPlayerShortName(standing.pair[0])} & {formatPlayerShortName(standing.pair[1])}
  {isQualified && <span className="ml-2 text-xs">✓ Qualificato</span>}
  </span>
  <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -2479,7 +2479,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  {index + 1}
  </td>
  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.team[0].name} & {standing.team[1].name}
+ {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
  </td>
  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
  {standing.points}

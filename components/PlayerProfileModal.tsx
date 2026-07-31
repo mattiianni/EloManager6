@@ -7,6 +7,7 @@ import { HIGSheet } from './ui/HIGSheet.tsx';
 import { XIcon, ArrowUpIcon, ArrowDownIcon, ArrowStableIcon } from './ui/Icons.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
 import PlayerAvatar from './ui/PlayerAvatar.tsx';
+import { formatPlayerShortName } from '../utils/format.ts';
 
 interface PlayerProfileModalProps {
     player: Player | null;
@@ -290,8 +291,8 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
 
             return {
                 date: new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
-                partner: partner ? `${partner.name} ${partner.surname[0]}.` : '?',
-                opponents: `${opp1 ? `${opp1.name} ${opp1.surname[0]}.` : '?'} & ${opp2 ? `${opp2.name} ${opp2.surname[0]}.` : '?'}`,
+                partner: formatPlayerShortName(partner),
+                opponents: `${formatPlayerShortName(opp1)} & ${formatPlayerShortName(opp2)}`,
                 myScores,
                 oppScores,
                 won,

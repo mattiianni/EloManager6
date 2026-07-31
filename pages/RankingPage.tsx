@@ -10,6 +10,7 @@ import { SFIcon } from '../components/ui/SFIcon.tsx';
 import HIGButton from '../components/ui/HIGButton.tsx';
 import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
 import Card from '../components/ui/Card.tsx';
+import { formatPlayerShortName } from '../utils/format.ts';
 
 interface RankingPageProps {
     theme: 'light' | 'dark';
@@ -430,7 +431,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                             🥈
                         </div>
                         <div className="w-full bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-300 dark:border-white/10 rounded-t-2xl p-3 text-center h-28 flex flex-col justify-between">
-                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{rankingData[1].name}</p>
+                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{formatPlayerShortName(rankingData[1])}</p>
                             <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 bg-sky-500/10 py-0.5 px-2 rounded-full border border-sky-500/20">{rankingData[1].currentElo.toFixed(0)}</span>
                         </div>
                     </div>
@@ -440,7 +441,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                             🥇
                         </div>
                         <div className="w-full bg-gradient-to-b from-amber-500/20 to-sky-500/10 backdrop-blur-xl border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-lg">
-                            <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{rankingData[0].name}</p>
+                            <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{formatPlayerShortName(rankingData[0])}</p>
                             <span className="text-base font-black text-amber-600 dark:text-amber-400 bg-amber-500/20 py-1 px-2.5 rounded-full border border-amber-500/30">{rankingData[0].currentElo.toFixed(0)}</span>
                         </div>
                     </div>
@@ -450,7 +451,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                             🥉
                         </div>
                         <div className="w-full bg-orange-100/60 dark:bg-slate-800/80 backdrop-blur-xl border border-orange-200 dark:border-white/10 rounded-t-2xl p-3 text-center h-24 flex flex-col justify-between">
-                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{rankingData[2].name}</p>
+                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{formatPlayerShortName(rankingData[2])}</p>
                             <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 bg-sky-500/10 py-0.5 px-2 rounded-full border border-sky-500/20">{rankingData[2].currentElo.toFixed(0)}</span>
                         </div>
                     </div>

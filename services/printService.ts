@@ -6,6 +6,7 @@ import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './e
 import { BracketNode, generateTpraBracket } from './tpraService.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
+import { formatPlayerShortName } from '../utils/format.ts';
 
 export const MANROPE_PRINT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
 
@@ -5197,7 +5198,7 @@ export const printTournamentStatistics = (stats: any) => {
 
     const coppiaEntries = stats.coppiaFrequente.length > 0 
         ? stats.coppiaFrequente.slice(0, 3).map((c: any, i: number) => 
-            `<div class="stat-card-entry">${i+1}. ${c.players[0].name} & ${c.players[1].name} (${c.partite})</div>`
+            `<div class="stat-card-entry">${i+1}. ${escapeHtml(formatPlayerShortName(c.players[0]))} & ${escapeHtml(formatPlayerShortName(c.players[1]))} (${c.partite})</div>`
         ).join('')
         : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>';
 
@@ -5264,7 +5265,7 @@ export const printTournamentStatistics = (stats: any) => {
 
     const migliorCoppiaEntries = stats.migliorCoppiaWinRate.slice(0, 3).map((e: any, i: number) => 
         e.winRate > 0 
-            ? `<div class="stat-card-entry">${i+1}. ${e.players[0].name} & ${e.players[1].name} (${e.winRate.toFixed(1)}% - ${e.partite} partite)</div>`
+            ? `<div class="stat-card-entry">${i+1}. ${escapeHtml(formatPlayerShortName(e.players[0]))} & ${escapeHtml(formatPlayerShortName(e.players[1]))} (${e.winRate.toFixed(1)}% - ${e.partite} partite)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
