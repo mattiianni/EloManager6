@@ -11,6 +11,7 @@ import HIGButton from '../components/ui/HIGButton.tsx';
 import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
 import Card from '../components/ui/Card.tsx';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 
 interface RankingPageProps {
     theme: 'light' | 'dark';
@@ -85,21 +86,35 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
         }
 
         const sortedEventsByDate = [...eloHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const selectedIsTeamTournament = !!selectedTournamentId && tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
+        const playerIdForTeamEntry = (entry: { id?: string; name: string; surname: string }) =>
+            entry.id || players.find(player =>
+                player.name.trim().toLowerCase() === entry.name.trim().toLowerCase()
+                && player.surname.trim().toLowerCase() === entry.surname.trim().toLowerCase()
+            )?.id || '';
+        const selectedTeamLocalMatches = selectedIsTeamTournament
+            ? teamMatchdaysCache.flatMap(matchday => (matchday.subMatches || [])
+                .filter(subMatch => !subMatch.cancelled && Array.isArray(subMatch.sets)
+                    && subMatch.sets.some(set => Number(set.team1 || 0) !== 0 || Number(set.team2 || 0) !== 0))
+                .map((subMatch, index) => ({
+                    id: `${matchday.id}:${subMatch.matchIndex ?? index}`,
+                    tournamentId: `team-series:${selectedTournamentId}`,
+                    date: matchday.date,
+                    roundNumber: (Number(matchday.roundNumber) || 0) * 100 + (subMatch.matchIndex ?? index),
+                    team1: (subMatch.team1Players || []).map(playerIdForTeamEntry).filter(Boolean),
+                    team2: (subMatch.team2Players || []).map(playerIdForTeamEntry).filter(Boolean),
+                    winner: subMatch.winner,
+                })))
+            : [];
+        const selectedTeamLocalElo = calculateTournamentLocalElo(selectedTeamLocalMatches);
         
         let filteredPlayers = players;
         
         if (selectedTournamentId) {
-            const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
             const playersInTournament = new Set<string>();
             
-            if (isTeamTournament) {
-                // Find all players that participated in these matchdays via eloHistory
-                // (Since TeamTournamentMatchdays aren't loaded in matches state)
-                eloHistory.forEach(e => {
-                    if (selectedTeamTournamentMatchdayIds.includes(e.eventId)) {
-                        playersInTournament.add(e.playerId);
-                    }
-                });
+            if (selectedIsTeamTournament) {
+                selectedTeamLocalMatches.forEach(match => [...match.team1, ...match.team2].forEach(id => playersInTournament.add(id)));
             } else {
                 const normSelected = selectedTournamentId.trim().toLowerCase();
                 const tournamentIds = tournaments
@@ -117,6 +132,17 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             filteredPlayers = players.filter(p => playersInTournament.has(p.id));
         }
         
+        const selectedNormalTournamentIds = selectedTournamentId
+            ? tournaments
+                .filter(t => (t.giornataName || t.name).trim().toLowerCase() === selectedTournamentId.trim().toLowerCase())
+                .map(t => t.id)
+            : [];
+        const selectedNormalMatches = matches.filter(m => m.tournamentId && selectedNormalTournamentIds.includes(m.tournamentId));
+        const selectedLocalElo = calculateTournamentLocalElo(selectedNormalMatches.map(match => ({
+            ...match,
+            tournamentId: `series:${selectedTournamentId || ''}`,
+        })));
+
         return filteredPlayers
             .map(player => {
                 let playerMatches = matches.filter(m => {
@@ -146,14 +172,12 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                 let gamesLost = 0;
                 
                 if (isTeamTournament) {
-                    // For team tournaments, we don't have individual match data loaded in `matches` state globally.
-                    // We deduce wins/losses from eloHistory deltas if needed, or we just leave them at 0 for team tournaments for now,
-                    // as detailed match stats aren't easily available here without fetching all matches.
-                    // But we DO know they played if they have an eloHistory entry for the matchday.
-                    const tournamentEloEntries = eloHistory.filter(e => 
-                        e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
-                    );
-                    matchesPlayed = tournamentEloEntries.length; // Approximate matches played by matchdays participated
+                    const playedTeamMatches = selectedTeamLocalMatches.filter(match => match.team1.includes(player.id) || match.team2.includes(player.id));
+                    matchesPlayed = playedTeamMatches.length;
+                    playedTeamMatches.forEach(match => {
+                        const isTeam1 = match.team1.includes(player.id);
+                        if ((isTeam1 && match.winner === 'team1') || (!isTeam1 && match.winner === 'team2')) matchesWon++;
+                    });
                 } else {
                     playerMatches.forEach(match => {
                         const isTeam1 = match.team1.includes(player.id);
@@ -189,43 +213,19 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     { parentTournamentName: selectedTournamentId }
                 );
 
-                const playerGiornateCount = playerTimeline.length;
+                const playerGiornateCount = isTeamTournament
+                    ? new Set(selectedTeamLocalMatches
+                        .filter(match => match.team1.includes(player.id) || match.team2.includes(player.id))
+                        .map(match => match.id.split(':')[0])).size
+                    : new Set(playerMatches.map(match => match.tournamentId).filter(Boolean)).size;
 
                 // ELO visualizzato
                 let displayElo = player.currentElo;
                 if (selectedTournamentId) {
-                    let tournamentDelta = playerTimeline.reduce((sum, entry) => sum + entry.delta, 0);
-                    // Fallback: if eloHistory does not contain entries for this tournament yet, calculate delta on the fly from matches
-                    if (playerTimeline.length === 0 && playerMatches.length > 0) {
-                        const K = 16;
-                        const currentCumElo = new Map<string, number>();
-
-                        // Sort matches by round
-                        const sortedMatches = [...playerMatches].sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1));
-
-                        sortedMatches.forEach(m => {
-                            if (!m.winner) return;
-                            const t1P1Elo = currentCumElo.get(m.team1[0]) ?? 1500;
-                            const t1P2Elo = currentCumElo.get(m.team1[1]) ?? t1P1Elo;
-                            const team1Avg = (t1P1Elo + t1P2Elo) / 2;
-
-                            const t2P1Elo = currentCumElo.get(m.team2[0]) ?? 1500;
-                            const t2P2Elo = currentCumElo.get(m.team2[1]) ?? t2P1Elo;
-                            const team2Avg = (t2P1Elo + t2P2Elo) / 2;
-
-                            const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
-                            const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
-                            const delta1 = K * (score1 - expected1);
-                            const delta2 = K * ((1 - score1) - (1 - expected1));
-
-                            m.team1.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta1));
-                            m.team2.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta2));
-                        });
-
-                        displayElo = currentCumElo.get(player.id) ?? 1500;
-                    } else {
-                        displayElo = 1500 + tournamentDelta;
-                    }
+                    const tournamentDelta = isTeamTournament
+                        ? (selectedTeamLocalElo.totalDeltas.get(player.id) || 0)
+                        : (selectedLocalElo.totalDeltas.get(player.id) || 0);
+                    displayElo = 1500 + tournamentDelta;
                 }
 
                 // Ultimo Delta (il delta del giorno più recente)
@@ -277,7 +277,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                 return b.currentElo - a.currentElo;
             })
             .map((player, index) => ({ ...player, rank: index + 1 }));
-    }, [players, matches, eloHistory, loading, selectedTournamentId, presenceThreshold, tournamentGiornate, tournaments]);
+    }, [players, matches, eloHistory, loading, selectedTournamentId, presenceThreshold, tournamentGiornate, tournaments, teamMatchdaysCache]);
 
     const handleToggleExpand = (playerId: string) => {
         setExpandedPlayerId(prevId => (prevId === playerId ? null : playerId));

@@ -8,6 +8,7 @@ import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player, Tournament, Match, TournamentType, TeamTournamentMatchday, TeamTournamentTeam, TeamTournamentPlayerStatsRow } from '../types.ts';
 import { printTeamTournamentReport, printTeamTournamentStatistics, printTournamentStatistics } from '../services/printService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 
 interface TournamentStats {
     tournament: Tournament;
@@ -429,33 +430,6 @@ const StatistichePage: React.FC = () => {
                 });
         });
 
-        const matchdayIds = new Set(matchdays.map(m => m.id));
-        const rows = Array.from(statsByPlayer.values()).map(s => {
-            const diff = s.gamesWon - s.gamesLost;
-            const winPct = s.matchesPlayed > 0 ? Math.round((s.matchesWon / s.matchesPlayed) * 100) : 0;
-            
-            let eloVar = 0;
-            if (s.id) {
-                const history = eloHistory.filter(e => e.playerId === s.id && matchdayIds.has(e.eventId));
-                eloVar = history.reduce((sum, h) => sum + h.delta, 0);
-            }
-            
-            return { ...s, gamesDiff: diff, winPercentage: winPct, eloVar };
-        }).sort((a, b) => {
-            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
-            return b.gamesDiff - a.gamesDiff;
-        });
-
-        const mediaGamesPerPartita = partiteDisputate > 0 ? (gamesDisputati / partiteDisputate) : 0;
-
-        const top5 = [...rows]
-            .filter(r => r.matchesPlayed > 0)
-            .sort((a, b) => {
-                if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
-                return b.gamesDiff - a.gamesDiff;
-            })
-            .slice(0, 5);
-
         // Longest win streak across the chronological submatches
         const streakByPlayer = new Map<string, { label: string; current: number; best: number }>();
         const getStreak = (p: { name: string; surname: string }) => {
@@ -510,16 +484,6 @@ const StatistichePage: React.FC = () => {
             .sort((a, b) => b.played - a.played)
             .slice(0, 5);
 
-        const mostGamesWon = [...rows]
-            .filter(r => r.gamesWon > 0)
-            .sort((a, b) => b.gamesWon - a.gamesWon)
-            .slice(0, 3);
-
-        const mostGamesLost = [...rows]
-            .filter(r => r.gamesLost > 0)
-            .sort((a, b) => b.gamesLost - a.gamesLost)
-            .slice(0, 3);
-
         const bestPairsByWinRate = Array.from(pairAgg.values())
             .filter(p => p.played >= 2)
             .map(p => ({ ...p, winRate: p.played > 0 ? (p.wins / p.played) * 100 : 0 }))
@@ -533,10 +497,56 @@ const StatistichePage: React.FC = () => {
         
         // UPSET - matches where lower ELO team won
         const upsets: string[] = [];
-        const tournamentEloHistory = eloHistory.filter(h => matchdayIds.has(h.eventId));
+        const teamPlayerId = (player: any) => {
+            if (player?.id) return String(player.id);
+            const key = playerKey(player || { name: '', surname: '' });
+            return players.find(candidate => playerKey(candidate) === key)?.id || key;
+        };
+        const teamLocalMatches = chronological.flatMap(md =>
+            (md.subMatches || []).filter(sm => !sm.cancelled && !isBlankSets(sm.sets as any)).map((sm, index) => ({
+                id: `${md.id}:${index}`,
+                tournamentId: selectedTeamTournamentRootId,
+                date: md.date,
+                roundNumber: index + 1,
+                team1: (sm.team1Players || []).map(teamPlayerId),
+                team2: (sm.team2Players || []).map(teamPlayerId),
+                winner: sm.winner || null,
+            }))
+        );
+        const teamLocalElo = calculateTournamentLocalElo(teamLocalMatches);
+
+        const rows = Array.from(statsByPlayer.values()).map(s => {
+            const diff = s.gamesWon - s.gamesLost;
+            const winPct = s.matchesPlayed > 0 ? Math.round((s.matchesWon / s.matchesPlayed) * 100) : 0;
+            const eloVar = s.id ? (teamLocalElo.totalDeltas.get(s.id) || 0) : 0;
+            return { ...s, gamesDiff: diff, winPercentage: winPct, eloVar };
+        }).sort((a, b) => {
+            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+            return b.gamesDiff - a.gamesDiff;
+        });
+
+        const mediaGamesPerPartita = partiteDisputate > 0 ? (gamesDisputati / partiteDisputate) : 0;
+
+        const top5 = [...rows]
+            .filter(r => r.matchesPlayed > 0)
+            .sort((a, b) => {
+                if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+                return b.gamesDiff - a.gamesDiff;
+            })
+            .slice(0, 5);
+
+        const mostGamesWon = [...rows]
+            .filter(r => r.gamesWon > 0)
+            .sort((a, b) => b.gamesWon - a.gamesWon)
+            .slice(0, 3);
+
+        const mostGamesLost = [...rows]
+            .filter(r => r.gamesLost > 0)
+            .sort((a, b) => b.gamesLost - a.gamesLost)
+            .slice(0, 3);
         
         chronological.forEach(md => {
-            (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+            (md.subMatches || []).filter(sm => !sm.cancelled).forEach((sm, matchIndex) => {
                 if (isBlankSets(sm.sets as any)) return;
                 const t1Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team1 || 0), 0);
                 const t2Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team2 || 0), 0);
@@ -546,13 +556,9 @@ const StatistichePage: React.FC = () => {
                 const t2Players = sm.team2Players || [];
                 
                 if (winner && t1Players.length === 2 && t2Players.length === 2) {
-                    const matchHistory = tournamentEloHistory.filter(h => h.eventId === md.id);
-                    let team1EloAvg = 0; let team2EloAvg = 0;
-                    if (matchHistory.length > 0) {
-                        const t1Sum = t1Players.reduce((sum, p) => sum + (matchHistory.find(h => h.playerId === p.id)?.eloBefore || 1500), 0);
-                        const t2Sum = t2Players.reduce((sum, p) => sum + (matchHistory.find(h => h.playerId === p.id)?.eloBefore || 1500), 0);
-                        team1EloAvg = t1Sum / 2; team2EloAvg = t2Sum / 2;
-                    }
+                    const snapshot = teamLocalElo.matchSnapshots.get(`${md.id}:${matchIndex}`);
+                    const team1EloAvg = snapshot?.team1Average ?? 1500;
+                    const team2EloAvg = snapshot?.team2Average ?? 1500;
                     if ((winner === 'team1' && team1EloAvg < team2EloAvg - 20) || (winner === 'team2' && team2EloAvg < team1EloAvg - 20)) {
                         const winningTeam = winner === 'team1' ? t1Players : t2Players;
                         const losingTeam = winner === 'team1' ? t2Players : t1Players;
@@ -565,10 +571,18 @@ const StatistichePage: React.FC = () => {
 
         // ELO Gain/Loss
         const eloPerGiornata = new Map<string, Map<string, number>>();
-        tournamentEloHistory.forEach(h => {
-            if (!eloPerGiornata.has(h.playerId)) eloPerGiornata.set(h.playerId, new Map());
-            const currentDelta = eloPerGiornata.get(h.playerId)!.get(h.date) || 0;
-            eloPerGiornata.get(h.playerId)!.set(h.date, currentDelta + h.delta);
+        chronological.forEach(md => {
+            teamLocalMatches.filter(match => match.id.startsWith(`${md.id}:`)).forEach(match => {
+                const snapshot = teamLocalElo.matchSnapshots.get(match.id);
+                if (!snapshot) return;
+                [...match.team1.map(playerId => [playerId, snapshot.team1Delta] as const),
+                    ...match.team2.map(playerId => [playerId, snapshot.team2Delta] as const)]
+                    .forEach(([playerId, delta]) => {
+                        if (!eloPerGiornata.has(playerId)) eloPerGiornata.set(playerId, new Map());
+                        const currentDelta = eloPerGiornata.get(playerId)!.get(md.date) || 0;
+                        eloPerGiornata.get(playerId)!.set(md.date, currentDelta + delta);
+                    });
+            });
         });
 
         let maggiorGuadagnoElo: { player: any; guadagno: number; data: string }[] = [];
@@ -770,10 +784,11 @@ const StatistichePage: React.FC = () => {
             fine: new Date(giornate[giornate.length - 1]).toLocaleDateString('it-IT')
         };
 
-        // Get all tournament-related ELO history ONLY for players who actually played matches - COPY FROM RANKINGPAGE
-        const tournamentEloHistory = eloHistory.filter(h => 
-            tournamentIds.includes(h.eventId) && h.type === 'tournament' && playersInTournament.has(h.playerId)
-        );
+        const localTournamentMatches = tournamentMatches.map(match => ({
+            ...match,
+            tournamentId: `series:${seriesKey}`,
+        }));
+        const localTournamentElo = calculateTournamentLocalElo(localTournamentMatches);
 
         // Calcola statistiche per giocatore - use plain object instead of Map
         const playerStatsObj: Record<string, {
@@ -793,27 +808,21 @@ const StatistichePage: React.FC = () => {
 
         // Initialize stats ONLY for players who actually played matches in this tournament - COPY FROM RANKINGPAGE
         filteredPlayers.forEach(player => {
-            // Get player's ELO history for this tournament - EXACT COPY FROM RANKINGPAGE
-            const tournamentEloEntries = eloHistory.filter(e => 
-                e.playerId === player.id && tournamentIds.includes(e.eventId)
-            ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sort chronologically (oldest first)
-            
             const eloStart = 1500; // Rankings always start from 1500 per tournament series
-            const eloFinale = tournamentEloEntries.length > 0 ? tournamentEloEntries[tournamentEloEntries.length - 1].eloAfter : eloStart;
-            const variazioniElo = tournamentEloEntries.map(h => ({ delta: h.delta, date: h.date }));
-            
-            // Calculate tournament-specific ELO - EXACT COPY FROM RANKINGPAGE
-            let displayElo = player.currentElo;
-            if (tournamentEloEntries.length > 0) {
-                // Rankings always start from 1500 per tournament series
-                const initialElo = 1500;
-                // Calculate total delta for this tournament
-                const tournamentDelta = tournamentEloEntries.reduce((sum, entry) => sum + entry.delta, 0);
-                // Display ELO = initial ELO + tournament variations
-                displayElo = initialElo + tournamentDelta;
-            }
-            
-            const variazioneEloTotale = displayElo - eloStart;
+            const variazioniElo = tournamentIds.map(tournamentId => {
+                const tournament = tournaments.find(item => item.id === tournamentId);
+                const delta = localTournamentMatches
+                    .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
+                    .reduce((sum, match) => {
+                        const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                        if (!snapshot) return sum;
+                        if (match.team1.includes(player.id)) return sum + snapshot.team1Delta;
+                        if (match.team2.includes(player.id)) return sum + snapshot.team2Delta;
+                        return sum;
+                    }, 0);
+                return { delta, date: tournament?.date || '' };
+            }).filter(entry => entry.delta !== 0 && entry.date);
+            const variazioneEloTotale = localTournamentElo.totalDeltas.get(player.id) || 0;
 
             playerStatsObj[player.id] = {
                 player: clonePlayer(player),
@@ -1014,30 +1023,9 @@ const StatistichePage: React.FC = () => {
             const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
             
             if (team1Players.length === 2 && team2Players.length === 2) {
-                // Get ELO at time of match using history
-                const matchHistory = tournamentEloHistory.filter(h => 
-                    [...match.team1, ...match.team2].includes(h.playerId) &&
-                    h.date === match.date
-                );
-                
-                let team1EloAvg = 0;
-                let team2EloAvg = 0;
-                
-                if (matchHistory.length > 0) {
-                    const team1EloSum = match.team1.reduce((sum, id) => {
-                        const h = matchHistory.find(h => h.playerId === id);
-                        return sum + (h ? h.eloBefore : 1500);
-                    }, 0);
-                    const team2EloSum = match.team2.reduce((sum, id) => {
-                        const h = matchHistory.find(h => h.playerId === id);
-                        return sum + (h ? h.eloBefore : 1500);
-                    }, 0);
-                    team1EloAvg = team1EloSum / 2;
-                    team2EloAvg = team2EloSum / 2;
-                } else {
-                    team1EloAvg = (team1Players[0].currentElo + team1Players[1].currentElo) / 2;
-                    team2EloAvg = (team2Players[0].currentElo + team2Players[1].currentElo) / 2;
-                }
+                const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                const team1EloAvg = snapshot?.team1Average ?? 1500;
+                const team2EloAvg = snapshot?.team2Average ?? 1500;
                 
                 if ((match.winner === 'team1' && team1EloAvg < team2EloAvg - 20) || 
                     (match.winner === 'team2' && team2EloAvg < team1EloAvg - 20)) {
@@ -1054,14 +1042,21 @@ const StatistichePage: React.FC = () => {
         // Maggior guadagno e perdita ELO in una giornata
         const eloPerGiornata = new Map<string, Map<string, number>>(); // playerId -> giornata -> delta
         
-        giornate.forEach(giornata => {
-            const giornataHistory = tournamentEloHistory.filter(h => h.date === giornata);
-            giornataHistory.forEach(h => {
-                if (!eloPerGiornata.has(h.playerId)) {
-                    eloPerGiornata.set(h.playerId, new Map());
-                }
-                const currentDelta = eloPerGiornata.get(h.playerId)!.get(giornata) || 0;
-                eloPerGiornata.get(h.playerId)!.set(giornata, currentDelta + h.delta);
+        tournamentIds.forEach(tournamentId => {
+            const tournament = tournaments.find(item => item.id === tournamentId);
+            if (!tournament) return;
+            localTournamentMatches
+                .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
+                .forEach(match => {
+                    const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                    if (!snapshot) return;
+                    [...match.team1.map(playerId => [playerId, snapshot.team1Delta] as const),
+                        ...match.team2.map(playerId => [playerId, snapshot.team2Delta] as const)]
+                        .forEach(([playerId, delta]) => {
+                            if (!eloPerGiornata.has(playerId)) eloPerGiornata.set(playerId, new Map());
+                            const currentDelta = eloPerGiornata.get(playerId)!.get(tournament.date) || 0;
+                            eloPerGiornata.get(playerId)!.set(tournament.date, currentDelta + delta);
+                        });
             });
         });
 
@@ -1156,9 +1151,9 @@ const StatistichePage: React.FC = () => {
                         const playerInTeam2 = team2Players.some(p => p.id === s.player.id);
                         
                         if ((playerInTeam1 && match.winner === 'team1') || (playerInTeam2 && match.winner === 'team2')) {
-                            // Use same logic as UPSET calculation
-                            const team1EloAvg = (team1Players[0].currentElo + team1Players[1].currentElo) / 2;
-                            const team2EloAvg = (team2Players[0].currentElo + team2Players[1].currentElo) / 2;
+                            const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                            const team1EloAvg = snapshot?.team1Average ?? 1500;
+                            const team2EloAvg = snapshot?.team2Average ?? 1500;
                             
                             // Player's team won against stronger team (same logic as UPSET)
                             if ((playerInTeam1 && team1EloAvg < team2EloAvg - 20) || 

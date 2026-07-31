@@ -5,6 +5,7 @@ import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import { printTeamTournamentReport } from '../services/printService.ts';
 import { calculateTeamTournamentStandings } from '../services/teamTournamentService.ts';
+import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 
 type Page = 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'Statistiche' | 'Admin' | 'TeamMatchday' | 'TeamSummary';
 
@@ -28,7 +29,7 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
     rootTournamentId,
     clearNavigationState,
 }) => {
-    const { tournaments, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentMatchdays, getTeamTournamentFixtures, players, eloHistory } = usePadelStore();
+    const { tournaments, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentMatchdays, getTeamTournamentFixtures, players } = usePadelStore();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -171,10 +172,7 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
     }, [config, standingsRR, fixtureByPhaseSlot, matchdayByTournamentDayId, teamNameByNumber]);
 
     const playerEloStats = useMemo(() => {
-        if (!teams.length || !matchdays.length || !players.length || !eloHistory.length) return [];
-        
-        // Find all matchday IDs for this tournament
-        const matchdayIds = new Set(matchdays.map(m => m.id));
+        if (!teams.length || !matchdays.length || !players.length) return [];
 
         // Map teams to get players and their team
         const playerToTeamMap = new Map<string, string>();
@@ -187,11 +185,28 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
         // Filter players that belong to any team
         const registeredPlayers = players.filter(p => playerToTeamMap.has(p.id));
 
-        // For each player, find all eloHistory entries for this tournament's matchdays
+        const resolvePlayerId = (entry: { id?: string; name: string; surname: string }) =>
+            entry.id || players.find(player =>
+                player.name.trim().toLowerCase() === entry.name.trim().toLowerCase()
+                && player.surname.trim().toLowerCase() === entry.surname.trim().toLowerCase()
+            )?.id || '';
+        const localMatches = matchdays.flatMap(matchday => (matchday.subMatches || [])
+            .filter(subMatch => !subMatch.cancelled && Array.isArray(subMatch.sets)
+                && subMatch.sets.some(set => Number(set.team1 || 0) !== 0 || Number(set.team2 || 0) !== 0))
+            .map((subMatch, index) => ({
+                id: `${matchday.id}:${subMatch.matchIndex ?? index}`,
+                tournamentId: `team-series:${rootTournamentId}`,
+                date: matchday.date,
+                roundNumber: (Number(matchday.roundNumber) || 0) * 100 + (subMatch.matchIndex ?? index),
+                team1: (subMatch.team1Players || []).map(resolvePlayerId).filter(Boolean),
+                team2: (subMatch.team2Players || []).map(resolvePlayerId).filter(Boolean),
+                winner: subMatch.winner,
+            })));
+        const localElo = calculateTournamentLocalElo(localMatches);
+
         const stats = registeredPlayers.map(p => {
-            const history = eloHistory.filter(e => e.playerId === p.id && matchdayIds.has(e.eventId));
-            const matchesPlayed = history.length;
-            const deltaVar = history.reduce((sum, h) => sum + h.delta, 0);
+            const matchesPlayed = localMatches.filter(match => match.team1.includes(p.id) || match.team2.includes(p.id)).length;
+            const deltaVar = localElo.totalDeltas.get(p.id) || 0;
             
             return {
                 player: p,
@@ -204,7 +219,7 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
         // Filter out players with 0 matches if preferred, or keep them. Let's keep them and sort.
         // Sort by variation desc
         return stats.sort((a, b) => b.eloVar - a.eloVar);
-    }, [teams, matchdays, players, eloHistory]);
+    }, [teams, matchdays, players, rootTournamentId]);
 
     const playoffFixturesSorted = useMemo(() => {
         return fixtures

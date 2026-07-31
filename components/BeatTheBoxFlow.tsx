@@ -61,6 +61,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  const [showBoxStandingsModal, setShowBoxStandingsModal] = useState(false);
  const [showSaveCalendarConfirm, setShowSaveCalendarConfirm] = useState(false);
  const [tournamentStartingElos, setTournamentStartingElos] = useState<Map<string, number>>(new Map());
+ const [tournamentStrengthElos, setTournamentStrengthElos] = useState<Map<string, number>>(new Map());
  
  const numBoxes = calculateNumBoxes(pairs.length);
  const numPairs = pairs.length;
@@ -239,9 +240,10 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  throw new Error('Failed to fetch starting ELOs');
  }
  
- const { startingElos } = await response.json();
+ const { startingElos, strengthElos } = await response.json();
  const elosMap = new Map(Object.entries(startingElos).map(([id, elo]) => [id, elo as number]));
  setTournamentStartingElos(elosMap);
+ setTournamentStrengthElos(new Map(Object.entries(strengthElos || startingElos).map(([id, elo]) => [id, elo as number])));
  
  console.log('✅ ELO di partenza ricevuti:', Object.keys(startingElos).length);
  Object.entries(startingElos).forEach(([id, elo]) => {
@@ -256,6 +258,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  const fallbackElos = new Map<string, number>();
  pairs.flatMap(([p1, p2]) => [p1.id, p2.id]).forEach(id => fallbackElos.set(id, 1500));
  setTournamentStartingElos(fallbackElos);
+ setTournamentStrengthElos(new Map(pairs.flat().map(player => [player.id, player.currentElo])));
  }
  };
  
@@ -269,7 +272,11 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  if (step === 'animating' && tournamentStartingElos.size > 0) {
  setTimeout(() => {
  // Ordina coppie per ELO
- const sortedPairs = sortPairsByElo(pairs);
+ const pairsWithStrengthElo = pairs.map(([player1, player2]) => [
+     { ...player1, currentElo: tournamentStrengthElos.get(player1.id) ?? player1.currentElo },
+     { ...player2, currentElo: tournamentStrengthElos.get(player2.id) ?? player2.currentElo },
+ ] as [Player, Player]);
+ const sortedPairs = sortPairsByElo(pairsWithStrengthElo);
  
  // Distribuzione nei box
  const boxes = distributePlayersIntoBoxes(sortedPairs);
@@ -281,7 +288,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  setStep('boxes');
  }, 3000); // Durata animazione
  }
- }, [step, pairs, tournamentDate, tournamentStartingElos]);
+ }, [step, pairs, tournamentDate, tournamentStartingElos, tournamentStrengthElos]);
  
  // Conferma salvataggio calendario
  const handleConfirmSaveCalendar = () => {

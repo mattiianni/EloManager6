@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player, TeamTournamentConfig, TeamTournamentFixture, TeamTournamentTeam, TournamentType, TeamTournamentMatchday } from '../types.ts';
 import { generatePairs, DrawMode } from '../services/drawService.ts';
@@ -9,7 +9,7 @@ import { HIGSheet } from '../components/ui/HIGSheet';
 import TournamentFlow from '../components/TournamentFlow.tsx';
 import ShuffleAnimation from '../components/ui/ShuffleAnimation.tsx';
 import { ShuffleIcon, ChevronDownIcon, PencilIcon, CalendarIcon, UsersIcon, TrophyIcon, PlusIcon, ArrowUpRightIcon, ArrowLeftIcon } from '../components/ui/Icons.tsx';
-import { useAuth } from '../hooks/useAuth.tsx';
+import { getAuthToken, useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
@@ -156,6 +156,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [isSavingTeamTournamentTeam, setIsSavingTeamTournamentTeam] = useState(false);
     const [isCompletingTeamTournamentConfiguration, setIsCompletingTeamTournamentConfiguration] = useState(false);
     const [teamTournamentConfigView, setTeamTournamentConfigView] = useState<TeamTournamentConfigView>('config');
+    const [seriesStrengthElos, setSeriesStrengthElos] = useState<Map<string, number>>(new Map());
 
     // Similarity Check State
     const [similarityCheckQueue, setSimilarityCheckQueue] = useState<{index: number, name: string, surname: string}[]>([]);
@@ -163,8 +164,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [similarityCheckCurrentPlayers, setSimilarityCheckCurrentPlayers] = useState<typeof editTeamPlayers>([]);
     const [isSimilarityModalOpen, setIsSimilarityModalOpen] = useState(false);
     
-    const sortedPlayers = [...players].sort((a,b) => a.name.localeCompare(b.name));
-    const participantPlayers = players.filter(p => participants.includes(p.id));
+    const playersWithSeriesStrength = useMemo(() => players.map(player => ({
+        ...player,
+        currentElo: seriesStrengthElos.get(player.id) ?? player.currentElo,
+    })), [players, seriesStrengthElos]);
+    const sortedPlayers = [...playersWithSeriesStrength].sort((a,b) => a.name.localeCompare(b.name));
+    const participantPlayers = playersWithSeriesStrength.filter(p => participants.includes(p.id));
     const isNewGiornataFlow = !!newGiornataForTournament;
     const isLauncherContext = launchMode === 'launcher';
     const isTeamTournamentFlow = activeFlow === 'team-tournament';
@@ -174,6 +179,40 @@ const DrawPage: React.FC<DrawPageProps> = ({
 
     const requiredParticipants = numPairs * 2;
     const canSelectMore = participants.length < requiredParticipants;
+
+    useEffect(() => {
+        if (!newGiornataForTournament || players.length === 0) {
+            setSeriesStrengthElos(new Map());
+            return;
+        }
+        let cancelled = false;
+        const loadSeriesStrength = async () => {
+            try {
+                const token = getAuthToken();
+                const response = await fetch('/api/tournaments/starting-elos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({
+                        tournamentName: newGiornataForTournament,
+                        giornataName: newGiornataForTournament,
+                        playerIds: players.map(player => player.id),
+                        date: new Date().toISOString().split('T')[0],
+                    }),
+                });
+                if (!response.ok) throw new Error('Impossibile recuperare gli ELO del torneo');
+                const { strengthElos } = await response.json();
+                if (!cancelled) setSeriesStrengthElos(new Map(Object.entries(strengthElos || {}).map(([id, elo]) => [id, Number(elo)])));
+            } catch (loadError) {
+                console.error('Errore nel caricamento ELO di forza del torneo:', loadError);
+                if (!cancelled) setSeriesStrengthElos(new Map());
+            }
+        };
+        loadSeriesStrength();
+        return () => { cancelled = true; };
+    }, [newGiornataForTournament, players]);
 
     const filteredSortedPlayers = sortedPlayers.filter(p => 
         `${p.name} ${p.surname}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -189,7 +228,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     // Auto-select seeds for Seeded mode
     useEffect(() => {
         if (mode === 'Seeded' && participants.length > 0) {
-            const topSeeds = players
+            const topSeeds = playersWithSeriesStrength
                 .filter(p => participants.includes(p.id))
                 .sort((a, b) => b.currentElo - a.currentElo)
                 .slice(0, numPairs)
@@ -198,7 +237,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
         } else {
             setSeeds([]);
         }
-    }, [participants, mode, numPairs, players]);
+    }, [participants, mode, numPairs, playersWithSeriesStrength]);
 
     // Reset everything when mode changes
     useEffect(() => {
@@ -459,8 +498,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
             try {
                 const pairs: [Player, Player][] = manualPairs.map(pairIds => {
                     console.log('Processing pair:', pairIds, 'Available players:', players.length);
-                    const p1 = players.find(p => p.id === pairIds[0]);
-                    const p2 = players.find(p => p.id === pairIds[1]);
+                    const p1 = playersWithSeriesStrength.find(p => p.id === pairIds[0]);
+                    const p2 = playersWithSeriesStrength.find(p => p.id === pairIds[1]);
                     console.log('Found players:', { p1: p1?.name, p2: p2?.name });
                     if (!p1 || !p2) {
                         throw new Error(`Player not found in pair: ${pairIds[0]} or ${pairIds[1]}`);

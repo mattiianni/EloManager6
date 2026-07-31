@@ -51,6 +51,42 @@ function calculateEloChange(elo1, elo2, score1, tournamentType, phase) {
     return { delta1, delta2 };
 }
 
+function hasEnteredScore(sets) {
+    return Array.isArray(sets) && sets.length > 0
+        && sets.some(set => Number(set?.team1 || 0) !== 0 || Number(set?.team2 || 0) !== 0);
+}
+
+async function getSeriesLocalElos({ seriesKey, date, workspaceId, playerIds, excludeTournamentId = null }) {
+    if (!seriesKey || !date || !Array.isArray(playerIds) || playerIds.length === 0) return new Map();
+    const rows = await sql`
+        SELECT m.id, m.date, m.created_at, m.round_number, m.phase, m.winner, m.sets,
+               m.team1_p1_id, m.team1_p2_id, m.team2_p1_id, m.team2_p2_id, t.type
+        FROM matches m
+        JOIN tournaments t ON t.id = m.tournament_id
+        WHERE m.workspace_id = ${workspaceId}
+          AND COALESCE(t.parent_tournament_name, t.giornata_name, t.name) = ${seriesKey}
+          AND t.date <= ${date}
+          AND (${excludeTournamentId}::uuid IS NULL OR t.id <> ${excludeTournamentId}::uuid)
+          AND m.winner IN ('team1', 'team2', 'draw')
+        ORDER BY t.date ASC, m.round_number ASC NULLS LAST, m.created_at ASC, m.id ASC
+    `;
+    const localElos = new Map();
+    const getLocalElo = playerId => localElos.get(playerId) ?? INITIAL_ELO;
+    rows.forEach(match => {
+        if (!hasEnteredScore(match.sets)) return;
+        const team1 = [match.team1_p1_id, match.team1_p2_id].filter(Boolean);
+        const team2 = [match.team2_p1_id, match.team2_p2_id].filter(Boolean);
+        if (team1.length === 0 || team2.length === 0) return;
+        const average1 = team1.reduce((sum, id) => sum + getLocalElo(id), 0) / team1.length;
+        const average2 = team2.reduce((sum, id) => sum + getLocalElo(id), 0) / team2.length;
+        const score1 = match.winner === 'team1' ? 1 : match.winner === 'team2' ? 0 : 0.5;
+        const { delta1, delta2 } = calculateEloChange(average1, average2, score1, match.type, match.phase);
+        team1.forEach(id => localElos.set(id, getLocalElo(id) + delta1));
+        team2.forEach(id => localElos.set(id, getLocalElo(id) + delta2));
+    });
+    return new Map(playerIds.filter(playerId => localElos.has(playerId)).map(playerId => [playerId, localElos.get(playerId)]));
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1342,54 +1378,40 @@ app.post('/api/admin/recalculate-elos', requireAdmin, async (req, res) => {
 // POST /api/admin/recalculate-elos-full - Full ELO recalculation: reset all + replay all matches chronologically
 app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
     try {
-        // 1. Reset all players to initial_elo
-        await sql`UPDATE players SET current_elo = initial_elo`;
-
-        // 2. Clear all elo_history
-        await sql`DELETE FROM elo_history`;
-
-        // 3. Fetch normal matches
+        // Every tournament/matchday has its own 1500-based ELO timeline. The
+        // global ELO is 1500 plus the sum of the deltas produced by all events.
         const normalMatches = await sql`
-            SELECT m.id, m.date, m.team1_p1_id, m.team1_p2_id, m.team2_p1_id, m.team2_p2_id, m.winner, m.tournament_id, t.workspace_id, t.name as tournament_name
+            SELECT m.id, m.date, m.created_at, m.round_number, m.sets,
+                   m.team1_p1_id, m.team1_p2_id, m.team2_p1_id, m.team2_p2_id,
+                   m.winner, m.tournament_id, t.workspace_id, t.name as tournament_name,
+                   COALESCE(t.parent_tournament_name, t.giornata_name, t.name) AS series_key
             FROM matches m
             JOIN tournaments t ON m.tournament_id = t.id
             WHERE m.winner IS NOT NULL
-            ORDER BY m.date ASC
+            ORDER BY m.date ASC, m.round_number ASC NULLS LAST, m.created_at ASC, m.id ASC
         `;
 
-        // 4. Fetch team tournament matches
         const teamMatches = await sql`
-            SELECT tm.id, tm.team1_players, tm.team2_players, tm.winner as team_winner, tm.matchday_id, md.date, t.workspace_id, t.name as tournament_name, md.tournament_day_id as tournament_id
+            SELECT tm.id, tm.team1_players, tm.team2_players, tm.sets, tm.winner as team_winner,
+                   tm.match_index, tm.matchday_id, md.date, t.workspace_id,
+                   t.name as tournament_name, md.tournament_day_id as tournament_id,
+                   md.root_tournament_id AS series_key
             FROM team_tournament_matchday_matches tm
             JOIN team_tournament_matchdays md ON tm.matchday_id = md.id
             JOIN tournaments t ON md.tournament_day_id = t.id
             WHERE tm.winner IS NOT NULL AND tm.cancelled = FALSE
-            ORDER BY md.date ASC
+            ORDER BY md.date ASC, tm.match_index ASC, tm.id ASC
         `;
 
-        // 5. Merge and sort all matches chronologically
-        const allMatches = [
-            ...normalMatches.map(m => ({ ...m, isTeamMatch: false, sortDate: new Date(m.date) })),
-            ...teamMatches.map(m => ({ ...m, isTeamMatch: true, sortDate: new Date(m.date) })),
-        ].sort((a, b) => a.sortDate - b.sortDate);
-
-        const kFactor = 16;
-        const eloCache = {}; // player_id -> current_elo
-
         // Preload all players for name-based lookup
-        const allPlayersRes = await sql`SELECT id, name, surname, initial_elo, current_elo, workspace_id FROM players`;
+        const allPlayersRes = await sql`SELECT id, name, surname, workspace_id FROM players`;
         const nameToIdMap = {}; // workspace_id -> "name surname" -> id
-        
         for (const p of allPlayersRes) {
-            eloCache[p.id] = parseFloat(p.initial_elo);
             if (!nameToIdMap[p.workspace_id]) nameToIdMap[p.workspace_id] = {};
             const key = `${p.name.trim().toLowerCase()} ${p.surname.trim().toLowerCase()}`;
             nameToIdMap[p.workspace_id][key] = p.id;
         }
-
-        const getElo = async (id) => {
-            return eloCache[id] !== undefined ? eloCache[id] : null;
-        };
+        const validPlayerIds = new Set(allPlayersRes.map(player => player.id));
 
         const extractIds = (arr, wsId) => (arr || []).map(item => {
             if (!item) return null;
@@ -1403,67 +1425,115 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
                 }
             }
             return null;
-        }).filter(Boolean);
+        }).filter(id => id && validPlayerIds.has(id));
 
+        const events = new Map();
+        const ensureEvent = ({ key, seriesKey, eventId, type, date, workspaceId, sourceLabel }) => {
+            if (!events.has(key)) {
+                events.set(key, { key, seriesKey, eventId, type, date, workspaceId, sourceLabel, matches: [] });
+            }
+            return events.get(key);
+        };
+
+        normalMatches.forEach(match => {
+            if (!hasEnteredScore(match.sets)) return;
+            ensureEvent({
+                key: `tournament:${match.tournament_id}`,
+                seriesKey: `tournament-series:${match.workspace_id}:${match.series_key}`,
+                eventId: match.tournament_id,
+                type: 'tournament',
+                date: match.date,
+                workspaceId: match.workspace_id,
+                sourceLabel: match.tournament_name,
+            }).matches.push({
+                id: match.id,
+                order: Number(match.round_number) || Number.MAX_SAFE_INTEGER,
+                createdAt: match.created_at,
+                team1Ids: [match.team1_p1_id, match.team1_p2_id].filter(id => validPlayerIds.has(id)),
+                team2Ids: [match.team2_p1_id, match.team2_p2_id].filter(id => validPlayerIds.has(id)),
+                winner: match.winner,
+            });
+        });
+
+        teamMatches.forEach(match => {
+            if (!hasEnteredScore(match.sets)) return;
+            ensureEvent({
+                key: `team_matchday:${match.matchday_id}`,
+                seriesKey: `team-series:${match.workspace_id}:${match.series_key}`,
+                eventId: match.matchday_id,
+                type: 'team_tournament_matchday',
+                date: match.date,
+                workspaceId: match.workspace_id,
+                sourceLabel: match.tournament_name,
+            }).matches.push({
+                id: match.id,
+                order: Number(match.match_index) || Number.MAX_SAFE_INTEGER,
+                createdAt: match.date,
+                team1Ids: extractIds(match.team1_players, match.workspace_id),
+                team2Ids: extractIds(match.team2_players, match.workspace_id),
+                winner: match.team_winner,
+            });
+        });
+
+        const orderedEvents = [...events.values()].sort((a, b) => {
+            const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+            return dateDiff || a.key.localeCompare(b.key);
+        });
+        const globalElos = Object.fromEntries(allPlayersRes.map(player => [player.id, INITIAL_ELO]));
+        const localElosBySeries = new Map();
+        const historyRows = [];
         let processed = 0;
-        for (const match of allMatches) {
-            let team1Ids, team2Ids, score1;
 
-            if (match.isTeamMatch) {
-                team1Ids = extractIds(match.team1_players, match.workspace_id);
-                team2Ids = extractIds(match.team2_players, match.workspace_id);
-                if (match.team_winner === 'team1') score1 = 1;
-                else if (match.team_winner === 'team2') score1 = 0;
-                else if (match.team_winner === 'draw') score1 = 0.5;
-                else continue;
-            } else {
-                team1Ids = [match.team1_p1_id, match.team1_p2_id].filter(Boolean);
-                team2Ids = [match.team2_p1_id, match.team2_p2_id].filter(Boolean);
-                if (match.winner === 'team1') score1 = 1;
-                else if (match.winner === 'team2') score1 = 0;
-                else if (match.winner === 'draw') score1 = 0.5;
-                else continue;
+        for (const event of orderedEvents) {
+            const localElos = localElosBySeries.get(event.seriesKey) || {};
+            localElosBySeries.set(event.seriesKey, localElos);
+            const eventDeltas = new Map();
+            const getLocalElo = id => localElos[id] ?? INITIAL_ELO;
+            const orderedMatches = [...event.matches].sort((a, b) => {
+                if (a.order !== b.order) return a.order - b.order;
+                const createdDiff = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+                return createdDiff || String(a.id).localeCompare(String(b.id));
+            });
+
+            for (const match of orderedMatches) {
+                if (match.team1Ids.length === 0 || match.team2Ids.length === 0) continue;
+                const score1 = match.winner === 'team1' ? 1 : match.winner === 'team2' ? 0 : match.winner === 'draw' ? 0.5 : null;
+                if (score1 === null) continue;
+                const team1Average = match.team1Ids.reduce((sum, id) => sum + getLocalElo(id), 0) / match.team1Ids.length;
+                const team2Average = match.team2Ids.reduce((sum, id) => sum + getLocalElo(id), 0) / match.team2Ids.length;
+                const { delta1, delta2 } = calculateEloChange(team1Average, team2Average, score1);
+                match.team1Ids.forEach(id => {
+                    localElos[id] = getLocalElo(id) + delta1;
+                    eventDeltas.set(id, (eventDeltas.get(id) || 0) + delta1);
+                });
+                match.team2Ids.forEach(id => {
+                    localElos[id] = getLocalElo(id) + delta2;
+                    eventDeltas.set(id, (eventDeltas.get(id) || 0) + delta2);
+                });
+                processed++;
             }
 
-            if (team1Ids.length === 0 || team2Ids.length === 0) continue;
-
-            const validT1 = [], validT2 = [];
-            for (const id of team1Ids) { if (await getElo(id) !== null) validT1.push(id); }
-            for (const id of team2Ids) { if (await getElo(id) !== null) validT2.push(id); }
-            if (validT1.length === 0 || validT2.length === 0) continue;
-
-            const t1Avg = validT1.reduce((s, id) => s + eloCache[id], 0) / validT1.length;
-            const t2Avg = validT2.reduce((s, id) => s + eloCache[id], 0) / validT2.length;
-
-            const expected1 = 1 / (1 + Math.pow(10, (t2Avg - t1Avg) / 400));
-            const delta1 = kFactor * (score1 - expected1);
-            const delta2 = kFactor * ((1 - score1) - (1 - expected1));
-
-            const eventId = match.isTeamMatch ? match.matchday_id : match.id;
-            const type = match.isTeamMatch ? 'team_tournament_matchday' : 'tournament';
-            const dateStr = match.sortDate.toISOString();
-
-            for (const id of validT1) {
-                const oldElo = eloCache[id];
-                const newElo = oldElo + delta1;
-                await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${id}`;
-                await sql`INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                    VALUES (${eventId}, ${id}, ${oldElo}, ${newElo}, ${delta1}, ${dateStr}, ${type}, ${match.workspace_id}, ${match.tournament_name})`;
-                eloCache[id] = newElo;
-            }
-            for (const id of validT2) {
-                const oldElo = eloCache[id];
-                const newElo = oldElo + delta2;
-                await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${id}`;
-                await sql`INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                    VALUES (${eventId}, ${id}, ${oldElo}, ${newElo}, ${delta2}, ${dateStr}, ${type}, ${match.workspace_id}, ${match.tournament_name})`;
-                eloCache[id] = newElo;
-            }
-            processed++;
+            eventDeltas.forEach((delta, playerId) => {
+                const eloBefore = globalElos[playerId] ?? INITIAL_ELO;
+                const eloAfter = eloBefore + delta;
+                historyRows.push({ ...event, playerId, delta, eloBefore, eloAfter });
+                globalElos[playerId] = eloAfter;
+            });
         }
 
-        logger.info('Full ELO recalculation completed', { totalMatches: allMatches.length, processed });
-        res.json({ success: true, totalMatches: allMatches.length, processed });
+        const queries = [
+            sql`UPDATE players SET current_elo = ${INITIAL_ELO}`,
+            sql`DELETE FROM elo_history`,
+            ...historyRows.flatMap(row => [
+                sql`UPDATE players SET current_elo = ${row.eloAfter} WHERE id = ${row.playerId}`,
+                sql`INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${row.eventId}, ${row.playerId}, ${row.eloBefore}, ${row.eloAfter}, ${row.delta}, ${row.date}, ${row.type}, ${row.workspaceId}, ${row.sourceLabel})`,
+            ]),
+        ];
+        await sql.transaction(queries);
+
+        logger.info('Full ELO recalculation completed', { events: orderedEvents.length, totalMatches: normalMatches.length + teamMatches.length, processed });
+        res.json({ success: true, events: orderedEvents.length, totalMatches: normalMatches.length + teamMatches.length, processed });
     } catch (error) {
         logger.error('Failed to run full ELO recalculation', error);
         res.status(500).json({ message: 'Errore nel ricalcolo ELO completo', error: error.message });
@@ -1802,11 +1872,11 @@ app.post('/api/tournaments/starting-elos', async (req, res) => {
         const previousGiornate = await sql`
             SELECT id, date
             FROM tournaments
-            WHERE name = ${searchKey}
-            AND date <= ${date}
+            WHERE COALESCE(parent_tournament_name, giornata_name, name) = ${searchKey}
+            AND date < ${date}
             AND status = 'completed'
             AND workspace_id = ${req.workspaceId}
-            ORDER BY date DESC, id DESC
+            ORDER BY date ASC, id ASC
         `;
         
         logger.debug("Starting ELOs request", { 
@@ -1818,35 +1888,36 @@ app.post('/api/tournaments/starting-elos', async (req, res) => {
         });
         
         const startingElos = {};
+        const strengthElos = {};
+        const playerRows = await sql`
+            SELECT id, current_elo FROM players
+            WHERE id = ANY(${playerIds}::uuid[]) AND workspace_id = ${req.workspaceId}
+        `;
+        const globalEloByPlayer = new Map(playerRows.map(player => [player.id, Number(player.current_elo)]));
+        const previousLocalElos = previousGiornate.length > 0
+            ? await getSeriesLocalElos({ seriesKey: searchKey, date, workspaceId: req.workspaceId, playerIds })
+            : new Map();
         
         for (const playerId of playerIds) {
             if (previousGiornate.length > 0) {
-                // Get ELO from the most recent previous giornata
-                const lastGiornataId = previousGiornate[0].id;
-                const eloHistoryResult = await sql`
-                    SELECT elo_after
-                    FROM elo_history
-                    WHERE player_id = ${playerId}
-                    AND event_id = ${lastGiornataId}
-                    AND type = 'tournament'
-                    AND workspace_id = ${req.workspaceId}
-                `;
-                
-                if (eloHistoryResult.length > 0) {
-                    startingElos[playerId] = eloHistoryResult[0].elo_after;
+                if (previousLocalElos.has(playerId)) {
+                    startingElos[playerId] = previousLocalElos.get(playerId);
+                    strengthElos[playerId] = startingElos[playerId];
                     logger.debug("Player starting ELO from previous giornata", { 
                         playerId, 
-                        elo: eloHistoryResult[0].elo_after 
+                        elo: startingElos[playerId]
                     });
                 } else {
-                    // Player didn't participate in previous giornata
-                    startingElos[playerId] = 1500;
-                    logger.debug("Player starting ELO (first time)", { playerId, elo: 1500 });
+                    startingElos[playerId] = INITIAL_ELO;
+                    strengthElos[playerId] = globalEloByPlayer.get(playerId) ?? INITIAL_ELO;
+                    logger.debug("Player strength ELO from global fallback", { playerId, elo: strengthElos[playerId] });
                 }
             } else {
-                // First giornata of this tournament series
-                startingElos[playerId] = 1500;
-                logger.debug("Player starting ELO (new tournament)", { playerId, elo: 1500 });
+                // New tournament: global ELO is used only as the strength
+                // reference for seeding/draw composition.
+                startingElos[playerId] = INITIAL_ELO;
+                strengthElos[playerId] = globalEloByPlayer.get(playerId) ?? INITIAL_ELO;
+                logger.debug("Player strength ELO (new tournament)", { playerId, elo: strengthElos[playerId] });
             }
         }
         
@@ -1856,7 +1927,7 @@ app.post('/api/tournaments/starting-elos', async (req, res) => {
             playersCount: Object.keys(startingElos).length 
         });
         
-        res.json({ startingElos });
+        res.json({ startingElos, strengthElos });
     } catch (error) {
         logger.error('Failed to get starting ELOs', error);
         res.status(500).json({ message: 'Failed to get starting ELOs', error: error.message });
@@ -4162,7 +4233,7 @@ app.get('/api/team-tournament-matchdays/by-tournament/:tournamentDayId', async (
 // Funzione per applicare l'ELO per una giornata team tournament
 async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     const matchdayResult = await sql`
-        SELECT m.id, m.tournament_day_id, m.phase, t.name AS day_name, t.date, r.name AS root_name
+        SELECT m.id, m.root_tournament_id, m.tournament_day_id, m.phase, t.name AS day_name, t.date, r.name AS root_name
         FROM team_tournament_matchdays m
         JOIN tournaments t ON t.id = m.tournament_day_id
         LEFT JOIN tournaments r ON r.id = m.root_tournament_id
@@ -4195,8 +4266,6 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     `;
 
     const playerDeltas = new Map();
-    const currentElos = new Map();
-
     const getPlayerId = async (p) => {
         if (!p || (!p.name && !p.surname)) return null;
         if (p.id) return p.id;
@@ -4207,18 +4276,41 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
         `;
         return rows.length > 0 ? rows[0].id : null;
     };
+    const previousMatches = await sql`
+        SELECT previous_match.team1_players, previous_match.team2_players, previous_match.sets, previous_match.winner, previous_md.phase
+        FROM team_tournament_matchday_matches previous_match
+        JOIN team_tournament_matchdays previous_md ON previous_md.id = previous_match.matchday_id
+        JOIN tournaments previous_day ON previous_day.id = previous_md.tournament_day_id
+        WHERE previous_day.workspace_id = ${workspaceId}
+          AND previous_md.root_tournament_id = ${matchday.root_tournament_id}
+          AND previous_day.date <= ${matchday.date}
+          AND previous_md.id <> ${matchdayId}
+          AND previous_match.cancelled = FALSE
+          AND previous_match.winner IN ('team1', 'team2', 'draw')
+        ORDER BY previous_day.date ASC, previous_md.round_number ASC NULLS LAST, previous_match.match_index ASC, previous_match.id ASC
+    `;
+    const localElos = new Map();
+    for (const previous of previousMatches) {
+        if (!hasEnteredScore(previous.sets)) continue;
+        const team1Ids = (await Promise.all((previous.team1_players || []).map(getPlayerId))).filter(Boolean);
+        const team2Ids = (await Promise.all((previous.team2_players || []).map(getPlayerId))).filter(Boolean);
+        if (team1Ids.length === 0 || team2Ids.length === 0) continue;
+        const average1 = team1Ids.reduce((sum, id) => sum + (localElos.get(id) ?? INITIAL_ELO), 0) / team1Ids.length;
+        const average2 = team2Ids.reduce((sum, id) => sum + (localElos.get(id) ?? INITIAL_ELO), 0) / team2Ids.length;
+        const score1 = previous.winner === 'team1' ? 1 : previous.winner === 'team2' ? 0 : 0.5;
+        const { delta1, delta2 } = calculateEloChange(average1, average2, score1, 'team_tournament', previous.phase);
+        team1Ids.forEach(id => localElos.set(id, (localElos.get(id) ?? INITIAL_ELO) + delta1));
+        team2Ids.forEach(id => localElos.set(id, (localElos.get(id) ?? INITIAL_ELO) + delta2));
+    }
 
     const getElo = async (id) => {
         if (!id) return 1500;
-        if (currentElos.has(id)) return currentElos.get(id);
-        const rows = await sql`SELECT current_elo FROM players WHERE id = ${id} AND workspace_id = ${workspaceId}`;
-        const elo = rows.length > 0 ? Number(rows[0].current_elo) : 1500;
-        currentElos.set(id, elo);
-        return elo;
+        if (!localElos.has(id)) localElos.set(id, 1500);
+        return localElos.get(id);
     };
 
     for (const m of matches) {
-        if (m.cancelled || !m.winner) continue;
+        if (m.cancelled || !m.winner || !hasEnteredScore(m.sets)) continue;
 
         const team1P1Id = await getPlayerId(m.team1_players?.[0]);
         const team1P2Id = await getPlayerId(m.team1_players?.[1]);
@@ -4240,19 +4332,19 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
 
         if (team1P1Id) {
             playerDeltas.set(team1P1Id, (playerDeltas.get(team1P1Id) || 0) + delta1);
-            currentElos.set(team1P1Id, currentElos.get(team1P1Id) + delta1);
+            localElos.set(team1P1Id, localElos.get(team1P1Id) + delta1);
         }
         if (team1P2Id) {
             playerDeltas.set(team1P2Id, (playerDeltas.get(team1P2Id) || 0) + delta1);
-            currentElos.set(team1P2Id, currentElos.get(team1P2Id) + delta1);
+            localElos.set(team1P2Id, localElos.get(team1P2Id) + delta1);
         }
         if (team2P1Id) {
             playerDeltas.set(team2P1Id, (playerDeltas.get(team2P1Id) || 0) + delta2);
-            currentElos.set(team2P1Id, currentElos.get(team2P1Id) + delta2);
+            localElos.set(team2P1Id, localElos.get(team2P1Id) + delta2);
         }
         if (team2P2Id) {
             playerDeltas.set(team2P2Id, (playerDeltas.get(team2P2Id) || 0) + delta2);
-            currentElos.set(team2P2Id, currentElos.get(team2P2Id) + delta2);
+            localElos.set(team2P2Id, localElos.get(team2P2Id) + delta2);
         }
     }
 
@@ -5477,23 +5569,31 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
             return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non sono disponibili nel workspace' });
         }
 
-        const playersData = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo)]));
+        const globalElos = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo)]));
+        const seriesKey = parentTournamentName || tournament.giornataName || tournament.name;
+        const priorSeriesElos = await getSeriesLocalElos({
+            seriesKey,
+            date: tournament.date,
+            workspaceId: req.workspaceId,
+            playerIds,
+        });
+        const localElos = Object.fromEntries(playerIds.map(playerId => [playerId, priorSeriesElos.get(playerId) ?? INITIAL_ELO]));
         const playerEloChanges = new Map();
         if (tournament.status === 'completed') {
             for (const match of normalizedMatches) {
-                const avg1 = (playersData[match.team1[0]] + playersData[match.team1[1]]) / 2;
-                const avg2 = (playersData[match.team2[0]] + playersData[match.team2[1]]) / 2;
+                const avg1 = (localElos[match.team1[0]] + localElos[match.team1[1]]) / 2;
+                const avg2 = (localElos[match.team2[0]] + localElos[match.team2[1]]) / 2;
                 const score1 = match.winner === 'team1' ? 1 : (match.winner === 'team2' ? 0 : 0.5);
                 const { delta1, delta2 } = calculateEloChange(avg1, avg2, score1, tournament.type, match.phase);
                 for (const playerId of match.team1) {
-                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { globalBefore: globalElos[playerId], totalDelta: 0 });
                     playerEloChanges.get(playerId).totalDelta += delta1;
-                    playersData[playerId] += delta1;
+                    localElos[playerId] += delta1;
                 }
                 for (const playerId of match.team2) {
-                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { globalBefore: globalElos[playerId], totalDelta: 0 });
                     playerEloChanges.get(playerId).totalDelta += delta2;
-                    playersData[playerId] += delta2;
+                    localElos[playerId] += delta2;
                 }
             }
         }
@@ -5508,10 +5608,10 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
                 VALUES (${match.id}, ${match.date || tournament.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets || [])}::jsonb, ${match.winner}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber}, ${match.phase})
             `),
         ];
-        for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
+        for (const [playerId, { globalBefore, totalDelta }] of playerEloChanges) {
             queries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${oldElo + totalDelta}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${String(tournament.name).trim()})
+                VALUES (${tournamentId}, ${playerId}, ${globalBefore}, ${globalBefore + totalDelta}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${String(tournament.name).trim()})
             `);
             queries.push(sql`UPDATE players SET current_elo = current_elo + ${totalDelta} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
         }
@@ -5543,7 +5643,7 @@ app.put('/api/tournaments/complete', async (req, res) => {
         }
 
         const tournamentRows = await sql`
-            SELECT id, name, type, date, status, round_robin_playoff_type
+            SELECT id, name, type, date, status, round_robin_playoff_type, parent_tournament_name, giornata_name
             FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}
             LIMIT 1
         `;
@@ -5578,22 +5678,30 @@ app.put('/api/tournaments/complete', async (req, res) => {
         if (playerRows.length !== playerIds.length) return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non esistono nel workspace' });
 
         const oldDeltas = new Map(existingHistory.map(row => [row.player_id, Number(row.delta)]));
-        const playersData = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo) - (oldDeltas.get(player.id) || 0)]));
+        const globalBeforeByPlayer = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo) - (oldDeltas.get(player.id) || 0)]));
+        const priorSeriesElos = await getSeriesLocalElos({
+            seriesKey: tournament.parent_tournament_name || tournament.giornata_name || tournament.name,
+            date: tournament.date,
+            workspaceId: req.workspaceId,
+            playerIds,
+            excludeTournamentId: tournamentId,
+        });
+        const localElos = Object.fromEntries(playerIds.map(playerId => [playerId, priorSeriesElos.get(playerId) ?? INITIAL_ELO]));
         const playerEloChanges = new Map();
         for (const match of normalizedMatches) {
-            const avg1 = (playersData[match.team1_p1_id] + playersData[match.team1_p2_id]) / 2;
-            const avg2 = (playersData[match.team2_p1_id] + playersData[match.team2_p2_id]) / 2;
+            const avg1 = (localElos[match.team1_p1_id] + localElos[match.team1_p2_id]) / 2;
+            const avg2 = (localElos[match.team2_p1_id] + localElos[match.team2_p2_id]) / 2;
             const score1 = match.winner === 'team1' ? 1 : (match.winner === 'team2' ? 0 : 0.5);
             const { delta1, delta2 } = calculateEloChange(avg1, avg2, score1, tournament.type, match.phase);
             for (const playerId of [match.team1_p1_id, match.team1_p2_id]) {
-                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { globalBefore: globalBeforeByPlayer[playerId], totalDelta: 0 });
                 playerEloChanges.get(playerId).totalDelta += delta1;
-                playersData[playerId] += delta1;
+                localElos[playerId] += delta1;
             }
             for (const playerId of [match.team2_p1_id, match.team2_p2_id]) {
-                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { globalBefore: globalBeforeByPlayer[playerId], totalDelta: 0 });
                 playerEloChanges.get(playerId).totalDelta += delta2;
-                playersData[playerId] += delta2;
+                localElos[playerId] += delta2;
             }
         }
 
@@ -5608,7 +5716,7 @@ app.put('/api/tournaments/complete', async (req, res) => {
             if (change) {
                 queries.push(sql`
                     INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                    VALUES (${tournamentId}, ${playerId}, ${change.oldElo}, ${change.oldElo + newDelta}, ${newDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${tournament.name})
+                    VALUES (${tournamentId}, ${playerId}, ${change.globalBefore}, ${change.globalBefore + newDelta}, ${newDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${tournament.name})
                 `);
             }
         }
