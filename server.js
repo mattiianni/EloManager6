@@ -1349,11 +1349,12 @@ app.post('/api/admin/recalculate-elos', requireAdmin, async (req, res) => {
             : await sql`SELECT id, name, surname, current_elo, workspace_id FROM players`;
 
         const results = [];
+        const queries = [];
         for (const player of players) {
             const historyResult = await sql`
                 SELECT COALESCE(SUM(delta), 0) as total_delta
                 FROM elo_history
-                WHERE player_id = ${player.id} AND workspace_id = ${player.workspace_id}
+                WHERE player_id = ${player.id}
             `;
             const totalDelta = parseFloat(historyResult[0].total_delta);
             const correctElo = 1500 + totalDelta;
@@ -1361,11 +1362,13 @@ app.post('/api/admin/recalculate-elos', requireAdmin, async (req, res) => {
             const diff = correctElo - oldElo;
 
             if (Math.abs(diff) > 0.001) {
-                await sql`UPDATE players SET current_elo = ${correctElo} WHERE id = ${player.id}`;
+                queries.push(sql`UPDATE players SET current_elo = ${correctElo} WHERE id = ${player.id} AND workspace_id = ${player.workspace_id}`);
                 results.push({ name: `${player.name} ${player.surname}`, workspaceId: player.workspace_id, oldElo, newElo: correctElo, diff });
-                logger.info('ELO recalculated', { player: `${player.name} ${player.surname}`, oldElo, newElo: correctElo, diff });
             }
         }
+
+        if (queries.length > 0) await sql.transaction(queries);
+        results.forEach(change => logger.info('ELO recalculated', change));
 
         logger.info('Recalculate ELOs completed', { scope: workspaceId || 'ALL', corrected: results.length });
         res.json({ success: true, corrected: results.length, changes: results });
@@ -1378,28 +1381,31 @@ app.post('/api/admin/recalculate-elos', requireAdmin, async (req, res) => {
 // POST /api/admin/recalculate-elos-full - Full ELO recalculation: reset all + replay all matches chronologically
 app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
     try {
+        const dryRun = req.body?.dryRun === true;
         // Every tournament/matchday has its own 1500-based ELO timeline. The
         // global ELO is 1500 plus the sum of the deltas produced by all events.
         const normalMatches = await sql`
-            SELECT m.id, m.date, m.created_at, m.round_number, m.sets,
+            SELECT m.id, m.date, m.created_at, m.round_number, m.phase, m.sets,
                    m.team1_p1_id, m.team1_p2_id, m.team2_p1_id, m.team2_p2_id,
                    m.winner, m.tournament_id, t.workspace_id, t.name as tournament_name,
+                   t.type AS tournament_type, t.round_robin_playoff_type,
                    COALESCE(t.parent_tournament_name, t.giornata_name, t.name) AS series_key
             FROM matches m
             JOIN tournaments t ON m.tournament_id = t.id
-            WHERE m.winner IS NOT NULL
+            WHERE m.sets IS NOT NULL
             ORDER BY m.date ASC, m.round_number ASC NULLS LAST, m.created_at ASC, m.id ASC
         `;
 
         const teamMatches = await sql`
             SELECT tm.id, tm.team1_players, tm.team2_players, tm.sets, tm.winner as team_winner,
-                   tm.match_index, tm.matchday_id, md.date, t.workspace_id,
+                   tm.match_index, tm.matchday_id, md.date, md.phase, t.workspace_id,
                    t.name as tournament_name, md.tournament_day_id as tournament_id,
-                   md.root_tournament_id AS series_key
+                   md.root_tournament_id AS series_key, cfg.format AS tournament_format
             FROM team_tournament_matchday_matches tm
             JOIN team_tournament_matchdays md ON tm.matchday_id = md.id
             JOIN tournaments t ON md.tournament_day_id = t.id
-            WHERE tm.winner IS NOT NULL AND tm.cancelled = FALSE
+            LEFT JOIN team_tournament_configs cfg ON cfg.tournament_id = md.root_tournament_id
+            WHERE tm.sets IS NOT NULL AND tm.cancelled = FALSE
             ORDER BY md.date ASC, tm.match_index ASC, tm.id ASC
         `;
 
@@ -1428,6 +1434,7 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
         }).filter(id => id && validPlayerIds.has(id));
 
         const events = new Map();
+        let skippedUnplayedMatches = 0;
         const ensureEvent = ({ key, seriesKey, eventId, type, date, workspaceId, sourceLabel }) => {
             if (!events.has(key)) {
                 events.set(key, { key, seriesKey, eventId, type, date, workspaceId, sourceLabel, matches: [] });
@@ -1436,7 +1443,10 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
         };
 
         normalMatches.forEach(match => {
-            if (!hasEnteredScore(match.sets)) return;
+            if (!hasEnteredScore(match.sets)) {
+                skippedUnplayedMatches++;
+                return;
+            }
             ensureEvent({
                 key: `tournament:${match.tournament_id}`,
                 seriesKey: `tournament-series:${match.workspace_id}:${match.series_key}`,
@@ -1449,14 +1459,23 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
                 id: match.id,
                 order: Number(match.round_number) || Number.MAX_SAFE_INTEGER,
                 createdAt: match.created_at,
+                sets: match.sets,
+                phase: match.phase,
                 team1Ids: [match.team1_p1_id, match.team1_p2_id].filter(id => validPlayerIds.has(id)),
                 team2Ids: [match.team2_p1_id, match.team2_p2_id].filter(id => validPlayerIds.has(id)),
                 winner: match.winner,
+                tournament: {
+                    type: match.tournament_type,
+                    round_robin_playoff_type: match.round_robin_playoff_type,
+                },
             });
         });
 
         teamMatches.forEach(match => {
-            if (!hasEnteredScore(match.sets)) return;
+            if (!hasEnteredScore(match.sets)) {
+                skippedUnplayedMatches++;
+                return;
+            }
             ensureEvent({
                 key: `team_matchday:${match.matchday_id}`,
                 seriesKey: `team-series:${match.workspace_id}:${match.series_key}`,
@@ -1469,9 +1488,15 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
                 id: match.id,
                 order: Number(match.match_index) || Number.MAX_SAFE_INTEGER,
                 createdAt: match.date,
+                sets: match.sets,
+                phase: match.phase,
                 team1Ids: extractIds(match.team1_players, match.workspace_id),
                 team2Ids: extractIds(match.team2_players, match.workspace_id),
                 winner: match.team_winner,
+                tournament: {
+                    type: 'Torneo a Squadre',
+                    format: match.tournament_format,
+                },
             });
         });
 
@@ -1482,6 +1507,8 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
         const globalElos = Object.fromEntries(allPlayersRes.map(player => [player.id, INITIAL_ELO]));
         const localElosBySeries = new Map();
         const historyRows = [];
+        const validationErrors = [];
+        const skippedIncompleteMatches = [];
         let processed = 0;
 
         for (const event of orderedEvents) {
@@ -1495,10 +1522,19 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
                 return createdDiff || String(a.id).localeCompare(String(b.id));
             });
 
-            for (const match of orderedMatches) {
-                if (match.team1Ids.length === 0 || match.team2Ids.length === 0) continue;
-                const score1 = match.winner === 'team1' ? 1 : match.winner === 'team2' ? 0 : match.winner === 'draw' ? 0.5 : null;
-                if (score1 === null) continue;
+            for (let matchIndex = 0; matchIndex < orderedMatches.length; matchIndex++) {
+                const match = orderedMatches[matchIndex];
+                if (match.team1Ids.length === 0 || match.team2Ids.length === 0) {
+                    skippedIncompleteMatches.push({ eventId: event.eventId, matchId: match.id, code: 'INCOMPLETE_TEAMS' });
+                    continue;
+                }
+                const phase = inferLegacyMatchPhase(match.tournament, match, matchIndex, orderedMatches.length);
+                const outcome = validateStoredMatch({ match, tournament: match.tournament, phase });
+                if (![MATCH_OUTCOME.VALID_WIN, MATCH_OUTCOME.VALID_DRAW].includes(outcome.status)) {
+                    validationErrors.push({ eventId: event.eventId, matchId: match.id, code: String(outcome.status).toUpperCase() });
+                    continue;
+                }
+                const score1 = outcome.winner === 'team1' ? 1 : outcome.winner === 'team2' ? 0 : 0.5;
                 const team1Average = match.team1Ids.reduce((sum, id) => sum + getLocalElo(id), 0) / match.team1Ids.length;
                 const team2Average = match.team2Ids.reduce((sum, id) => sum + getLocalElo(id), 0) / match.team2Ids.length;
                 const { delta1, delta2 } = calculateEloChange(team1Average, team2Average, score1);
@@ -1521,6 +1557,27 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
             });
         }
 
+        if (validationErrors.length > 0) {
+            return res.status(409).json({
+                code: 'ELO_RECALCULATION_VALIDATION_FAILED',
+                message: `Ricalcolo annullato: ${validationErrors.length} partite non valide`,
+                invalidMatches: validationErrors,
+            });
+        }
+
+        if (dryRun) {
+            return res.json({
+                success: true,
+                dryRun: true,
+                events: orderedEvents.length,
+                totalMatches: normalMatches.length + teamMatches.length,
+                processed,
+                historyRows: historyRows.length,
+                skippedIncompleteMatches: skippedIncompleteMatches.length,
+                skippedUnplayedMatches,
+            });
+        }
+
         const queries = [
             sql`UPDATE players SET current_elo = ${INITIAL_ELO}`,
             sql`DELETE FROM elo_history`,
@@ -1532,8 +1589,21 @@ app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
         ];
         await sql.transaction(queries);
 
-        logger.info('Full ELO recalculation completed', { events: orderedEvents.length, totalMatches: normalMatches.length + teamMatches.length, processed });
-        res.json({ success: true, events: orderedEvents.length, totalMatches: normalMatches.length + teamMatches.length, processed });
+        logger.info('Full ELO recalculation completed', {
+            events: orderedEvents.length,
+            totalMatches: normalMatches.length + teamMatches.length,
+            processed,
+            skippedIncompleteMatches: skippedIncompleteMatches.length,
+            skippedUnplayedMatches,
+        });
+        res.json({
+            success: true,
+            events: orderedEvents.length,
+            totalMatches: normalMatches.length + teamMatches.length,
+            processed,
+            skippedIncompleteMatches: skippedIncompleteMatches.length,
+            skippedUnplayedMatches,
+        });
     } catch (error) {
         logger.error('Failed to run full ELO recalculation', error);
         res.status(500).json({ message: 'Errore nel ricalcolo ELO completo', error: error.message });

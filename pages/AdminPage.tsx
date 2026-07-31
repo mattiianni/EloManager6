@@ -278,7 +278,7 @@ const AdminPage: React.FC = () => {
     };
 
     const [fullRecalculating, setFullRecalculating] = React.useState(false);
-    const [fullRecalcResult, setFullRecalcResult] = React.useState<{ totalMatches: number; processed: number } | null>(null);
+    const [fullRecalcResult, setFullRecalcResult] = React.useState<{ events: number; totalMatches: number; processed: number; skippedIncompleteMatches: number; skippedUnplayedMatches: number } | null>(null);
 
     const handleFullRecalculateElos = async () => {
         if (!await requestHIGConfirmation(
@@ -288,7 +288,7 @@ const AdminPage: React.FC = () => {
         setFullRecalculating(true);
         setFullRecalcResult(null);
         try {
-            const result = await adminApi<{ totalMatches: number; processed: number }>('/api/admin/recalculate-elos-full', {
+            const result = await adminApi<{ events: number; totalMatches: number; processed: number; skippedIncompleteMatches: number; skippedUnplayedMatches: number }>('/api/admin/recalculate-elos-full', {
                 method: 'POST',
                 body: JSON.stringify({}),
             });
@@ -531,8 +531,8 @@ const AdminPage: React.FC = () => {
                     {/* Ricalcola ELO */}
                     <Card title="🔧 Ricalcola ELO da Storico">
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                            Allinea il <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">current_elo</code> di ogni giocatore alla somma reale dei delta in <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">elo_history</code>.
-                            Corregge eventuali disallineamenti causati da tornei eliminati o modificati. Si applica a <strong>tutti i workspace</strong>.
+                            Allinea il <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">current_elo</code> di ogni atleta alla somma reale di tutti i suoi delta in <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">elo_history</code>, inclusi i tornei disputati in workspace differenti.
+                            Non ricalcola le partite: corregge soltanto eventuali disallineamenti tra storico e valore globale. L’aggiornamento è atomico e si applica a <strong>tutti i workspace</strong>.
                         </p>
                         <button
                             onClick={handleRecalculateElos}
@@ -581,7 +581,7 @@ const AdminPage: React.FC = () => {
                     {/* Ricalcolo ELO COMPLETO */}
                     <Card title="⚡ Ricalcolo ELO Completo da Zero">
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                            Azzera gli ELO di <strong>tutti i giocatori</strong>, cancella tutta la cronologia e ripercorre <strong>tutte le partite</strong> (tornei normali + tornei a squadre) in ordine cronologico per ricalcolare gli ELO corretti. Si applica a <strong>tutti i workspace</strong>.
+                            Ricostruisce da 1500 l’ELO locale di ogni torneo, mantiene la continuità tra le sue giornate e somma tutti i delta nell’ELO globale. Prima valida tutte le partite; soltanto dopo azzera gli ELO, sostituisce la cronologia e ripercorre tornei normali e tornei a squadre. L’operazione è atomica e si applica a <strong>tutti i workspace</strong>.
                         </p>
                         <div className="p-3 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs text-amber-800 dark:text-amber-300">
                             ⚠️ Operazione lenta (può richiedere alcuni minuti). Non usare se non necessario.
@@ -596,7 +596,9 @@ const AdminPage: React.FC = () => {
                         {fullRecalcResult !== null && (
                             <div className="mt-3">
                                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                                    ✅ Completato! Processate {fullRecalcResult.processed} partite su {fullRecalcResult.totalMatches} totali.
+                                    ✅ Completato! Processate {fullRecalcResult.processed} partite valide in {fullRecalcResult.events} eventi ({fullRecalcResult.totalMatches} record esaminati).
+                                    {fullRecalcResult.skippedIncompleteMatches > 0 && ` ${fullRecalcResult.skippedIncompleteMatches} partite senza squadre complete sono state escluse dall’ELO.`}
+                                    {fullRecalcResult.skippedUnplayedMatches > 0 && ` ${fullRecalcResult.skippedUnplayedMatches} partite senza risultato sono state ignorate.`}
                                 </p>
                             </div>
                         )}
