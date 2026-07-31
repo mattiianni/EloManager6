@@ -18,6 +18,7 @@ import { formatPlayerName } from '../utils/format.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 type Page = 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'TeamSummary';
 
@@ -786,7 +787,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             });
         } catch (error) {
             console.error("Failed to update series name:", error);
-            alert("Errore nell'aggiornamento del nome della serie.");
+            showHIGAlert("Errore nell'aggiornamento del nome della serie.");
         } finally {
             setIsSubmitting(false);
         }
@@ -807,7 +808,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                 ]);
                 if (!config) {
                     preOpenedWindow?.close();
-                    alert('Configurazione torneo non trovata.');
+                    showHIGAlert('Configurazione torneo non trovata.');
                     return;
                 }
 
@@ -834,7 +835,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
             if (!config) {
                 preOpenedWindow?.close();
-                alert('Configurazione torneo non trovata.');
+                showHIGAlert('Configurazione torneo non trovata.');
                 return;
             }
 

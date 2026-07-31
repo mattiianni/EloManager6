@@ -15,6 +15,7 @@ import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -593,7 +594,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log(`🎯 Generating ${numGironi} gironi for ${pairs.length} pairs, useSeeds: ${useSeeds}`);
  
  if (useSeeds && selectedSeeds.length !== numGironi) {
- alert(`Per favore seleziona esattamente ${numGironi} coppie teste di serie`);
+ showHIGAlert(`Per favore seleziona esattamente ${numGironi} coppie teste di serie`);
  return;
  }
  
@@ -776,7 +777,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleGironiFinalsConfirm = async () => {
  if (!tournamentDate || !clubName) {
- alert('Per favore compila tutti i campi richiesti');
+ showHIGAlert('Per favore compila tutti i campi richiesti');
  return;
  }
 
@@ -867,7 +868,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setIsSuccessModalOpen(true);
  } catch (error) {
  console.error('Error creating gironi tournament:', error);
- alert('Errore durante la creazione del torneo gironi');
+ showHIGAlert('Errore durante la creazione del torneo gironi');
  } finally {
  setIsSubmitting(false);
  }
@@ -875,7 +876,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleTorneoLiberoSaveScheduled = async () => {
  if (!nomeTorneoLibero.trim() || !tournamentDate || !clubName) {
- alert('Per favore compila tutti i campi richiesti');
+ showHIGAlert('Per favore compila tutti i campi richiesti');
  return;
  }
 
@@ -915,7 +916,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  });
 
  if (matchesToCreate.length === 0) {
- alert('Per favore seleziona almeno una partita completa');
+ showHIGAlert('Per favore seleziona almeno una partita completa');
  return;
  }
 
@@ -936,7 +937,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setIsSuccessModalOpen(true);
  } catch (error) {
  console.error('Error creating torneo libero scheduled:', error);
- alert('Errore durante la creazione del torneo libero');
+ showHIGAlert('Errore durante la creazione del torneo libero');
  } finally {
  setIsSubmitting(false);
  }
@@ -944,7 +945,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleTorneoLiberoConfirm = async () => {
  if (!nomeTorneoLibero.trim() || !tournamentDate || !clubName) {
- alert('Per favore compila tutti i campi richiesti');
+ showHIGAlert('Per favore compila tutti i campi richiesti');
  return;
  }
 
@@ -989,7 +990,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  });
 
  if (matchesToCreate.length === 0) {
- alert('Per favore seleziona almeno una partita completa');
+ showHIGAlert('Per favore seleziona almeno una partita completa');
  return;
  }
 
@@ -1010,7 +1011,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setIsSuccessModalOpen(true);
  } catch (error) {
  console.error('Error creating torneo libero:', error);
- alert('Errore durante la creazione del torneo libero');
+ showHIGAlert('Errore durante la creazione del torneo libero');
  } finally {
  setIsSubmitting(false);
  }
@@ -1121,7 +1122,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const handleRequestFinishFinals = () => {
  // Check if all scores are entered
  if (Object.keys(finalsScores).length !== finalsMatches.length) {
- alert('Per favore inserisci i risultati di tutte le partite finali.');
+ showHIGAlert('Per favore inserisci i risultati di tutte le partite finali.');
  return;
  }
  const invalidOutcome = finalsMatches
@@ -1139,7 +1140,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  // Check if tournament was already saved
  if (isTournamentSaved) {
- alert('Il torneo è già stato salvato! I risultati non possono essere inseriti di nuovo.');
+ showHIGAlert('Il torneo è già stato salvato! I risultati non possono essere inseriti di nuovo.');
  return;
  }
  
@@ -1269,7 +1270,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  } catch (error) {
  console.error('Error creating tournament:', error);
- alert('Errore nella creazione del torneo. Riprova.');
+ showHIGAlert('Errore nella creazione del torneo. Riprova.');
  setIsTournamentSaved(false); // Reset flag on error
  } finally {
  setIsSubmitting(false);
@@ -1285,7 +1286,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || '';
   const finalClub = clubName.trim();
   if (finalName.trim() === '' || finalClub === '') {
-    alert('Inserisci nome del torneo e circolo.');
+    showHIGAlert('Inserisci nome del torneo e circolo.');
     return;
   }
   // For Torneo Libero, go to torneo-libero-setup
@@ -1297,7 +1298,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     // configurati prima della schermata nome.
     if (selectedFormat === 'gironi-fase-finale') {
         if (!gironiMatches || gironiMatches.length === 0) {
-            alert('Configura prima i gironi.');
+            showHIGAlert('Configura prima i gironi.');
             setStep('gironi-setup');
             return;
         }
@@ -1315,7 +1316,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (selectedFormat === 'beat-the-box') {
  // Verifica validità numero coppie
  if (!isBeatTheBoxValid(pairs.length)) {
- alert('⚠️ Beat the Box richiede un numero PARI di coppie (4, 6, 8, 10, 12...)');
+ showHIGAlert('⚠️ Beat the Box richiede un numero PARI di coppie (4, 6, 8, 10, 12...)');
  setStep('tournament-selection');
  return;
  }
@@ -1368,7 +1369,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  if (Object.keys(roundRobinScores).length !== roundRobinMatches.length) {
  console.log('⚠️ Not all scores entered!');
- alert('Please enter scores for all Round Robin matches.');
+ showHIGAlert('Inserisci i risultati di tutte le partite del Round Robin.');
  return;
  }
  
@@ -1428,7 +1429,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  } catch (error) {
  console.error('❌ Error in Round Robin flow:', error);
- alert('Error calculating standings: ' + error);
+ showHIGAlert('Errore durante il calcolo della classifica: ' + error);
  setIsSubmitting(false); // Unlock on error
  return;
  }
@@ -1436,7 +1437,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  // For other formats, continue with existing logic
  if (Object.keys(matchScores).length !== tournamentMatches.length) {
- alert('Please enter scores for all matches.');
+ showHIGAlert('Inserisci i risultati di tutte le partite.');
  return;
  }
 
@@ -1499,7 +1500,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setStep('results');
  } catch (error) {
  console.error("Failed to save tournament matches", error);
- alert("Si è verificato un errore durante il salvataggio del torneo. Riprova.");
+ showHIGAlert("Si è verificato un errore durante il salvataggio del torneo. Riprova.");
  } finally {
  setIsSubmitting(false);
  }
@@ -1519,7 +1520,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || preselectedTournamentName || '';
  const finalClub = clubName.trim();
  if (finalName.trim() === '' || finalClub.trim() === '') {
- alert('Please provide a tournament name and a club name.');
+ showHIGAlert('Inserisci il nome del torneo e il nome del circolo.');
  return;
  }
 
@@ -1586,7 +1587,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log("🔔 isCalendarSavedModalOpen set to true");
  } catch (error) {
  console.error("❌ Failed to save tournament calendar:", error);
- alert("Si è verificato un errore durante il salvataggio del calendario. Riprova.");
+ showHIGAlert("Si è verificato un errore durante il salvataggio del calendario. Riprova.");
  } finally {
  setIsSavingCalendar(false);
  }
@@ -1597,7 +1598,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
  if (finalName.trim() === '' || clubName.trim() === '') {
- alert('Inserisci nome torneo e circolo.');
+ showHIGAlert('Inserisci nome torneo e circolo.');
  return;
  }
  
@@ -1647,7 +1648,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setIsCalendarSavedModalOpen(true);
  } catch (error) {
  console.error("Failed to save calendar:", error);
- alert("Errore nel salvataggio.");
+ showHIGAlert("Errore nel salvataggio.");
  } finally {
  setIsSavingCalendar(false);
  }

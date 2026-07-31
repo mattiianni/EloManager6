@@ -17,6 +17,7 @@ import TeamTournamentSummaryPage from './pages/TeamTournamentSummaryPage.tsx';
 import HIGDemoPage from './pages/HIGDemoPage.tsx';
 import { MaterialIcon } from './components/ui/Icons.tsx';
 import { SFIcon } from './components/ui/SFIcon.tsx';
+import { HIGDialogHost } from './components/ui/HIGDialogHost.tsx';
 
 type Page = 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'Statistiche' | 'Admin' | 'TeamMatchday' | 'TeamSummary' | 'HIGDemo';
 type Theme = 'light' | 'dark';
@@ -246,6 +247,7 @@ const App: React.FC = () => {
 
     return (
         <PadelStoreProvider>
+            <HIGDialogHost />
             <div className="app-shell app-grid flex h-full overflow-hidden">
                 <Sidebar
                     activePage={activePage}

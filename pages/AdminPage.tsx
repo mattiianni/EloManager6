@@ -4,6 +4,7 @@ import { useAuth, getAuthToken } from '../hooks/useAuth.tsx';
 import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import { HIGSegmentedControl } from '../components/ui/HIGSegmentedControl.tsx';
+import { requestHIGConfirmation, showHIGAlert } from '../utils/higDialogService.ts';
 
 interface Workspace {
     id: string;
@@ -175,13 +176,13 @@ const AdminPage: React.FC = () => {
             setNewWsOwner('');
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
     const handleGenerateCode = async () => {
         if (!newCodeWsId || !newCodeValue || !/^\d{6}$/.test(newCodeValue)) {
-            alert('Inserisci un codice valido di 6 cifre');
+            showHIGAlert('Inserisci un codice valido di 6 cifre');
             return;
         }
 
@@ -214,7 +215,7 @@ const AdminPage: React.FC = () => {
             setNewCodeExpiryPreset('none');
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
@@ -223,7 +224,7 @@ const AdminPage: React.FC = () => {
 
     const handleSetPlain = async (codeId: string) => {
         if (!/^\d{6}$/.test(plainInput)) {
-            alert('Inserisci il codice a 6 cifre');
+            showHIGAlert('Inserisci il codice a 6 cifre');
             return;
         }
         try {
@@ -235,7 +236,7 @@ const AdminPage: React.FC = () => {
             setPlainInput('');
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
@@ -249,7 +250,7 @@ const AdminPage: React.FC = () => {
             localStorage.setItem('padel_elo_workspace', JSON.stringify(result.workspace));
             window.location.href = '/';
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
@@ -257,7 +258,10 @@ const AdminPage: React.FC = () => {
     const [recalcResult, setRecalcResult] = useState<{ corrected: number; changes: { name: string; oldElo: number; newElo: number; diff: number }[] } | null>(null);
 
     const handleRecalculateElos = async () => {
-        if (!confirm('Ricalcola ELO da storico per TUTTI i workspace? I current_elo verranno allineati alla somma dei delta in elo_history.')) return;
+        if (!await requestHIGConfirmation(
+            'Ricalcolare l’ELO dallo storico per tutti i workspace? I valori correnti verranno allineati alla somma delle variazioni registrate.',
+            { title: 'Ricalcola ELO', confirmLabel: 'Ricalcola' },
+        )) return;
         setRecalculating(true);
         setRecalcResult(null);
         try {
@@ -267,7 +271,7 @@ const AdminPage: React.FC = () => {
             });
             setRecalcResult(result);
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         } finally {
             setRecalculating(false);
         }
@@ -277,7 +281,10 @@ const AdminPage: React.FC = () => {
     const [fullRecalcResult, setFullRecalcResult] = React.useState<{ totalMatches: number; processed: number } | null>(null);
 
     const handleFullRecalculateElos = async () => {
-        if (!confirm('⚠️ RICALCOLO ELO COMPLETO\n\nQuesta operazione:\n1. Azzera gli ELO di TUTTI i giocatori (tutti i workspace)\n2. Cancella tutta la cronologia ELO\n3. Ripercorre TUTTE le partite in ordine cronologico\n4. Ricalcola gli ELO da zero\n\nPuò richiedere diversi minuti. Procedere?')) return;
+        if (!await requestHIGConfirmation(
+            'Questa operazione azzera gli ELO, cancella la cronologia e ricalcola tutte le partite in ordine cronologico. Può richiedere diversi minuti.',
+            { title: 'Ricalcolo ELO completo', confirmLabel: 'Ricalcola tutto', destructive: true },
+        )) return;
         setFullRecalculating(true);
         setFullRecalcResult(null);
         try {
@@ -287,47 +294,53 @@ const AdminPage: React.FC = () => {
             });
             setFullRecalcResult(result);
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         } finally {
             setFullRecalculating(false);
         }
     };
 
     const handleDeactivateCode = async (codeId: string) => {
-        if (!confirm('Sei sicuro di voler disattivare questo codice?')) return;
+        if (!await requestHIGConfirmation('Sei sicuro di voler disattivare questo codice?', {
+            title: 'Disattiva codice', confirmLabel: 'Disattiva', destructive: true,
+        })) return;
         try {
             await adminApi(`/api/admin/codes/${codeId}`, { method: 'DELETE' });
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
     const handleDeleteCode = async (codeId: string) => {
-        if (!confirm('Sei sicuro di voler cancellare definitivamente questo codice disattivato?')) return;
+        if (!await requestHIGConfirmation('Sei sicuro di voler cancellare definitivamente questo codice disattivato?', {
+            title: 'Elimina codice', confirmLabel: 'Elimina', destructive: true,
+        })) return;
         try {
             await adminApi(`/api/admin/codes/${codeId}/permanent`, { method: 'DELETE' });
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
     const handleDeleteWorkspace = async (ws: Workspace) => {
         const isCurrentWorkspace = workspace?.id === ws.id;
         if (isCurrentWorkspace) {
-            alert('Non puoi cancellare il workspace attualmente in uso.');
+            showHIGAlert('Non puoi cancellare il workspace attualmente in uso.');
             return;
         }
 
         const confirmation = `Sei sicuro di voler cancellare definitivamente il workspace "${ws.name}"?\n\nVerranno eliminati anche:\n- ${ws.player_count} giocatori\n- ${ws.tournament_count} tornei\n- ${ws.active_codes} codici attivi\n\nTutti i codici creati per questo workspace verranno cancellati automaticamente.\n\nQuesta operazione è irreversibile.`;
-        if (!confirm(confirmation)) return;
+        if (!await requestHIGConfirmation(confirmation, {
+            title: 'Elimina workspace', confirmLabel: 'Elimina definitivamente', destructive: true,
+        })) return;
 
         try {
             await adminApi(`/api/admin/workspaces/${encodeURIComponent(ws.id)}`, { method: 'DELETE' });
             await fetchAll();
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         }
     };
 
@@ -391,7 +404,9 @@ const AdminPage: React.FC = () => {
             `- giocatori coinvolti (se presenti)\n` +
             `- ELO (solo per i dati copiati)\n\n` +
             `Dopo l'invio i dati saranno indipendenti nei due workspace.`;
-        if (!confirm(confirmText)) return;
+        if (!await requestHIGConfirmation(confirmText, {
+            title: 'Invia torneo', confirmLabel: 'Invia dati',
+        })) return;
 
         setTransferBusy(true);
         setTransferResult(null);
@@ -406,7 +421,7 @@ const AdminPage: React.FC = () => {
             });
             setTransferResult(result);
         } catch (error: any) {
-            alert(error.message);
+            showHIGAlert(error.message);
         } finally {
             setTransferBusy(false);
         }

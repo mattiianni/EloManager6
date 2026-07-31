@@ -14,6 +14,7 @@ import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank,
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName } from '../utils/format.ts';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 import { 
  calculateAllBoxStandings, 
  createFinalsMatches as createBeatBoxFinalsMatches,
@@ -754,7 +755,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, getTournamentDisplayName(tournament, tournaments));
  } catch (error) {
  console.error('❌ Error in handlePrintTournament:', error);
- alert('Errore durante la stampa del torneo: ' + error.message);
+ showHIGAlert('Errore durante la stampa del torneo: ' + error.message);
  }
  };
 
@@ -771,7 +772,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onNavigateToTeamTournamentMatchdayResults(tournament.id);
  return;
  }
- alert('Per i tornei a squadre la modifica risultati va aperta dalla giornata dedicata.');
+ showHIGAlert('Per i tornei a squadre la modifica risultati va aperta dalla giornata dedicata.');
  return;
  }
 
@@ -815,7 +816,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setEditingTournament({ ...tournament, status: 'scheduled' as const });
  } catch (error) {
  console.error('Cascade reset failed:', error);
- alert('Errore nel reset del torneo. Riprova.');
+ showHIGAlert('Errore nel reset del torneo. Riprova.');
  }
  return;
  }
@@ -1082,7 +1083,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
  if (selectedPlayers.length !== 4) {
- alert('Per favore, seleziona 4 giocatori distinti.');
+ showHIGAlert('Per favore, seleziona 4 giocatori distinti.');
  return;
  }
 
@@ -1345,7 +1346,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const semifinals = generateGironiSemifinalMatches(standings);
  if (semifinals.length < 2) {
  console.error('Failed to generate Gironi semifinals - not enough qualified teams');
- alert('Errore: impossibile generare le semifinali. Verifica i risultati dei gironi.');
+ showHIGAlert('Errore: impossibile generare le semifinali. Verifica i risultati dei gironi.');
  setIsSubmitting(false);
  return;
  }
@@ -1373,7 +1374,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  
  console.log('✅ Tournament completed successfully');
- alert('Torneo completato! I punteggi ELO sono stati aggiornati.');
+ showHIGAlert('Torneo completato! I punteggi ELO sono stati aggiornati.');
  }
 
  await fetchData(); // Single refresh at the end
@@ -1381,7 +1382,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsInFinalsPhase(false);
  } catch (error) {
  console.error("Failed to update scores:", error);
- alert('Errore nell\'aggiornamento dei risultati. Riprova.');
+ showHIGAlert('Errore nell\'aggiornamento dei risultati. Riprova.');
  await fetchData(); // Refresh on error too to sync state
  } finally {
  setIsSubmitting(false);
@@ -1454,7 +1455,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  
  console.log('✅ Round Robin + Finali tournament completed successfully');
- alert('Torneo completato con finali! I punteggi ELO sono stati aggiornati.');
+ showHIGAlert('Torneo completato con finali! I punteggi ELO sono stati aggiornati.');
  
  // Reset states
  setEditingTournament(null);
@@ -1468,7 +1469,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  await fetchData();
  } catch (error) {
  console.error("Failed to complete tournament with finals:", error);
- alert('Errore nel completamento del torneo. Riprova.');
+ showHIGAlert('Errore nel completamento del torneo. Riprova.');
  await fetchData();
  } finally {
  setIsSubmitting(false);
@@ -1481,7 +1482,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  console.log('🔵 Tournament:', tournament);
  if (!tournament) {
  console.error('❌ No tournament reference available!');
- alert('❌ Errore: riferimento torneo non disponibile');
+ showHIGAlert('❌ Errore: riferimento torneo non disponibile');
  return;
  }
  
@@ -1636,7 +1637,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setShowBeatBoxCompleteSuccess(true);
  } catch (error) {
  console.error("Failed to complete Beat the Box tournament:", error);
- alert('Errore nel completare il torneo. Riprova.');
+ showHIGAlert('Errore nel completare il torneo. Riprova.');
  } finally {
  setIsSubmitting(false);
  }
@@ -1685,7 +1686,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
             await fetchData();
             setShowSaveSuccess(true);
         } catch (e) {
-            alert('Errore nel salvataggio. Riprova.');
+            showHIGAlert('Errore nel salvataggio. Riprova.');
         } finally {
             setIsSubmitting(false);
         }
@@ -2728,12 +2729,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (beatBoxSemifinalMatches.length < 2) {
- alert('⚠️ Errore: semifinali non generate correttamente.');
+ showHIGAlert('⚠️ Errore: semifinali non generate correttamente.');
  return;
  }
  const allComplete = beatBoxSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
  
@@ -2858,7 +2859,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={() => {
  const allComplete = beatBoxFinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le finali');
+ showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
  return;
  }
  setShowBeatBoxCompleteConfirm(true);
@@ -3133,12 +3134,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (gironiSemifinalMatches.length < 2) {
- alert('⚠️ Errore: semifinali non generate correttamente.');
+ showHIGAlert('⚠️ Errore: semifinali non generate correttamente.');
  return;
  }
  const allComplete = gironiSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
  
@@ -3275,7 +3276,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={() => {
                             const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
                             if (!allComplete) {
-                                alert('⚠️ Inserisci i risultati di tutte le finali');
+                                showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
                                 return;
                             }
                             setProceedConfirmData({
@@ -3317,7 +3318,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                                         }
                                         window.location.reload();
                                     } catch (e) {
-                                        alert('Errore.');
+                                        showHIGAlert('Errore.');
                                     } finally {
                                         setIsSubmitting(false);
                                     }

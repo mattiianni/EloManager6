@@ -6,6 +6,7 @@ import Button from '../components/ui/Button.tsx';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { ArrowLeftIcon, PencilIcon } from '../components/ui/Icons.tsx';
 import { printTeamTournamentMatchdayReport } from '../services/printService.ts';
+import { requestHIGConfirmation } from '../utils/higDialogService.ts';
 
 type Page = 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'Statistiche' | 'Admin' | 'TeamMatchday';
 
@@ -993,8 +994,10 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                     <div className="relative grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
                                         <button
                                             type="button"
-                                            onClick={() => {
-                                                if (window.confirm('Sei sicuro di voler cancellare questa partita?')) {
+                                            onClick={async () => {
+                                                if (await requestHIGConfirmation('Sei sicuro di voler cancellare questa partita?', {
+                                                    title: 'Annulla partita', confirmLabel: 'Annulla partita', destructive: true,
+                                                })) {
                                                     setCancelledByIndex(prev => ({ ...prev, [sm.matchIndex]: true }));
                                                     setSubMatchSets(prev => ({ ...prev, [sm.matchIndex]: [{ team1: 0, team2: 0 }] }));
                                                 }

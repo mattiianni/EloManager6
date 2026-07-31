@@ -2,8 +2,8 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.7.6`
-- Formato incrementale successivo: patch semantica (`6.7.7`), salvo release minor/major esplicitamente richiesta.
+- Versione attuale: `6.7.7`
+- Formato incrementale successivo: patch semantica (`6.7.8`), salvo release minor/major esplicitamente richiesta.
 - Mese corrente di riferimento: `Lug 2026`
 
 ## Checklist

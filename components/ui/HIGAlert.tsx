@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface HIGAlertAction {
   label: string;
@@ -29,6 +30,8 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const messageId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -48,10 +51,29 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     previousFocusRef.current = document.activeElement as HTMLElement | null;
-    const timer = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    const timer = window.setTimeout(() => {
+      const firstAction = dialogRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])');
+      (firstAction || dialogRef.current)?.focus();
+    }, 0);
     return () => {
       window.clearTimeout(timer);
       previousFocusRef.current?.focus();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const appShell = document.querySelector<HTMLElement>('.app-shell');
+    const previousOverflow = document.body.style.overflow;
+    const previousAriaHidden = appShell?.getAttribute('aria-hidden');
+    document.body.style.overflow = 'hidden';
+    appShell?.setAttribute('inert', '');
+    appShell?.setAttribute('aria-hidden', 'true');
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      appShell?.removeAttribute('inert');
+      if (previousAriaHidden === null || previousAriaHidden === undefined) appShell?.removeAttribute('aria-hidden');
+      else appShell?.setAttribute('aria-hidden', previousAriaHidden);
     };
   }, [isOpen]);
 
@@ -73,6 +95,26 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
         } else if (actions.length > 0) {
           actions[0].onPress();
         }
+        return;
+      }
+      if (e.key === 'Tab' && isOpen && dialogRef.current) {
+        const focusable = (Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )) as HTMLElement[]).filter(element => element.offsetParent !== null);
+        if (focusable.length === 0) {
+          e.preventDefault();
+          dialogRef.current.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -88,14 +130,14 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
     return 0;
   });
 
-  return (
+  return createPortal(
     <div
       role="presentation"
       style={{
         position: 'fixed',
         inset: 0,
         background: 'rgba(0,0,0,0.45)',
-        zIndex: 100,
+        zIndex: 11000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -109,8 +151,8 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
         tabIndex={-1}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="hig-alert-title"
-        aria-describedby={message ? 'hig-alert-message' : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={message ? messageId : undefined}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 'min(340px, calc(100vw - 32px))',
@@ -126,7 +168,7 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
       >
         <div style={{ padding: message ? '20px 20px 8px' : '20px 20px' }}>
           <div
-            id="hig-alert-title"
+            id={titleId}
             style={{
               font: "600 18px/24px 'Manrope', sans-serif",
               color: 'var(--ios-label)',
@@ -139,12 +181,13 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
 
         {message && (
           <div
-            id="hig-alert-message"
+            id={messageId}
             style={{
               font: "400 14px/20px 'Manrope', sans-serif",
               color: 'var(--ios-secondaryLabel)',
               textAlign: 'center',
               padding: '0 20px 18px',
+              whiteSpace: 'pre-line',
             }}
           >
             {message}
@@ -221,6 +264,7 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

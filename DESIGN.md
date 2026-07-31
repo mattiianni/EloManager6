@@ -1,4 +1,4 @@
-# Padel ELO Manager — Design (v6.7.6)
+# Padel ELO Manager — Design (v6.7.7)
 
 Questo documento descrive l’architettura e le scelte di design dell’app **Padel ELO Manager** (frontend React/Vite + backend Express + PostgreSQL su Neon), con focus su flussi utente, modello dati e punti “non ovvi” (stampa PDF, PWA, multi-workspace, tornei a squadre).
 
@@ -37,6 +37,12 @@ L'identità di una partita tra due coppie è indipendente dall'ordine interno de
 `utils/matchOutcome.js` è la policy condivisa degli esiti. `0-0` è sempre non inserito; i pareggi sono ammessi nelle fasi ordinarie e vietati in Eliminazione Diretta, semifinali, finali, finaline e consolazioni. Il backend ripete sempre la validazione prima di salvare, avanzare il tabellone o calcolare l'ELO.
 
 La creazione bulk e il completamento di un torneo sono transazioni atomiche. Ogni creazione porta una chiave idempotente per rendere sicuri retry, timeout e doppio clic.
+
+### Dialoghi e conferme HIG
+
+`utils/higDialogService.ts` è l’unico punto di ingresso per avvisi e conferme applicative. `components/ui/HIGDialogHost.tsx` mantiene una coda globale e presenta ogni richiesta tramite `HIGAlert`; non usare `window.alert()` o `window.confirm()`.
+
+Le conferme sono asincrone e devono essere attese prima di qualsiasi mutazione. `HIGAlert` viene renderizzato tramite portal, mantiene il focus al proprio interno, ripristina il controllo precedente e rende inerte l’app sottostante finché il dialogo è aperto.
 
 ## Runtime e entrypoint
 

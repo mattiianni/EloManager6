@@ -22,6 +22,7 @@ import { HIGSheet } from './ui/HIGSheet.tsx';
 import BeatTheBoxAnimation from './ui/BeatTheBoxAnimation.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import { printBeatTheBoxBlank, printBeatTheBoxComplete } from '../services/printService.ts';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 interface BeatTheBoxFlowProps {
  pairs: [Player, Player][];
@@ -330,7 +331,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  setShowSuccessModal(true);
  } catch (error) {
  console.error('❌ Errore nel salvare il calendario:', error);
- alert('Errore nel salvare il calendario');
+ showHIGAlert('Errore nel salvare il calendario');
  } finally {
  setIsSavingCalendar(false);
  }
@@ -422,7 +423,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  // Verifica che tutte le semifinali abbiano un vincitore
  const allComplete = semifinalMatches.every(m => m.winner);
  if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
  
@@ -453,7 +454,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  // Verifica che tutte le finali abbiano un vincitore
  const allComplete = finalMatches.every(m => m.winner);
  if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le finali');
+ showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
  return;
  }
  
@@ -492,7 +493,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  } catch (error) {
  console.error('❌ Errore nel completare il torneo:', error);
  setCompletionError('Errore nel completare il torneo. Riprova.');
- alert('Errore nel completare il torneo. Riprova.');
+ showHIGAlert('Errore nel completare il torneo. Riprova.');
  } finally {
  setIsSubmitting(false);
  }

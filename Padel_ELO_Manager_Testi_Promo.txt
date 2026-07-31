@@ -1,5 +1,5 @@
 ================================================================
-PADEL ELO MANAGER v6.7.6 - TESTI PROMOZIONALI
+PADEL ELO MANAGER v6.7.7 - TESTI PROMOZIONALI
 ================================================================
 
 
@@ -9,7 +9,7 @@ PADEL ELO MANAGER v6.7.6 - TESTI PROMOZIONALI
 
 Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
 
-Ho sviluppato *Padel ELO Manager v6.7.6* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
+Ho sviluppato *Padel ELO Manager v6.7.7* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
 
 Cosa fa in pratica:
 - *Flusso guidato di creazione* per Multi Giornata, Torneo a Squadre, Torneo Singolo e Nuova Giornata, con descrizioni chiare e passaggi coerenti
@@ -21,6 +21,7 @@ Cosa fa in pratica:
 - *Stampa PDF* di tutto: classifiche, profili, tabelloni divisi per turno e schede semifinali/finali vuote da compilare al campo
 - *Torneo a Squadre* con round robin, fase finale, riepilogo e stampe dedicate
 - *Personalizzazione per il circolo*: tornei, icona e brand possono essere adattati al vostro ambiente
+- *Interfaccia coerente e accessibile*: avvisi e conferme seguono Apple HIG, con azioni chiare e navigazione da tastiera
 
 Il progetto e' *Value for Value*, senza scopo di lucro: ogni spesa serve solo a sostenere server e infrastruttura.
 
@@ -81,6 +82,7 @@ ASPETTI TECNICI
 - Zero installazione: funziona direttamente nel browser di qualsiasi dispositivo (iPhone, Android, tablet, desktop). Basta un link.
 - Dati in cloud su database sicuro - nessun rischio di perdere informazioni
 - Interfaccia responsive con tema chiaro/scuro, ottimizzata per l'uso al campo da smartphone
+- Dialoghi coerenti e accessibili, senza popup nativi del browser
 - Progetto Value for Value senza scopo di lucro: ogni spesa sostiene solo server, backup e infrastruttura
 
 PERCHE POTREBBE INTERESSARVI
@@ -98,7 +100,7 @@ Resto a disposizione per qualsiasi domanda.
 
 Cordiali saluti,
 Mattia Ianniello
-Padel ELO Manager v6.7.6
+Padel ELO Manager v6.7.7
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

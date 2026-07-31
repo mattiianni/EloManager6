@@ -6,6 +6,7 @@ import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { findMatchBetweenTeams, orientResultForStoredMatch } from '../utils/matchIdentity.ts';
+import { requestHIGConfirmation, showHIGAlert } from '../utils/higDialogService.ts';
 
 interface TpraBracketViewProps {
     tournament: Tournament;
@@ -141,7 +142,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
         
         const winner = t1Sets > t2Sets ? 'team1' : (t2Sets > t1Sets ? 'team2' : 'draw');
         if (winner === 'draw') {
-            alert('Il match non può finire in pareggio.');
+            showHIGAlert('Il match non può finire in pareggio.');
             return;
         }
 
@@ -180,12 +181,15 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
     };
 
     const handleComplete = async () => {
-        if (!confirm('Sei sicuro di voler concludere il torneo? Tutti i punteggi ELO verranno aggiornati.')) return;
+        if (!await requestHIGConfirmation(
+            'Sei sicuro di voler concludere il torneo? Tutti i punteggi ELO verranno aggiornati.',
+            { title: 'Concludi torneo', confirmLabel: 'Concludi' },
+        )) return;
         try {
             await completeTournament(tournament.id);
-            alert('Torneo completato! I punteggi ELO sono stati aggiornati.');
+            showHIGAlert('Torneo completato! I punteggi ELO sono stati aggiornati.');
         } catch (e) {
-            alert('Errore durante la conclusione del torneo.');
+            showHIGAlert('Errore durante la conclusione del torneo.');
         }
     };
 

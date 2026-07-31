@@ -15,6 +15,7 @@ import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilar
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import { HIGAlert } from '../components/ui/HIGAlert';
 import PlayerAvatar from '../components/ui/PlayerAvatar.tsx';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 const PlayersPage: React.FC = () => {
     const { workspace } = useAuth();
@@ -92,7 +93,7 @@ const PlayersPage: React.FC = () => {
         const nSurname = surname.trim();
         if (nName && nSurname) {
             if (nName.length < 2 || nSurname.length < 2) {
-                alert("Il nome e il cognome devono avere almeno 2 lettere.");
+                showHIGAlert("Il nome e il cognome devono avere almeno 2 lettere.");
                 return;
             }
             const isDuplicate = players.some(p => 
@@ -100,7 +101,7 @@ const PlayersPage: React.FC = () => {
                 p.surname.toLowerCase() === nSurname.toLowerCase()
             );
             if (isDuplicate) {
-                alert("Attenzione: Esiste già un giocatore con questo nome e cognome!");
+                showHIGAlert("Attenzione: Esiste già un giocatore con questo nome e cognome!");
                 return;
             }
             const similar = await searchSimilarPlayer(nName, nSurname);
@@ -165,7 +166,7 @@ const PlayersPage: React.FC = () => {
         const eSurname = editSurname.trim();
         if (playerToEdit && eName && eSurname && !isNaN(newElo)) {
             if (eName.length < 2 || eSurname.length < 2) {
-                alert("Il nome e il cognome devono avere almeno 2 lettere.");
+                showHIGAlert("Il nome e il cognome devono avere almeno 2 lettere.");
                 return;
             }
             const isDuplicate = players.some(p => 
@@ -174,7 +175,7 @@ const PlayersPage: React.FC = () => {
                 p.surname.toLowerCase() === eSurname.toLowerCase()
             );
             if (isDuplicate) {
-                alert("Attenzione: Esiste già un altro giocatore con questo nome e cognome!");
+                showHIGAlert("Attenzione: Esiste già un altro giocatore con questo nome e cognome!");
                 return;
             }
             setEditSurnameError(null);

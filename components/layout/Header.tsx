@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeToggle from '../ui/ThemeToggle.tsx';
 import { useAuth } from '../../hooks/useAuth.tsx';
 import { APP_MONTH, APP_VERSION } from '../../constants.ts';
+import { requestHIGConfirmation } from '../../utils/higDialogService.ts';
 
 interface HeaderProps {
     toggleSidebar: () => void;
@@ -78,8 +79,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
                       <ThemeToggle theme={theme} onToggle={toggleTheme} />
                   </div>
                   <button
-                      onClick={() => {
-                          if (window.confirm('Sei sicuro di voler uscire?')) {
+                      onClick={async () => {
+                          if (await requestHIGConfirmation('Sei sicuro di voler uscire?', {
+                              title: 'Esci', confirmLabel: 'Esci', destructive: true,
+                          })) {
                               logout();
                           }
                       }}

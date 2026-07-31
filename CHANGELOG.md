@@ -1,3 +1,20 @@
+## v6.7.7 — 2026-07-31
+
+### Dialoghi Apple HIG
+
+- Eliminate tutte le 95 chiamate residue a `alert()` e `confirm()` nativi del browser.
+- Aggiunto un gestore centralizzato che accoda avvisi e conferme senza bloccare l’interfaccia.
+- Le azioni distruttive usano conferme asincrone con etichette esplicite e stile coerente; i messaggi di validazione, salvataggio e stampa condividono ora lo stesso componente.
+- `HIGAlert` viene renderizzato tramite portal sopra sheet e modal, usa identificatori ARIA univoci, mantiene il focus nel dialogo, ripristina il focus precedente e rende inerte il contenuto sottostante.
+- Uniformati in italiano gli ultimi messaggi Round Robin ancora presenti in inglese.
+
+### Qualità
+
+- Verificata l’assenza di richiami nativi ad alert e conferme nell’intero sorgente.
+- Suite automatica: 33 test superati; build di produzione completata correttamente.
+- Verificato che il frontend locale serva il nuovo gestore HIG e che il proxy API risponda correttamente all’autenticazione.
+- Il collaudo visuale completo su Safari/iOS e alle viewport 390, 768 e 1440 px resta una verifica manuale successiva al rilascio.
+
 ## v6.7.6 — 2026-07-31
 
 ### Integrità risultati ed ELO

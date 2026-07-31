@@ -1,4 +1,4 @@
-Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.6)
+Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.7)
 
 Obiettivo
 - Ricostruire da zero una web app/PWA per gestione tornei di padel con ELO, statistiche e stampa PDF.
@@ -29,6 +29,7 @@ Principi di prodotto
 - Salvataggi bulk, completamento ed ELO devono essere atomici e idempotenti.
 - 0-0 significa risultato non inserito. Il pareggio è ammesso nelle partite ordinarie, ma vietato in ogni Eliminazione Diretta e in semifinali, finali, finaline e consolazioni.
 - Ogni match persiste fase e roundNumber; non inferire playoff o qualificati dalla posizione nell'array.
+- Avvisi e conferme passano da un gestore Apple HIG centralizzato e asincrono; non usare alert() o confirm() nativi. I dialoghi devono avere portal, focus trap, ripristino focus, ARIA e contenuto sottostante inerte.
 
 Funzionalità minime (MVP completo)
 1) Workspace + access codes

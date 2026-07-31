@@ -5,6 +5,7 @@ import { APP_MONTH, APP_VERSION } from '../constants.ts';
 import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './eloEventsService.ts';
 import { BracketNode, generateTpraBracket } from './tpraService.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 export const MANROPE_PRINT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
 
@@ -300,7 +301,7 @@ const printViaIframe = (htmlContent: string): boolean => {
                 window.addEventListener('load', function() {
                     ${waitForPrintFontsScript}.finally(function() {
                         setTimeout(function() {
-                            try { window.print(); } catch(e) { console.error('Print error:', e); alert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
+                            try { window.print(); } catch(e) { console.error('Print error:', e); showHIGAlert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
                         }, 200);
                     });
                 });
@@ -313,7 +314,7 @@ const printViaIframe = (htmlContent: string): boolean => {
 
         if (!printWindow) {
             URL.revokeObjectURL(url);
-            alert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+            showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
             return false;
         }
 
@@ -322,7 +323,7 @@ const printViaIframe = (htmlContent: string): boolean => {
         return true;
     } catch (error) {
         console.error('Error printing:', error);
-        alert('Errore durante la stampa.');
+        showHIGAlert('Errore durante la stampa.');
         return false;
     }
 };
@@ -388,7 +389,7 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
             const printWindow = window.open(url, '_blank');
             if (!printWindow) {
                 URL.revokeObjectURL(url);
-                alert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+                showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
                 return false;
             }
             setTimeout(() => URL.revokeObjectURL(url), 120000);
@@ -398,7 +399,7 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
         // Desktop/Android: document.write funziona bene (no re-render on zoom)
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
-            alert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+            showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
             return false;
         }
         printWindow.document.write(fullHtml);
@@ -406,7 +407,7 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
         return true;
     } catch (error) {
         console.error('Error opening print window:', error);
-        alert('Errore durante l\'apertura della finestra di stampa.');
+        showHIGAlert('Errore durante l\'apertura della finestra di stampa.');
         return false;
     }
 };
@@ -564,7 +565,7 @@ export const printChart = (chartContainerId: string): boolean => {
         const printWindow = window.open('', '_blank');
 
         if (!printWindow) {
-            alert('Per favore, abilita i popup del browser per stampare il PDF.');
+            showHIGAlert('Per favore, abilita i popup del browser per stampare il PDF.');
             return false;
         }
 
@@ -573,7 +574,7 @@ export const printChart = (chartContainerId: string): boolean => {
         return true;
     } catch (error) {
         console.error('Error opening print window:', error);
-        alert('Errore durante l\'apertura della finestra di stampa.');
+        showHIGAlert('Errore durante l\'apertura della finestra di stampa.');
         return false;
     }
 };
@@ -739,7 +740,7 @@ export const printEloChart = (
     try {
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
-            alert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+            showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
             return false;
         }
 
@@ -760,7 +761,7 @@ export const printEloChart = (
         return true;
     } catch (error) {
         console.error('Error printing ELO chart:', error);
-        alert('Errore durante la stampa del grafico.');
+        showHIGAlert('Errore durante la stampa del grafico.');
         return false;
     }
 };
@@ -1818,18 +1819,18 @@ export const printTeamTournamentRoundRobinSchedule = (
     teams: TeamTournamentTeam[]
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
-        alert('Formato torneo non supportato per la stampa a squadre.');
+        showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
     if (config.format !== 'ROUND ROBIN') {
-        alert('Stampa attualmente disponibile solo per Round Robin.');
+        showHIGAlert('Stampa attualmente disponibile solo per Round Robin.');
         return false;
     }
 
     const schedule = (config.schedule || null) as TeamTournamentSchedule | null;
     if (!schedule || schedule.kind !== 'round_robin') {
-        alert('Calendario non disponibile. Completa la configurazione o modifica un parametro per rigenerarlo.');
+        showHIGAlert('Calendario non disponibile. Completa la configurazione o modifica un parametro per rigenerarlo.');
         return false;
     }
 
@@ -1962,7 +1963,7 @@ export const printTeamTournamentMatchdayCalendar = (
     team2Name: string
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
-        alert('Formato torneo non supportato per la stampa a squadre.');
+        showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
@@ -2440,7 +2441,7 @@ export const printTeamTournamentMatchdayReport = (
     existingWindow?: Window | null
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
-        alert('Formato torneo non supportato per la stampa a squadre.');
+        showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
@@ -2730,7 +2731,7 @@ export const printTeamTournamentReport = (
     existingWindow?: Window | null
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
-        alert('Formato torneo non supportato per la stampa a squadre.');
+        showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
@@ -3824,7 +3825,7 @@ export const printTeamTournamentStatistics = (
     derivedStats?: any
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
-        alert('Formato torneo non supportato per la stampa a squadre.');
+        showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
