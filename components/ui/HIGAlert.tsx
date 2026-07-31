@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface HIGAlertAction {
   label: string;
@@ -27,6 +27,8 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
 }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimating, setIsAnimating] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -41,6 +43,16 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
       }, 200);
       return () => clearTimeout(timer);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const timer = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(timer);
+      previousFocusRef.current?.focus();
+    };
   }, [isOpen]);
 
   const handleBackdropClick = () => {
@@ -78,6 +90,7 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
 
   return (
     <div
+      role="presentation"
       style={{
         position: 'fixed',
         inset: 0,
@@ -92,6 +105,12 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
       onClick={handleBackdropClick}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="hig-alert-title"
+        aria-describedby={message ? 'hig-alert-message' : undefined}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 'min(340px, calc(100vw - 32px))',
@@ -107,8 +126,9 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
       >
         <div style={{ padding: message ? '20px 20px 8px' : '20px 20px' }}>
           <div
+            id="hig-alert-title"
             style={{
-              font: '600 18px/24px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              font: "600 18px/24px 'Manrope', sans-serif",
               color: 'var(--ios-label)',
               textAlign: 'center',
             }}
@@ -119,8 +139,9 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
 
         {message && (
           <div
+            id="hig-alert-message"
             style={{
-              font: '400 14px/20px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              font: "400 14px/20px 'Manrope', sans-serif",
               color: 'var(--ios-secondaryLabel)',
               textAlign: 'center',
               padding: '0 20px 18px',
@@ -172,7 +193,7 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    font: `${isCancel ? '600' : '400'} 16px/22px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif`,
+                    font: `${isCancel ? '600' : '400'} 16px/22px 'Manrope', sans-serif`,
                     color: isDestructive ? 'var(--ios-systemRed)' : 'var(--ios-systemBlue)',
                     background: 'transparent',
                     border: 'none',

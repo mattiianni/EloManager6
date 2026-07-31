@@ -2063,7 +2063,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] gap-6 items-start">
+            <div className={mode === 'Manual'
+                ? 'grid grid-cols-1 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] gap-6 items-start'
+                : 'mx-auto w-full max-w-3xl'}>
                 <div className="space-y-6">
                     <Card title="Opzioni Sorteggio Coppie">
                         <div className="space-y-4">
@@ -2191,7 +2193,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                  {loading ? (
                                     <ParticipantListSkeleton />
                                  ) : (
-                                    <div className="grid grid-cols-1 gap-y-2 max-h-[32rem] overflow-y-auto pr-2">
+                                    <div className="grid grid-cols-1 gap-y-2 max-h-[22rem] sm:max-h-[28rem] xl:max-h-[32rem] overflow-y-auto pr-2">
                                         {filteredSortedPlayers.map(p => (
                                             <label key={p.id} className={`flex items-center space-x-3 p-2 rounded-md ${!participants.includes(p.id) && !canSelectMore ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                                                 <input type="checkbox" checked={participants.includes(p.id)} onChange={() => handleParticipantToggle(p.id)} disabled={!participants.includes(p.id) && !canSelectMore} className="form-checkbox h-4 w-4 rounded text-sky-500 bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-sky-500" />
@@ -2205,17 +2207,21 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                     
                     {!isTeamTournamentFlow && (
-                        <div className="px-4">
-                            <Button onClick={handleDraw} className="w-full" disabled={isShuffling}>
-                                <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : (selectedFormatForNewFlow ? 'Avanti - Scegli Coppie' : 'Sorteggia Coppie'))}</span>
+                        <div className="fixed left-4 right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 rounded-2xl bg-white/90 p-2 shadow-lg backdrop-blur-xl dark:bg-slate-900/90 xl:static xl:px-4 xl:py-0 xl:bg-transparent xl:shadow-none xl:backdrop-blur-none">
+                            <Button
+                                onClick={handleDraw}
+                                className="w-full"
+                                disabled={isShuffling || (mode !== 'Manual' && !isFull)}
+                            >
+                                <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : 'Sorteggia Coppie')}</span>
                             </Button>
                             {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
                         </div>
                     )}
                 </div>
 
+                {mode === 'Manual' && (
                 <div>
-                    {mode === 'Manual' && !drawnPairs ? (
                         <Card title="Selezione Manuale Coppie">
                         <div className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto">
                             {manualPairs.map((pair, pairIndex) => {
@@ -2262,46 +2268,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             })}
                         </div>
                         </Card>
-                    ) : (
-                        <Card title={mode === 'Manual' ? "Coppie Confermate" : "Risultati Sorteggio"}>
-                        {!isShuffling && drawnPairs && (
-                            <div className="space-y-4">
-                                {drawnPairs.map((pair, index) => (
-                                    <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg flex justify-between items-center">
-                                        <div>
-                                            <p className="font-semibold text-lg">{pair[0].name} {pair[0].surname} & {pair[1].name} {pair[1].surname}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-sky-600 dark:text-sky-400">{((pair[0].currentElo + pair[1].currentElo) / 2).toFixed(2)}</p>
-                                            <p className="text-xs text-gray-500">ELO</p>
-                                        </div>
-                                    </div>
-                                ))}
-                                <div className="flex gap-3 mt-6">
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => setDrawnPairs(null)}
-                                        className="flex-1"
-                                    >
-                                        {mode === 'Manual' ? 'Modifica Coppie' : 'Ripeti Sorteggio'}
-                                    </Button>
-                                    <Button 
-                                        onClick={() => setShowTournamentFlow(true)}
-                                        className="flex-1"
-                                    >
-                                        {selectedFormatForNewFlow ? 'Avanti - Impostazioni Torneo' : 'Avanti - Scelta Torneo'}
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                        {!isShuffling && !drawnPairs && (
-                            <div className="flex justify-center items-center h-64 text-gray-500">
-                                <p>Configura i tuoi parametri e clicca "Sorteggia Coppie" per vedere i risultati.</p>
-                            </div>
-                        )}
-                        </Card>
-                    )}
                 </div>
+                )}
             </div>
             <PlayerSimilarityModal
                 isOpen={isSimilarityModalOpen}

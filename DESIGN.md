@@ -1,4 +1,4 @@
-# Padel ELO Manager — Design (v4.1.x)
+# Padel ELO Manager — Design (v6.7.5)
 
 Questo documento descrive l’architettura e le scelte di design dell’app **Padel ELO Manager** (frontend React/Vite + backend Express + PostgreSQL su Neon), con focus su flussi utente, modello dati e punti “non ovvi” (stampa PDF, PWA, multi-workspace, tornei a squadre).
 
@@ -27,6 +27,12 @@ Backend:
 
 PDF:
 - Generazione in backend e/o frontend (in repo c’è un `printService.ts` lato frontend per diversi report; il backend usa anche PDFKit per alcune guide/script)
+
+### Normalizzazione condivisa di turni e partite
+
+`utils/tournamentRounds.ts` è la fonte comune per ordinamento di turni/giornate, ordine stabile delle partite, numerazione campi e riposi. UI e PDF non devono ricostruire autonomamente questi dati né affidarsi all'ordine restituito dal database.
+
+L'identità di una partita tra due coppie è indipendente dall'ordine interno dei giocatori e dal lato del campo; `utils/matchIdentity.ts` evita duplicazioni durante la modifica dei tabelloni TPRA.
 
 ## Runtime e entrypoint
 
@@ -81,10 +87,11 @@ Regola UX importante:
 1. “Nuovo Torneo / Nuova Giornata”
 2. Scegli: singolo/coppie, torneo a squadre, oppure aggancio a torneo esistente
 3. Se coppie: selezione giocatori, numero coppie, tipo sorteggio
-4. Attendi sorteggio
-5. Scegli formato (TorneOtto, Americano, RR+Finali, Gironi+Finali, Beat the Box, Torneo Libero)
-6. Attendi creazione tabellone
-7. Azioni: salva / stampa PDF / inserisci risultati subito
+4. Sorteggio e conferma coppie
+5. Opzioni specifiche del formato
+6. Nome, data e circolo obbligatori
+7. Anteprima/tabellone
+8. Azioni: salva / stampa PDF / inserisci risultati subito
 
 ### 3) Inserimento e modifica risultati
 - Sezione “Risultati” permette di:
@@ -97,6 +104,8 @@ Regola UX importante:
 PDF usati in due momenti:
 - prima della giornata: tabellone vuoto/operativo per compilazione in campo
 - dopo: report finale/riassuntivo
+
+I report vuoti con semifinali/finali usano lo schema visivo Beat the Box. Le sezioni ricevono partite già normalizzate; una riga non viene spezzata, mentre una tabella lunga può continuare nella pagina successiva. La stampa attende `document.fonts.ready`.
 
 Su iOS/PWA l’esperienza passa spesso dalla preview nativa.
 
@@ -181,4 +190,3 @@ Linee guida chiave:
 - Tutte le query lato backend devono filtrare per `workspace_id` dove applicabile
 - Nessuna cache su API: i risultati devono aggiornarsi immediatamente dopo salvataggi
 - `Torneo a squadre` resta un flusso separato: non forzare le logiche “a coppie” dentro i matchday
-

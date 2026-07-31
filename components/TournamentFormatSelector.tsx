@@ -52,12 +52,12 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                             <button
                                 key={format}
                                 onClick={() => onSelectFormat(format)}
-                                className="flex items-center justify-between p-4 rounded-2xl bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 hover:bg-sky-500/5 shadow-sm hover:shadow-md backdrop-blur-xl transition-all duration-200 cursor-pointer text-left group active:scale-[0.98]"
+                                className="flex items-center justify-between p-4 rounded-2xl bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 shadow-sm backdrop-blur-xl cursor-pointer text-left active:scale-[0.98]"
                             >
-                                <span className="font-bold text-base text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">
+                                <span className="font-bold text-base text-slate-900 dark:text-white">
                                     {getFormatDisplayName(format)}
                                 </span>
-                                <span className="w-8 h-8 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm group-hover:bg-sky-500 group-hover:text-white transition-all">
+                                <span className="w-8 h-8 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
                                     →
                                 </span>
                             </button>

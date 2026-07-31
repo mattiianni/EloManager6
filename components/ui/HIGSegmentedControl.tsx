@@ -101,8 +101,7 @@ export const HIGSegmentedControl: React.FC<HIGSegmentedControlProps> = ({
     border: 'none',
     background: 'none',
     padding: 0,
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif",
+    fontFamily: "'Manrope', sans-serif",
     fontSize: 13,
     fontWeight: 500,
     lineHeight: '18px',

@@ -13,6 +13,7 @@ import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
+import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -318,7 +319,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
         case 'round-robin-finali': return 'round-robin-info';
         case 'torneo-libero': return 'torneo-libero-setup';
         case 'gironi-fase-finale': return 'gironi-setup';
-        case 'eliminazione-diretta': return 'tpra-flow';
+        case 'eliminazione-diretta': return 'setup';
         default: return 'setup';
       }
     }
@@ -444,6 +445,16 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return generateRoundRobinMatches(pairs);
  }, [pairs, selectedFormat, americanoFields, americanoRounds]);
 
+ const normalizedTournamentRounds = useMemo(() => normalizeTournamentRounds(
+   tournamentMatches,
+   selectedFormat === 'americano' ? TournamentType.Americano : TournamentType.TorneOtto,
+   { fields: selectedFormat === 'americano' ? americanoFields : 2 },
+ ), [tournamentMatches, selectedFormat, americanoFields]);
+
+ const tournamentRoundByMatch = useMemo(() => new Map(
+   normalizedTournamentRounds.flatMap(round => round.matches.map(item => [item.match, round] as const)),
+ ), [normalizedTournamentRounds]);
+
     // Determine available tournament formats based on number of pairs
     const getAvailableFormats = (): TournamentFormat[] => {
  const numPairs = pairs.length;
@@ -504,7 +515,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     } else if (format === 'gironi-fase-finale') {
       setStep('gironi-setup');
     } else if (format === 'eliminazione-diretta') {
-      setStep('tpra-flow');
+      setStep('setup');
     } else {
       setStep('setup');
     }
@@ -1180,25 +1191,25 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎯 savedTournamentType:', savedTournamentType);
  
   const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || '';
-  const finalClub = clubName.trim() || 'Circolo Padel';
-  if (finalName.trim() === '') {
-    alert('Per favore inserisci il Nome del Torneo.');
+  const finalClub = clubName.trim();
+  if (finalName.trim() === '' || finalClub === '') {
+    alert('Inserisci nome del torneo e circolo.');
     return;
   }
-  // For Round Robin + Finali, go to round-robin-info
-  if (selectedFormat === 'round-robin-finali') {
-    setStep('round-robin-info');
-    return;
-  }
-
   // For Torneo Libero, go to torneo-libero-setup
  if (selectedFormat === 'torneo-libero') {
  setStep('torneo-libero-setup');
  return;
  }
-    // For Gironi + Fase Finale, go to gironi-setup
+    // Gironi + Fase Finale: le opzioni e gli accoppiamenti sono già stati
+    // configurati prima della schermata nome.
     if (selectedFormat === 'gironi-fase-finale') {
-        setStep('gironi-setup');
+        if (!gironiMatches || gironiMatches.length === 0) {
+            alert('Configura prima i gironi.');
+            setStep('gironi-setup');
+            return;
+        }
+        setStep('gironi-phase');
         return;
     }
 
@@ -1389,8 +1400,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
 
- const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || preselectedTournamentName || 'Torneo Padel';
- const finalClub = clubName.trim() || 'Circolo Padel';
+ const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || preselectedTournamentName || '';
+ const finalClub = clubName.trim();
  if (finalName.trim() === '' || finalClub.trim() === '') {
  alert('Please provide a tournament name and a club name.');
  return;
@@ -1910,15 +1921,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
             <Button
               type="button"
               onClick={() => {
-                const matches = generateRoundRobinMatches(pairs, roundRobinFields, roundRobinHomeAway);
-                setRoundRobinMatches(matches);
-                setRoundRobinScores({});
-                setRoundRobinMatchCount(matches.length);
-                setStep('scoring');
+                setStep('setup');
               }}
               className="flex-1"
             >
-              Procedi
+              Avanti - Nome Torneo
             </Button>
           </div>
         </div>
@@ -2857,7 +2864,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onFinish={onFinish}
  tournamentDate={tournamentDate}
  clubName={clubName}
-tournamentName={tournamentName || 'Torneo TPRA'}
+tournamentName={tournamentName}
  />
  );
  }
@@ -2993,9 +3000,20 @@ tournamentName={tournamentName || 'Torneo TPRA'}
  const team1 = getTeamPlayers(match.team1);
  const team2 = getTeamPlayers(match.team2);
  if (!team1 || !team2) return null;
+ const round = tournamentRoundByMatch.get(match)?.roundNumber || match.roundNumber || Math.floor(index / 2) + 1;
+ const previousRound = index > 0
+ ? (tournamentMatches[index - 1].roundNumber || Math.floor((index - 1) / 2) + 1)
+ : null;
+ const startsNewRound = selectedFormat === 'torneotto-30' && round !== previousRound;
 
  return (
- <div key={index} className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+ <React.Fragment key={index}>
+ {startsNewRound && (
+ <div className="mt-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+ Turno {round}
+ </div>
+ )}
+ <div className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
  <div className="text-right">
  <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
@@ -3009,6 +3027,7 @@ tournamentName={tournamentName || 'Torneo TPRA'}
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
+ </React.Fragment>
  );
  })}
  </div>
@@ -3027,7 +3046,7 @@ tournamentName={tournamentName || 'Torneo TPRA'}
  className="flex-1" 
  disabled={isSubmitting}
  >
- {isSubmitting ? 'Calculating...' : (isRoundRobinFinali ? 'Calcola Classifica' : 'Calculate Results')}
+ {isSubmitting ? 'Calcolo...' : (isRoundRobinFinali ? 'Calcola Classifica' : 'Calcola Risultati')}
  </Button>
  </div>
  </Card>
@@ -3257,7 +3276,7 @@ tournamentName={tournamentName || 'Torneo TPRA'}
  if (step === 'results') {
  return (
  <>
- <Card title={`Tournament Results - ${getFormatDisplayName(selectedFormat!)}`}>
+ <Card title={`Risultati Torneo - ${getFormatDisplayName(selectedFormat!)}`}>
  <div className="overflow-x-auto">
  <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
  <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">

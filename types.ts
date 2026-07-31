@@ -33,6 +33,7 @@ export interface Match {
     winner: 'team1' | 'team2' | 'draw' | null;
     tournamentId?: string;
     roundNumber?: number;
+    createdAt?: string;
 }
 
 export interface SetScore {

@@ -40,7 +40,7 @@ interface SizePreset {
 const SIZE_MAP: Record<NonNullable<HIGButtonProps['size']>, SizePreset> = {
   large: { height: 50, paddingH: 20, fontSize: 17, fontWeight: 600 },
   regular: { height: 44, paddingH: 16, fontSize: 17, fontWeight: 400 },
-  small: { height: 34, paddingH: 12, fontSize: 15, fontWeight: 400 },
+  small: { height: 44, paddingH: 12, fontSize: 15, fontWeight: 400 },
 };
 
 /* ─── Variant style builders ──────────────────────────────────────────── */
@@ -159,8 +159,7 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
     boxSizing: 'border-box',
 
     // Typography
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif",
+    fontFamily: "'Manrope', sans-serif",
     fontSize: sizePreset.fontSize,
     fontWeight: sizePreset.fontWeight,
     lineHeight: 1.2,

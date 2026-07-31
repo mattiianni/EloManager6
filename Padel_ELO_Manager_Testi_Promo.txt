@@ -1,5 +1,5 @@
 ================================================================
-PADEL ELO MANAGER v6.0.3 - TESTI PROMOZIONALI
+PADEL ELO MANAGER v6.7.5 - TESTI PROMOZIONALI
 ================================================================
 
 
@@ -9,16 +9,16 @@ PADEL ELO MANAGER v6.0.3 - TESTI PROMOZIONALI
 
 Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
 
-Ho sviluppato *Padel ELO Manager v6.0.3* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
+Ho sviluppato *Padel ELO Manager v6.7.5* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
 
 Cosa fa in pratica:
 - *Interfaccia 2x2 Ultra-Moderna* per la selezione del torneo (Multi Giornata, Torneo a Squadre, Torneo Singolo, Nuova Giornata) con descrizioni chiare e pulsante di ripristino rapido
-- *7 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta, Torneo Libero, Torneo a Squadre)
+- *8 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta, Torneo Libero, Torneo a Squadre)
 - *Sorteggio coppie intelligente* con 4 modalita (casuale, bilanciato forte+debole, teste di serie, manuale)
 - *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia con K-factor unificato K=16
 - *Integrazione Playtomic nativa* - converte rigorosamente l'ELO in livello Playtomic (e viceversa), in modo che chiunque capisca immediatamente il proprio livello reale
 - *Profilo completo* per ognuno: statistiche, compagni e avversari frequenti, grafico andamento, storico giornate
-- *Stampa PDF* di tutto: classifiche, profili, tabelloni coppie, schede match vuote da compilare al campo
+- *Stampa PDF* di tutto: classifiche, profili, tabelloni divisi per turno e schede semifinali/finali vuote da compilare al campo
 - *Torneo a Squadre* con round robin, fase finale, riepilogo e stampe dedicate
 - *Personalizzazione per il circolo*: tornei, icona e brand possono essere adattati al vostro ambiente
 
@@ -37,7 +37,7 @@ Fammi sapere!
 
 Ciao! Ho sviluppato un'app per gestire tornei di padel amatoriale: *Padel ELO Manager*.
 
-7 formati torneo, incluso il Torneo a Squadre, sorteggio coppie intelligente (bilanciato per livello), classifica ELO automatica con corrispondenza nativa ai livelli Playtomic, statistiche complete e stampa PDF. Funziona dal browser, zero installazione - apri un link e i dati sono in cloud.
+8 formati torneo, incluso il Torneo a Squadre, sorteggio coppie intelligente (bilanciato per livello), classifica ELO automatica con corrispondenza nativa ai livelli Playtomic, statistiche complete e stampa PDF. Funziona dal browser, zero installazione - apri un link e i dati sono in cloud.
 
 Ti interessa una demo veloce? 5 minuti e ti mostro tutto.
 
@@ -62,11 +62,11 @@ COSA FA PADEL ELO MANAGER
 
 L'app gestisce l'intero ciclo di una serata di padel, dalla formazione delle coppie alla stampa dei risultati:
 
-- 7 FORMATI TORNEO PRONTI ALL'USO: TorneOtto 30' (4 coppie, round robin), Americano (fino a 10+ coppie su 1-4 campi, compagno variabile), Round Robin + Finali, Torneo Libero, Gironi + Fase Finale, Beat the Box e Torneo a Squadre. Ogni formato ha regole, calcoli e stampe dedicate.
+- 8 FORMATI TORNEO PRONTI ALL'USO: TorneOtto 30', Americano, Round Robin + Finali, Torneo Libero, Gironi + Fase Finale, Beat the Box, Eliminazione Diretta TPRA e Torneo a Squadre. Ogni formato ha regole, calcoli e stampe dedicate.
 
 - SORTEGGIO INTELLIGENTE DELLE COPPIE: 4 modalita - casuale, bilanciato per ELO (forte+debole per partite equilibrate), teste di serie, manuale. Coppie equilibrate in un click.
 
-- SISTEMA ELO PROFESSIONALE CON INTEGRAZIONE PLAYTOMIC: lo stesso algoritmo di rating usato negli scacchi, adattato al padel in coppia. Il punteggio ELO viene rigorosamente convertito e affiancato al Livello Playtomic, permettendo a tutti di capire immediatamente quanto sono forti. Dopo ogni partita coppia vs coppia, il rating individuale si aggiorna automaticamente. Calcolo basato sul K=16 universale per garantire integrità matematica, ed ELO isolato per serie di tornei.
+- SISTEMA ELO PROFESSIONALE CON INTEGRAZIONE PLAYTOMIC: lo stesso algoritmo di rating usato negli scacchi, adattato al padel in coppia. Il punteggio ELO viene convertito e affiancato al Livello Playtomic. Dopo ogni torneo il rating individuale si aggiorna automaticamente con fattori K calibrati per formato e fase.
 
 - PROFILO COMPLETO: per ogni partecipante - partite in coppia vinte/perse, compagni e avversari frequenti con percentuali di vittoria, grafico andamento ELO, storico giornata per giornata, form ultime 5 partite.
 
@@ -88,7 +88,7 @@ PERCHE POTREBBE INTERESSARVI
 I circoli che utilizzano Padel ELO Manager riscontrano:
 - Piu coinvolgimento: la classifica ELO crea competizione sana tra le coppie
 - Meno tempo: formazione coppie, punteggi e classifiche sono automatizzati
-- Piu varieta: 7 formati diversi invece del solito torneo
+- Piu varieta: 8 formati diversi invece del solito torneo
 - Documentazione professionale: PDF stampabili per bacheca e social del circolo
 - Fidelizzazione: i partecipanti tornano per vedere il proprio andamento e sfidare le coppie rivali
 
@@ -98,7 +98,7 @@ Resto a disposizione per qualsiasi domanda.
 
 Cordiali saluti,
 Mattia Ianniello
-Padel ELO Manager v4.1.3
+Padel ELO Manager v6.7.5
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -114,7 +114,7 @@ Ciao!
 Sai che organizzo tornei di padel - bene, mi sono stufato di Excel e ho costruito un'app dedicata: Padel ELO Manager.
 
 In pratica fa tutto da sola:
-- Gestisce 7 formati torneo diversi, incluso il Torneo a Squadre (Americano, Beat the Box, TorneOtto, ecc.)
+- Gestisce 8 formati torneo diversi, incluso il Torneo a Squadre (Americano, Beat the Box, TorneOtto, Eliminazione Diretta, ecc.)
 - Sorteggia le coppie in modo intelligente (bilanciato per livello, niente piu coppie a caso dove i forti giocano sempre insieme)
 - Calcola una classifica ELO automatica basata sulle partite in coppia
 - Ha un'integrazione con i livelli Playtomic, convertendo esattamente l'ELO in livello Playtomic così tutti capiscono subito quanto sono forti
@@ -140,7 +140,7 @@ Mattia
 
 Stanchi di organizzare tornei di padel con Excel e fogli volanti?
 
-Padel ELO Manager: sorteggio coppie intelligente, 7 formati torneo incluso il Torneo a Squadre, classifica ELO automatica, statistiche pro, stampa PDF.
+Padel ELO Manager: sorteggio coppie intelligente, 8 formati torneo incluso il Torneo a Squadre, classifica ELO automatica, statistiche pro, stampa PDF.
 
 Un'app. Tutto dentro. Scrivetemi per una demo.
 

@@ -8,6 +8,7 @@ import Button from '../components/ui/Button.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
 import { HIGAlert } from '../components/ui/HIGAlert';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
+import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
@@ -1813,6 +1814,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <Card
  key={name}
+ bodyClassName="!overflow-visible !rounded-none !border-0 !bg-transparent !shadow-none !backdrop-blur-none [&>div]:!p-0"
  title={
  <div
  className="flex items-center w-full cursor-pointer"
@@ -1877,7 +1879,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  {matches.filter(m => m.tournamentId === day.id).map((match, index) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
- const court = day.type === TournamentType.TorneOtto ? `Court ${(index % 2) + 1}` : null;
+ const court = day.type === TournamentType.TorneOtto ? `Campo ${(index % 2) + 1}` : null;
  return (
  <div key={match.id} className="flex items-center justify-between text-sm">
  {court && <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-16">{court}</span>}
@@ -2139,18 +2141,18 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  
  // Per altri tipi di torneo, mostra normalmente
- if (editingTournament?.type === TournamentType.Americano) {
-     const roundsMap = new Map<number, typeof tournamentMatches>();
-     
+ if (editingTournament?.type === TournamentType.Americano || editingTournament?.type === TournamentType.TorneOtto) {
      const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
      const numPlayers = allPlayersIds.size;
      const matchesPerRound = Math.min(editingTournament.americanoFields || 2, Math.floor(numPlayers / 4));
-
-     tournamentMatches.forEach((sm, index) => {
-         const r = sm.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
-         if (!roundsMap.has(r)) roundsMap.set(r, []);
-         roundsMap.get(r)!.push(sm);
+     const normalizedRounds = normalizeTournamentRounds(tournamentMatches, editingTournament.type, {
+         fields: matchesPerRound,
+         participantIds: Array.from(allPlayersIds),
      });
+     const roundsMap = new Map(normalizedRounds.map(round => [
+         round.roundNumber,
+         round.matches.map(item => item.match),
+     ]));
                                                                                     
      const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
      const totalRoundsCount = roundsMap.size;

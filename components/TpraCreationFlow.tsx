@@ -34,8 +34,11 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
             const validDate = tournamentDate && !isNaN(new Date(tournamentDate).getTime())
                 ? new Date(tournamentDate).toISOString()
                 : new Date().toISOString();
-            const finalName = tournamentName.trim() || 'Torneo Eliminazione Diretta';
-            const finalClub = clubName.trim() || 'Circolo Padel';
+            const finalName = tournamentName.trim();
+            const finalClub = clubName.trim();
+            if (!finalName || !finalClub) {
+                throw new Error('Nome del torneo e circolo sono obbligatori');
+            }
 
             // Save the tournament to the database
             const tournament: Omit<Tournament, 'id'> = {
@@ -99,7 +102,7 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
 
                         <div className="flex gap-4 mt-6">
                             <Button variant="outline" className="flex-1" onClick={onFinish}>Annulla</Button>
-                            <Button className="flex-1" onClick={handleSaveBracket} disabled={isSaving}>
+                            <Button className="flex-1" onClick={handleSaveBracket} disabled={isSaving || !tournamentName.trim() || !clubName.trim()}>
                                 {isSaving ? 'Salvataggio...' : 'Crea Torneo TPRA'}
                             </Button>
                         </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPlayerEloTimeline, formatLabel } from './eloEventsService.ts';
+import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './eloEventsService.ts';
 import { EloHistoryEntry, Match, Tournament, TeamTournamentMatchday, TournamentType } from '../types.ts';
 
 describe('eloEventsService Tests', () => {
@@ -161,5 +161,27 @@ describe('eloEventsService Tests', () => {
         const timeline = buildPlayerEloTimeline(playerId, eloHistory, matches, mockTournaments, []);
         expect(timeline).toHaveLength(1);
         expect(timeline[0].dayLabel).toBe('Giornata Torneo');
+    });
+
+    it('keeps ELO variations separate when tournament days share the same name', () => {
+        const eloHistory: EloHistoryEntry[] = [
+            { eventId: 't-day-1', playerId, eloBefore: 1500, eloAfter: 1506, delta: 6, date: '2026-05-10T18:00:00Z', type: 'tournament' },
+            { eventId: 't-day-1', playerId, eloBefore: 1506, eloAfter: 1508, delta: 2, date: '2026-05-10T18:00:00Z', type: 'tournament' },
+            { eventId: 't-day-2', playerId, eloBefore: 1508, eloAfter: 1503, delta: -5, date: '2026-05-17T18:00:00Z', type: 'tournament' },
+            { eventId: 't-day-1', playerId: 'another-player', eloBefore: 1500, eloAfter: 1492, delta: -8, date: '2026-05-10T18:00:00Z', type: 'tournament' },
+        ];
+
+        expect(sumPlayerEventEloDelta(playerId, 't-day-1', eloHistory)).toBe(8);
+        expect(sumPlayerEventEloDelta(playerId, 't-day-2', eloHistory)).toBe(-5);
+    });
+
+    it('includes ELO history linked to tournament match IDs after a full recalculation', () => {
+        const eloHistory: EloHistoryEntry[] = [
+            { eventId: 'match-1', playerId, eloBefore: 1500, eloAfter: 1508, delta: 8, date: '2026-05-10T18:00:00Z', type: 'tournament' },
+            { eventId: 'match-2', playerId, eloBefore: 1508, eloAfter: 1514, delta: 6, date: '2026-05-10T19:00:00Z', type: 'tournament' },
+            { eventId: 'other-match', playerId, eloBefore: 1514, eloAfter: 1510, delta: -4, date: '2026-05-11T18:00:00Z', type: 'tournament' },
+        ];
+
+        expect(sumPlayerEventEloDelta(playerId, 't-day-1', eloHistory, ['match-1', 'match-2'])).toBe(14);
     });
 });

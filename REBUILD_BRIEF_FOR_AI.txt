@@ -1,4 +1,4 @@
-Padel ELO Manager — Brief tecnico per ricostruzione da zero (v4.1.x)
+Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.5)
 
 Obiettivo
 - Ricostruire da zero una web app/PWA per gestione tornei di padel con ELO, statistiche e stampa PDF.
@@ -23,6 +23,9 @@ Principi di prodotto
   - Creare un nuovo torneo solo quando parte una nuova serie
   - Aggiungere una giornata a un torneo esistente tramite bottone accanto al torneo (aggancio)
 - Stampa PDF è una feature core: tabellone operativo prima, resoconto dopo.
+- Il flusso comune è: tipo → giocatori → sorteggio → opzioni → nome/data/circolo → anteprima → salvataggio.
+- UI e PDF devono usare un unico normalizzatore per turni, ordine partite, campi e riposi; mai usare implicitamente l'ordine del database.
+- Nessun torneo può essere salvato con nome o circolo predefiniti non scelti dall'utente.
 
 Funzionalità minime (MVP completo)
 1) Workspace + access codes
@@ -117,6 +120,8 @@ PDF / stampa (obbligatorio)
   - tabellone vuoto prima (da portare in campo)
   - resoconto finale dopo
 - Su iOS/PWA: preview nativa, evitare flussi che bloccano l’utente senza “chiudi”.
+- Semifinali e finali vuote: grafica comune in stile Beat the Box, con qualificati attesi, campi squadra e caselle risultato.
+- Attendere il caricamento dei font prima della stampa; righe indivisibili ma sezioni lunghe autorizzate a proseguire nella pagina successiva.
 
 Qualità e UX
 - Niente layout shift in footer/CTA su mobile (bottoni con label dinamiche devono avere dimensioni stabili).
@@ -133,4 +138,3 @@ Suggerimento di roadmap implementativa
 7) Statistiche + partial stats
 8) Team tournament
 9) Admin (workspaces/codes/audit/recalc)
-

@@ -231,7 +231,7 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
           {/* Content Area */}
           <div
             style={{
-              padding: '0 0 env(safe-area-inset-bottom, 0px)',
+              padding: '0 0 calc(16px + env(safe-area-inset-bottom, 0px))',
               overflowY: 'auto',
               flex: 1,
             }}

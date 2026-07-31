@@ -10,6 +10,19 @@ export interface EloVariationEvent {
     playerId: string;
 }
 
+/** Somma la variazione ELO usando il collegamento autorevole all'evento. */
+export function sumPlayerEventEloDelta(
+    playerId: string,
+    eventId: string,
+    eloHistory: EloHistoryEntry[],
+    relatedEventIds: string[] = []
+): number {
+    const validEventIds = new Set([eventId, ...relatedEventIds]);
+    return eloHistory
+        .filter(entry => entry.playerId === playerId && validEventIds.has(entry.eventId))
+        .reduce((sum, entry) => sum + entry.delta, 0);
+}
+
 /**
  * Format a date object to it-IT locale (dd/mm/yyyy)
  */

@@ -151,11 +151,13 @@
 
   html {
     @apply antialiased;
+    font-family: 'Manrope', sans-serif;
     background-color: var(--app-bg);
     min-height: 100%;
   }
 
   body {
+    font-family: inherit;
     background-color: var(--app-bg);
     background:
       radial-gradient(circle at top right, rgba(137, 206, 255, 0.12), transparent 30%),
@@ -182,9 +184,14 @@
     color: var(--app-text);
   }
 
+  button {
+    font-family: inherit;
+  }
+
   input,
   select,
   textarea {
+    font-family: inherit;
     background: var(--app-surface-strong);
     color: var(--app-text);
     border: 1px solid var(--app-border);

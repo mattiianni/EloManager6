@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 
-const APP_VERSION = '5.0.8';
+const APP_VERSION = '6.7.5';
 const APP_MONTH = 'Lug 2026';
 
 const outDir = path.resolve(process.cwd(), 'docs');
@@ -93,7 +93,7 @@ function titleBlock() {
   paragraph(
     "Questa guida spiega, in modo discorsivo e passo-passo, come usare il formato “Torneo a Squadre” nell’app. I nomi dei pulsanti e delle sezioni sono quelli reali dell’interfaccia: Tornei, Sorteggi, Statistiche, e i pulsanti “+ Completa configurazione”, “+ Inserisci giornata” e “+ Inserisci Finali”."
   );
-  muted("Stato attuale: è attivo il formato Round robin. Altri formati (andata/ritorno, eliminazione diretta) verranno attivati in seguito.");
+  muted("Stato attuale: sono disponibili Round Robin, Andata/Ritorno ed Eliminazione Diretta, con calendario, giornate, fasi finali e stampe dedicate.");
 }
 
 function sectionHeading(text) {
@@ -178,7 +178,7 @@ paragraph("Appena creato il torneo, in “Tornei” vedrai un blocco “Gestione
 steps([
   "Vai su “Tornei” e apri il torneo appena creato.",
   "Nel riquadro “Gestione torneo”, premi “+ Completa configurazione”.",
-  "Imposta le opzioni: “Tipo torneo” (attivo: Round robin), “Fase finale”, “Tipo punteggio” e “Partite per giornata”.",
+  "Imposta le opzioni: “Tipo torneo” (Round Robin, Andata/Ritorno o Eliminazione Diretta), “Fase finale”, “Tipo punteggio” e “Partite per giornata”.",
   "Per ogni squadra: premi “Modifica”, inserisci “Nome squadra” e poi i giocatori (nome e cognome affiancati).",
   "In basso a destra premi “Completa configurazione” (si attiva solo quando i requisiti minimi sono rispettati).",
 ]);

@@ -2,8 +2,9 @@ import { RankingEntry, Tournament, TournamentStandingEntry, Match, Player, Tourn
 import { calculateTeamTournamentStandings, TeamTournamentStandingRow } from './teamTournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { APP_MONTH, APP_VERSION } from '../constants.ts';
-import { buildPlayerEloTimeline, formatLabel } from './eloEventsService.ts';
+import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './eloEventsService.ts';
 import { BracketNode, generateTpraBracket } from './tpraService.ts';
+import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 
 const getTournamentTypeDisplayName = (type: TournamentType): string => {
     switch (type) {
@@ -26,11 +27,73 @@ const getTournamentTypeDisplayName = (type: TournamentType): string => {
     }
 };
 
+type BlankFinalPhaseMatch = { left: string; right: string };
+
+const renderBlankFinalPhaseBlock = (
+    title: string,
+    icon: string,
+    matches: BlankFinalPhaseMatch[],
+    palette: { background: string; border: string; color: string },
+): string => `
+    <div class="blank-final-phase avoid-break">
+        <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px; padding: 4px 6px; background: ${palette.background}; border-left: 4px solid ${palette.border}; color: ${palette.color};">
+            ${icon} ${title}
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+            <tbody>
+                ${matches.map(match => `
+                    <tr style="height: 22px;">
+                        <td style="width: 37%; text-align: right; padding: 5px 6px; line-height: 1.3;">
+                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">${match.left}</div>
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
+                        </td>
+                        <td style="text-align: center; width: 26%; padding: 5px 6px; white-space: nowrap;">
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; background: #fff;">&nbsp;&nbsp;&nbsp;</span>
+                            -
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; background: #fff;">&nbsp;&nbsp;&nbsp;</span>
+                        </td>
+                        <td style="width: 37%; text-align: left; padding: 5px 6px; line-height: 1.3;">
+                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">${match.right}</div>
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+`;
+
+const renderBlankFinalPhase = (includeSemifinals: boolean): string => `
+    <div class="section-block blank-final-phases" style="margin: 20px 0;">
+        ${includeSemifinals ? renderBlankFinalPhaseBlock(
+            'FASE FINALE - SEMIFINALI',
+            '⚡',
+            [
+                { left: '1° Classificato', right: '4° Classificato' },
+                { left: '2° Classificato', right: '3° Classificato' },
+            ],
+            { background: '#eff6ff', border: '#0284c7', color: '#0369a1' },
+        ) : ''}
+        ${renderBlankFinalPhaseBlock(
+            'FASE FINALE - 1°/2° POSTO',
+            '🏆',
+            [{ left: includeSemifinals ? 'Vincitore SF A' : '1° Classificato', right: includeSemifinals ? 'Vincitore SF B' : '2° Classificato' }],
+            { background: '#fff3e0', border: '#ff9800', color: '#d97706' },
+        )}
+        ${renderBlankFinalPhaseBlock(
+            'FASE FINALE - 3°/4° POSTO',
+            '🥉',
+            [{ left: includeSemifinals ? 'Perdente SF A' : '3° Classificato', right: includeSemifinals ? 'Perdente SF B' : '4° Classificato' }],
+            { background: '#e8f5e8', border: '#4caf50', color: '#2e7d32' },
+        )}
+    </div>
+`;
+
 const getPrintStyles = (fontImport: boolean = false) => `
     <style>
         @media screen {
             body { 
-                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                font-family: 'Manrope', sans-serif;
                 line-height: 1.5; 
                 color: #1c1c1e; 
                 font-size: 11px;
@@ -45,7 +108,7 @@ const getPrintStyles = (fontImport: boolean = false) => `
                 print-color-adjust: exact; 
                 -webkit-text-size-adjust: 100% !important;
                 text-size-adjust: 100% !important;
-                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 color: #000000;
             }
             .no-print { display: none !important; }
@@ -94,12 +157,11 @@ const getPrintStyles = (fontImport: boolean = false) => `
             break-inside: avoid;
             page-break-inside: avoid;
         }
-        td, th {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 150px;
+        td {
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
+        th { white-space: nowrap; }
         @media screen {
             .print-page {
                 max-width: 1100px;
@@ -146,7 +208,7 @@ const getPrintStyles = (fontImport: boolean = false) => `
             font-size: 9.5px;
             letter-spacing: 0.04em;
         }
-        h1, h2, h3 { color: #0f172a; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+        h1, h2, h3 { color: #0f172a; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
         h1 { font-size: 22px; margin-bottom: 6px; font-weight: 800; letter-spacing: -0.02em; }
         h2 { font-size: 15px; margin-bottom: 6px; font-weight: 700; letter-spacing: -0.01em; color: #0284c7; }
         h3 { 
@@ -202,9 +264,11 @@ const printViaIframe = (htmlContent: string): boolean => {
             /<\/body>/i,
             `<script>
                 window.addEventListener('load', function() {
-                    setTimeout(function() {
-                        try { window.print(); } catch(e) { console.error('Print error:', e); alert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
-                    }, 400);
+                    Promise.resolve(document.fonts && document.fonts.ready).finally(function() {
+                        setTimeout(function() {
+                            try { window.print(); } catch(e) { console.error('Print error:', e); alert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
+                        }, 200);
+                    });
                 });
             <\/script></body>`
         );
@@ -246,15 +310,17 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
                 ${content}
                 <script>
                     window.addEventListener('load', function() {
-                        setTimeout(function() {
-                            try {
-                                window.print();
-                                ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
-                            } catch(e) {
-                                console.error('Print error:', e);
-                                ${iOS ? '' : 'window.close();'}
-                            }
-                        }, ${iOS ? 400 : 250});
+                        Promise.resolve(document.fonts && document.fonts.ready).finally(function() {
+                            setTimeout(function() {
+                                try {
+                                    window.print();
+                                    ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
+                                } catch(e) {
+                                    console.error('Print error:', e);
+                                    ${iOS ? '' : 'window.close();'}
+                                }
+                            }, ${iOS ? 300 : 150});
+                        });
                     });
                 <\/script>
             </body>
@@ -526,7 +592,7 @@ export const printEloChart = (
         const val = yMin + (yRange * i / numYTicks);
         const y = toY(val);
         svg += `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${svgWidth - pad.right}" y2="${y.toFixed(1)}" stroke="#e0e0e0" stroke-dasharray="4,3"/>`;
-        svg += `<text x="${pad.left - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" fill="#666" font-size="11" font-family="sans-serif">${Number(val).toFixed(2)}</text>`;
+        svg += `<text x="${pad.left - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" fill="#666" font-size="11" font-family="Manrope">${Number(val).toFixed(2)}</text>`;
     }
 
     // Vertical grid lines + X labels
@@ -538,7 +604,7 @@ export const printEloChart = (
         if (i % step === 0 || i === chartData.length - 1) {
             const defaultLabel = d.eventIndex >= 0 ? `G${d.eventIndex + 1}` : 'Start';
             const label = d.sourceLabel || defaultLabel;
-            svg += `<text x="${x.toFixed(1)}" y="${svgHeight - pad.bottom + 16}" text-anchor="middle" fill="#666" font-size="10" font-family="sans-serif">${label}</text>`;
+            svg += `<text x="${x.toFixed(1)}" y="${svgHeight - pad.bottom + 16}" text-anchor="middle" fill="#666" font-size="10" font-family="Manrope">${label}</text>`;
         }
     });
 
@@ -582,7 +648,7 @@ export const printEloChart = (
             const lastPt = pts[pts.length - 1];
             const player = players.find(p => p.id === pid);
             const surname = player ? player.surname : '';
-            svg += `<text x="${(lastPt.x + 6).toFixed(1)}" y="${(lastPt.y + 4).toFixed(1)}" fill="${color}" font-size="9" font-weight="bold" font-family="sans-serif">${Number(last[pid]).toFixed(2)} - ${surname}</text>`;
+            svg += `<text x="${(lastPt.x + 6).toFixed(1)}" y="${(lastPt.y + 4).toFixed(1)}" fill="${color}" font-size="9" font-weight="bold" font-family="Manrope">${Number(last[pid]).toFixed(2)} - ${surname}</text>`;
         }
     });
 
@@ -607,7 +673,7 @@ export const printEloChart = (
     <style>
         @page { size: A4 landscape; margin: 18mm 20mm; }
         body {
-            font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Manrope', sans-serif;
             margin: 0; padding: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -764,7 +830,7 @@ export const printRanking = (
     const content = `
         <style>
             body { 
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum'; 
                 font-size: 11px; 
                 line-height: 1.4;
@@ -892,7 +958,7 @@ export const printRanking = (
                 Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
-                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})} - Pagina 1 di 1
+                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
             </div>
         </div>
     `;
@@ -962,14 +1028,14 @@ export const printTournamentReport = (
             return `
                 <tr style="height: 20px;">
                     <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
-                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
                     <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
                         ${tournament.status === 'scheduled' ? 
                             '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' : 
                             scoreHtml
                         }
                     </td>
-                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team2Name}</td>
                 </tr>
             `;
         } else {
@@ -990,14 +1056,14 @@ export const printTournamentReport = (
             return `
                 <tr style="height: 20px;">
                     <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
-                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
                     <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
                         ${tournament.status === 'scheduled' ? 
                             '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' : 
                             scoreHtml
                         }
                     </td>
-                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team2Name}</td>
                 </tr>
             `;
         }
@@ -1011,9 +1077,10 @@ export const printTournamentReport = (
     
     let roundRobinContent = '';
     const isRoundRobin = tournament.type === TournamentType.RoundRobinFinali;
+    const isTorneOtto = tournament.type === TournamentType.TorneOtto;
     const isHomeAway = tournament.roundRobinHomeAway || false;
 
-    if (isAmericano || isRoundRobin) {
+    if (isAmericano || isRoundRobin || isTorneOtto) {
         const matchesPerRound = (isAmericano && americanoFields && americanoFields > 0) ? americanoFields : 2;
         const roundsMap = new Map<number, typeof roundRobinMatches>();
         roundRobinMatches.forEach((m, idx) => {
@@ -1046,26 +1113,25 @@ export const printTournamentReport = (
 
         const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
 
-        roundRobinContent = roundRobinMatches.map((match, index) => {
+        const normalizedRounds = normalizeTournamentRounds(roundRobinMatches, tournament.type, {
+            fields: matchesPerRound,
+            homeAway: isHomeAway,
+            participantIds: Array.from(allPlayersIds),
+        });
+        const orderedRoundRobinMatches = normalizedRounds.flatMap(round => round.matches.map(item => item.match));
+        const normalizedRoundByNumber = new Map(normalizedRounds.map(round => [round.roundNumber, round]));
+        const courtByMatch = new Map(
+            normalizedRounds.flatMap(round => round.matches.map(item => [item.match, item.courtNumber] as const)),
+        );
+
+        roundRobinContent = orderedRoundRobinMatches.map((match, index) => {
             const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
             let rowHtml = '';
             
             if (r !== currentRound) {
                 currentRound = r;
                 
-                let roundTitle = `Turno ${currentRound}`;
-                if (isRoundRobin) {
-                    if (isHomeAway && totalRoundsCount > 1 && totalRoundsCount % 2 === 0) {
-                        const half = totalRoundsCount / 2;
-                        if (currentRound <= half) {
-                            roundTitle = `${currentRound}ª Giornata di Andata`;
-                        } else {
-                            roundTitle = `${currentRound - half}ª Giornata di Ritorno`;
-                        }
-                    } else {
-                        roundTitle = `Giornata ${currentRound} di ${totalRoundsCount}`;
-                    }
-                }
+                const roundTitle = normalizedRoundByNumber.get(currentRound)?.label || `Turno ${currentRound}`;
 
                 const matchesInRound = roundsMap.get(currentRound) || [];
                 let restingText = '';
@@ -1091,7 +1157,7 @@ export const printTournamentReport = (
                 }
 
                 rowHtml += `
-                    <tr>
+                    <tr class="round-header">
                         <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
                             ${roundTitle}
                             ${restingText}
@@ -1100,7 +1166,7 @@ export const printTournamentReport = (
                 `;
             }
             
-            rowHtml += generateMatchRow(match, index, false, -1);
+            rowHtml += generateMatchRow(match, (courtByMatch.get(match) || 1) - 1, false, -1);
             return rowHtml;
         }).join('');
     } else {
@@ -1417,7 +1483,7 @@ export const printTournamentReport = (
                 margin: 12mm 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
@@ -1562,6 +1628,16 @@ export const printTournamentReport = (
                 font-size: 8px;
                 color: #666;
             }
+            /* Le sezioni con molte partite devono poter continuare nella pagina
+               successiva; righe e intestazioni dei turni restano invece unite. */
+            .section-block {
+                break-inside: auto;
+                page-break-inside: auto;
+            }
+            tr.round-header {
+                break-after: avoid;
+                page-break-after: avoid;
+            }
         </style>
 
         <div style="text-align: center; margin-bottom: 3px;">
@@ -1622,51 +1698,9 @@ export const printTournamentReport = (
                 </tbody>
             </table>
         </div>
-        ` : `
-        <div class="section-block" style="margin: 16px 0;">
-            <h3 style="font-size: 13px; font-weight: bold; margin: 12px 0 6px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800; color: #d97706;">
-                🏆 FASE FINALE - 1°/2° POSTO
-            </h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
-                <tbody>
-                    <tr style="height: 22px;">
-                        <td style="width: 37%; text-align: right; font-size: 11px; padding: 4px 6px;">
-                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Classificato</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 11px; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
-                        </td>
-                        <td style="text-align: center; width: 26%; font-size: 11px; padding: 4px 6px;">
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; font-size: 11px; background: #fff;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; font-size: 11px; background: #fff;">&nbsp;&nbsp;&nbsp;</span>
-                        </td>
-                        <td style="width: 37%; text-align: left; font-size: 11px; padding: 4px 6px;">
-                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">2° Classificato</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 11px; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3 style="font-size: 13px; font-weight: bold; margin: 12px 0 6px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50; color: #2e7d32;">
-                🥉 FASE FINALE - 3°/4° POSTO
-            </h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
-                <tbody>
-                    <tr style="height: 22px;">
-                        <td style="width: 37%; text-align: right; font-size: 11px; padding: 4px 6px;">
-                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">3° Classificato</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 11px; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
-                        </td>
-                        <td style="text-align: center; width: 26%; font-size: 11px; padding: 4px 6px;">
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; font-size: 11px; background: #fff;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; font-size: 11px; background: #fff;">&nbsp;&nbsp;&nbsp;</span>
-                        </td>
-                        <td style="width: 37%; text-align: left; font-size: 11px; padding: 4px 6px;">
-                            <div style="font-size: 9px; color: #666; margin-bottom: 2px;">4° Classificato</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 11px; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        `}
+        ` : tournament.roundRobinPlayoffType === 'no_finals'
+            ? ''
+            : renderBlankFinalPhase(tournament.roundRobinPlayoffType === 'semifinals')}
         ` : `
         <div class="section-block">
             <h3 style="margin-top: 12px;">Partite e Risultati</h3>
@@ -1721,7 +1755,7 @@ export const printTournamentReport = (
                 Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
-                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})} - Pagina 1 di 1
+                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
             </div>
         </div>
     `;
@@ -1803,7 +1837,7 @@ export const printTeamTournamentRoundRobinSchedule = (
 	        <style>
 	            @page { size: A4; margin: 12mm 10mm; }
 	            body {
-	                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
 	                font-size: 11px;
 	                line-height: 1.3;
@@ -1916,7 +1950,7 @@ export const printTeamTournamentMatchdayCalendar = (
 	                margin: 12mm 10mm;
 	            }
 	            body {
-	                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
 	                font-size: 11px;
 	                line-height: 1.3;
@@ -2468,7 +2502,7 @@ export const printTeamTournamentMatchdayReport = (
             <style>
                 @page { size: A4; margin: 12mm 10mm; }
                 body {
-                    font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                     font-size: 11px;
                     line-height: 1.3;
@@ -2573,7 +2607,7 @@ export const printTeamTournamentMatchdayReport = (
 		        <style>
 		            @page { size: A4; margin: 12mm 10mm; }
 		            body {
-		                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
 		                font-size: 11px;
 		                line-height: 1.3;
@@ -2660,7 +2694,7 @@ export const printTeamTournamentReport = (
         const pageStyles = `
             @page { size: A4 landscape; margin: 12mm 12mm; }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
@@ -3278,7 +3312,7 @@ export const printTeamTournamentReport = (
 		        <style>
 		            @page { size: A4; margin: 12mm 10mm; }
 		            body {
-		                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
 		                font-size: 11px;
 		                line-height: 1.3;
@@ -3751,7 +3785,7 @@ export const printTeamTournamentStatistics = (
         <style>
             @page { size: A4; margin: 12mm 10mm; }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 12px;
                 line-height: 1.35;
@@ -3794,6 +3828,8 @@ export const printBlankScoreSheet = (
     americanoFields?: number
 ) => {
     const isAmericano = tournamentDetails.type === TournamentType.Americano;
+    const isTorneOtto = tournamentDetails.type === TournamentType.TorneOtto;
+    const isRoundRobin = tournamentDetails.type === TournamentType.RoundRobinFinali;
     const numPairs = pairs.length;
     // For 6 pairs, create 2 rows of 3. For 4 or less, create one row. For more, cap at 4 per row.
     const gridCols = numPairs <= 4 ? numPairs : (numPairs === 6 ? 3 : 4);
@@ -3872,6 +3908,48 @@ export const printBlankScoreSheet = (
             
             return rowHtml;
         }).join('');
+    } else if (isTorneOtto || isRoundRobin) {
+        let currentRound = 0;
+        matchesContent = matches.map((match, index) => {
+            const t1p1 = getPlayerById(match.team1[0]);
+            const t1p2 = getPlayerById(match.team1[1]);
+            const t2p1 = getPlayerById(match.team2[0]);
+            const t2p2 = getPlayerById(match.team2[1]);
+            if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            const round = match.roundNumber || Math.floor(index / 2) + 1;
+            const indexInRound = matches
+                .slice(0, index)
+                .filter((m, previousIndex) => (m.roundNumber || Math.floor(previousIndex / 2) + 1) === round)
+                .length;
+            const court = `Campo ${indexInRound + 1}`;
+            let rowHtml = '';
+
+            if (round !== currentRound) {
+                currentRound = round;
+                rowHtml += `
+                    <tr>
+                        <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
+                            ${isRoundRobin ? `Giornata ${round}` : `Turno ${round}`}
+                        </td>
+                    </tr>
+                `;
+            }
+
+            rowHtml += `
+                <tr style="height: 22px;">
+                    <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
+                    <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
+                    <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
+                        <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                    </td>
+                    <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
+                </tr>
+            `;
+            return rowHtml;
+        }).join('');
     } else {
         matchesContent = matches.map((match, index) => {
             const t1p1 = getPlayerById(match.team1[0]);
@@ -3907,7 +3985,7 @@ export const printBlankScoreSheet = (
                 margin: 12mm 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 13px;
                 line-height: 1.4;
@@ -4077,7 +4155,7 @@ export const printBlankScoreSheet = (
                 Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
-                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})} - Pagina 1 di 1
+                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
             </div>
         </div>
     `;
@@ -4671,7 +4749,7 @@ export const printGironiTournament = (
                 margin: 12mm 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
@@ -5001,7 +5079,7 @@ export const printTpraTournamentReport = (
                 margin: 10mm;
             }
             body {
-                font-family: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
@@ -5209,7 +5287,7 @@ export const printTournamentStatistics = (stats: any) => {
                 margin: 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
@@ -5923,7 +6001,7 @@ export const printBeatTheBoxBlank = (
                 margin: 12mm 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 12px;
                 line-height: 1.4;
@@ -6407,7 +6485,7 @@ export const printTorneoLiberoBlank = (
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
-                font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum'; 
                 padding: 20px;
                 font-size: 10px;
@@ -6729,7 +6807,7 @@ export const printTorneoLiberoComplete = (
                 margin: 12mm 10mm;
             }
             body {
-                font-family: 'Manrope', 'Aptos Narrow', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
@@ -7061,10 +7139,14 @@ export const printPlayerProfiles = (
                 return (isTeam1 && m.winner === 'team2') || (!isTeam1 && m.winner === 'team1');
             }).length;
             const pct = tMatches.length > 0 ? ((tWins / tMatches.length) * 100).toFixed(0) : '0';
-            // ELO delta for this tournament using the timeline
-            const delta = timeline
-                .filter(e => e.parentTournamentName === t.parentTournamentName || e.parentTournamentName === t.giornataName || e.parentTournamentName === t.name)
-                .reduce((sum, e) => sum + e.delta, 0);
+            // Lo storico può riferirsi al torneo oppure alle singole partite,
+            // a seconda del percorso con cui l'ELO è stato calcolato.
+            const delta = sumPlayerEventEloDelta(
+                playerId,
+                t.id,
+                allEloHistory,
+                tMatches.map(match => match.id)
+            );
             const tDraws = tMatches.length - tWins - tLosses;
             return {
                 date: new Date(t.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }),
@@ -7161,7 +7243,7 @@ export const printPlayerProfiles = (
             const deltaColor2 = t.delta >= 0 ? '#059669' : '#dc2626';
             const deltaSign2 = t.delta >= 0 ? '+' : '';
             return `<tr>
-                <td style="font-family:monospace;font-size:8px;">${t.date}</td>
+                <td style="font-family:'Manrope',sans-serif;font-variant-numeric:tabular-nums;font-size:8px;">${t.date}</td>
                 <td>${t.type}</td>
                 <td style="text-align:center;">${t.matches}</td>
                 <td style="text-align:center;"><span style="color:#16a34a;">${t.wins}V</span>${t.draws > 0 ? ` / <span style="color:#f59e0b;">${t.draws}P</span>` : ''} / <span style="color:#dc2626;">${t.losses}S</span></td>
@@ -7273,7 +7355,7 @@ export const printPlayerProfiles = (
             margin: 12mm 10mm;
         }
         body {
-            font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Manrope', sans-serif;
                 font-feature-settings: 'cv11', 'tnum', 'lnum';
             font-size: 10px;
             color: #111;

@@ -1568,10 +1568,10 @@ app.get('/api/data', async (req, res) => {
             sql`SELECT * FROM players WHERE workspace_id = ${wsId} AND (is_deleted = FALSE OR is_deleted IS NULL);`,
             sql`SELECT id, name, surname FROM players WHERE workspace_id = ${wsId} AND is_deleted = TRUE;`,
             sql`
-                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number 
+                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number, created_at
                 FROM matches 
                 WHERE workspace_id = ${wsId}
-                ORDER BY id ASC
+                ORDER BY round_number ASC NULLS LAST, created_at ASC, id ASC
             `,
             sql`
                 SELECT 
@@ -1692,6 +1692,7 @@ app.get('/api/data', async (req, res) => {
             winner: m.winner,
             tournamentId: m.tournament_id,
             roundNumber: m.round_number || undefined,
+            createdAt: m.created_at || undefined,
         }));
 
         const teamMatches = teamMatchesResult.map(m => {

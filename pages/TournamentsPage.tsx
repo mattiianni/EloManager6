@@ -16,6 +16,7 @@ import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon } from '../components
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName } from '../utils/format.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
+import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 
 type Page = 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'TeamSummary';
 
@@ -246,6 +247,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     const [isSavingSingleMatch, setIsSavingSingleMatch] = useState(false);
 
     const handleOpenSingleMatchModal = (m: Match) => {
+        if (!Array.isArray(m?.team1) || !Array.isArray(m?.team2)) {
+            console.warn('Partita incompleta: apertura del modal risultato ignorata.', m);
+            return;
+        }
         setSelectedSingleMatch(m);
         const parsed = parseMatchSets(m.sets);
         setSingleMatchSets(parsed.length > 0 ? parsed : [{ team1: 0, team2: 0 }]);
@@ -1031,6 +1036,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                         return (
                             <Card
                                 key={groupId}
+                                bodyClassName="!overflow-visible !rounded-none !border-0 !bg-transparent !shadow-none !backdrop-blur-none [&>div]:!p-0"
                                 title={
                                     <div className="flex items-center justify-between w-full">
                                         <div
@@ -1467,8 +1473,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                 return (
                                                                                     <div 
                                                                                         key={idx} 
-                                                                                        onClick={() => !sm.cancelled && handleOpenSingleMatchModal(sm)}
-                                                                                        title={sm.cancelled ? 'Partita Annullata' : 'Clicca per inserire o modificare il risultato'}
+                                                                                        onClick={() => !sm.cancelled && onNavigateToTeamTournamentMatchdayResults(day.id)}
+                                                                                        title={sm.cancelled ? 'Partita Annullata' : ((sm.team1Players || []).length === 0 || (sm.team2Players || []).length === 0 ? 'Definisci la partita scegliendo i giocatori delle squadre' : 'Inserisci o modifica il risultato')}
                                                                                         className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm transition-all active:scale-[0.99] ${
                                                                                             sm.cancelled
                                                                                                 ? 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10'
@@ -1532,7 +1538,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     }
                                                                                     if (day.type === TournamentType.TorneoASquadre) {
                                                                                         onNavigateToTeamTournamentMatchdayResults?.(day.id);
-                                                                                    } else if (day.type !== TournamentType.EliminazioneDiretta) {
+                                                                                    } else {
                                                                                         onNavigateToResults?.(day.id);
                                                                                     }
                                                                                 }}
@@ -1584,18 +1590,18 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                     <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-white/10">
                                                                         <div className="space-y-3">
                                                                             {(() => {
-                                                                                if (day.type === TournamentType.Americano) {
-                                                                                    const roundsMap = new Map<number, typeof tournamentMatches>();
-                                                                                    
+                                                                                if (day.type === TournamentType.Americano || day.type === TournamentType.TorneOtto) {
                                                                                     const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
                                                                                     const numPlayers = allPlayersIds.size;
                                                                                     const matchesPerRound = Math.min(day.americanoFields || 2, Math.floor(numPlayers / 4));
-
-                                                                                    tournamentMatches.forEach((sm, index) => {
-                                                                                        const r = sm.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
-                                                                                        if (!roundsMap.has(r)) roundsMap.set(r, []);
-                                                                                        roundsMap.get(r)!.push(sm);
+                                                                                    const normalizedRounds = normalizeTournamentRounds(tournamentMatches, day.type, {
+                                                                                        fields: matchesPerRound,
+                                                                                        participantIds: Array.from(allPlayersIds),
                                                                                     });
+                                                                                    const roundsMap = new Map(normalizedRounds.map(round => [
+                                                                                        round.roundNumber,
+                                                                                        round.matches.map(item => item.match),
+                                                                                    ]));
                                                                                     
                                                                                     const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
 
@@ -1949,7 +1955,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     }
                 ]}
             />
-            {isSingleMatchModalOpen && selectedSingleMatch && (() => {
+            {isSingleMatchModalOpen && selectedSingleMatch && Array.isArray(selectedSingleMatch.team1) && Array.isArray(selectedSingleMatch.team2) && (() => {
                 const team1Players = selectedSingleMatch.team1.map(pId => getPlayerById(pId)).filter(Boolean) as Player[];
                 const team2Players = selectedSingleMatch.team2.map(pId => getPlayerById(pId)).filter(Boolean) as Player[];
 

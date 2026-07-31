@@ -158,8 +158,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
 
     return (
         <div className="px-0 py-2 space-y-6">
-            <div className="flex justify-between items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Home</h1>
+            <div className="flex justify-end items-center gap-3">
                 <Button
                     onClick={onOpenDrawLauncher}
                     className="!bg-gradient-to-r !from-sky-500 !to-blue-600 !text-white shadow-md shadow-sky-500/25 !font-bold shrink-0"

@@ -5,6 +5,7 @@ import Button from './ui/Button.tsx';
 import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
+import { findMatchBetweenTeams, orientResultForStoredMatch } from '../utils/matchIdentity.ts';
 
 interface TpraBracketViewProps {
     tournament: Tournament;
@@ -15,7 +16,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
     tournament,
     matches,
 }) => {
-    const { addMatch, completeTournament } = usePadelStore();
+    const { addMatch, updateTournamentMatches, completeTournament } = usePadelStore();
     
     const [rounds, setRounds] = useState<BracketNode[][]>([]);
     const [selectedNode, setSelectedNode] = useState<BracketNode | null>(null);
@@ -141,6 +142,22 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
         const winner = t1Sets > t2Sets ? 'team1' : (t2Sets > t1Sets ? 'team2' : 'draw');
         if (winner === 'draw') {
             alert('Il match non può finire in pareggio.');
+            return;
+        }
+
+        const selectedTeam1: [string, string] = [selectedNode.team1[0].id, selectedNode.team1[1].id];
+        const selectedTeam2: [string, string] = [selectedNode.team2[0].id, selectedNode.team2[1].id];
+        const existingMatch = findMatchBetweenTeams(matches, selectedTeam1, selectedTeam2);
+
+        if (existingMatch) {
+            const orientedResult = orientResultForStoredMatch(existingMatch, selectedTeam1, currentSets, winner);
+
+            await updateTournamentMatches([{
+                matchId: existingMatch.id,
+                sets: orientedResult.sets,
+                winner: orientedResult.winner,
+            }]);
+            setIsScoreModalOpen(false);
             return;
         }
 

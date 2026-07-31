@@ -1,3 +1,30 @@
+## v6.7.5 — 2026-07-31
+
+### Stabilizzazione flussi torneo e risultati
+
+- Uniformato il flusso di creazione: formato, giocatori, sorteggio, opzioni, nome/data/circolo, anteprima e salvataggio. Rimossi i nomi automatici e corretti i loop di Round Robin + Finali e Gironi + Fase Finale.
+- Eliminazione Diretta/TPRA ora richiede i dati reali del torneo e aggiorna una partita esistente senza crearne duplicati.
+- Protette le partite non ancora definite dei tornei a squadre: niente crash su roster mancanti e apertura dell'editor della giornata con i giocatori delle squadre coinvolte.
+
+### Turni, interfaccia e accessibilità
+
+- Introdotto un normalizzatore condiviso per ordinare turni/giornate, partite, campi e riposi in UI e PDF, senza dipendere dall'ordine del database.
+- TorneOtto, Americano e Round Robin mostrano turni coerenti; il campo riparte da Campo 1 a ogni turno.
+- Manrope consolidato come font testuale; target HIG portati ad almeno 44 pt e alert migliorati con semantica e gestione del focus.
+- Semplificate le card annidate in Tornei e Modifica Risultati, rimossi hover invasivi e migliorati bottom sheet e pulsante flottante Sorteggia su mobile.
+
+### PDF e statistiche ELO
+
+- Standardizzate le fasi finali vuote sul modello Beat the Box, comprese semifinali e finali di Round Robin e Gironi.
+- Corretto il layout multipagina: sezioni lunghe divisibili, intestazioni unite alla prima riga, nomi lunghi a capo e rimozione del numero pagina hardcoded.
+- La stampa attende il caricamento dei font prima di aprire la finestra di stampa.
+- Corrette le variazioni ELO nel PDF del singolo giocatore, includendo sia record collegati al torneo sia record collegati alle singole partite dopo un ricalcolo generale.
+
+### Qualità
+
+- Aggiunti test unitari per normalizzazione turni, identità delle partite ed eventi ELO; suite corrente: 13 test.
+- Aggiunta `QA_CHECKLIST.md` con matrice manuale UI/PDF per tutti i formati e viewport principali.
+
 ## v6.4.9 — 2026-07-28
 - Verifica Distinzione Flussi Torneo Singolo vs Multi Giornata:
   - **Torneo Singolo**: Richiede ed assegna esclusivamente il Nome del Torneo Singolo senza proporre l'opzione di aggancio ad altri tornei.
