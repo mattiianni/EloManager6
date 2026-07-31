@@ -3,11 +3,9 @@ import React, { useState, useCallback } from 'react';
 /**
  * Props for the HIGButton component.
  */
-export interface HIGButtonProps {
+export interface HIGButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'size'> {
   /** Button content (text, icons, or mixed) */
   children: React.ReactNode;
-  /** Click handler */
-  onClick?: () => void;
   /**
    * Visual variant.
    * - `filled`      – solid blue background, white text
@@ -23,10 +21,6 @@ export interface HIGButtonProps {
   disabled?: boolean;
   /** Stretch to fill available width. Default: false */
   fullWidth?: boolean;
-  /** Additional CSS class names */
-  className?: string;
-  /** HTML button type attribute. Default: `button` */
-  type?: 'button' | 'submit';
 }
 
 /* ─── Size presets ────────────────────────────────────────────────────── */
@@ -125,6 +119,12 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
   fullWidth = false,
   className = '',
   type = 'button',
+  style,
+  onPointerDown,
+  onPointerUp,
+  onPointerLeave,
+  onPointerCancel,
+  ...buttonProps
 }) => {
   const [pressed, setPressed] = useState(false);
 
@@ -141,7 +141,6 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
   const buttonStyle: React.CSSProperties = {
     // Reset
     border: 'none',
-    outline: 'none',
     cursor: disabled ? 'not-allowed' : 'pointer',
     WebkitTapHighlightColor: 'transparent',
 
@@ -175,6 +174,7 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
     transform: pressed ? 'scale(0.97)' : 'scale(1)',
     transition:
       'transform 120ms ease-out, opacity 120ms ease-out',
+    ...style,
   };
 
   return (
@@ -200,15 +200,28 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
       )}
 
       <button
+        {...buttonProps}
         type={type}
-        className={`${variant === 'tinted' ? TINT_SCOPE_CLASS : ''} ${className}`.trim()}
+        className={`hig-focus-ring ${variant === 'tinted' ? TINT_SCOPE_CLASS : ''} ${className}`.trim()}
         style={buttonStyle}
         disabled={disabled}
-        onClick={disabled ? undefined : onClick}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onPointerCancel={handlePointerLeave}
+        onClick={onClick}
+        onPointerDown={(event) => {
+          handlePointerDown();
+          onPointerDown?.(event);
+        }}
+        onPointerUp={(event) => {
+          handlePointerUp();
+          onPointerUp?.(event);
+        }}
+        onPointerLeave={(event) => {
+          handlePointerLeave();
+          onPointerLeave?.(event);
+        }}
+        onPointerCancel={(event) => {
+          handlePointerLeave();
+          onPointerCancel?.(event);
+        }}
       >
         {children}
       </button>

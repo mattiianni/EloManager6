@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './eloEventsService.ts';
+import { buildPlayerEloTimeline, formatLabel, resolveEventContext, sumPlayerEventEloDelta } from './eloEventsService.ts';
 import { EloHistoryEntry, Match, Tournament, TeamTournamentMatchday, TournamentType } from '../types.ts';
 
 describe('eloEventsService Tests', () => {
@@ -147,6 +147,21 @@ describe('eloEventsService Tests', () => {
         expect(timeline).toHaveLength(1);
         expect(timeline[0].parentTournamentName).toBeNull();
         expect(formatLabel(timeline[0], true)).toBe('Partita Amichevole');
+    });
+
+    it('non attribuisce un evento orfano a un torneo usando soltanto la data', () => {
+        const entry: EloHistoryEntry = {
+            eventId: 'missing-tournament',
+            playerId,
+            eloBefore: 1500,
+            eloAfter: 1505,
+            delta: 5,
+            date: '2026-05-10T20:00:00Z',
+            type: 'tournament',
+        };
+        const context = resolveEventContext(entry, [], mockTournaments, []);
+        expect(context.parentTournamentName).toBeNull();
+        expect(context.dayLabel).toBe('Evento non associato');
     });
 
     it('corrupted tournament day matches log warning or fallback safely without disappearing', () => {

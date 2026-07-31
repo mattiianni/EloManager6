@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Player, Match, Tournament, EloHistoryEntry, FieldPosition, SetScore, TeamTournamentConfig, TeamTournamentTeam, TeamTournamentPlayerEntry, TeamTournamentMatchday, TeamTournamentSubMatch, TeamTournamentPlayerStatsRow, TeamTournamentFixture } from '../types.ts';
 import { getAuthToken } from './useAuth.tsx';
 
@@ -20,6 +20,7 @@ interface PadelStore {
     deleteMatch: (matchId: string) => Promise<void>;
     updateTournamentMatches: (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner'] }>, skipRefresh?: boolean) => Promise<void>;
     cascadeResetTournament: (tournamentId: string, phaseMatchIds: string[], skipRefresh?: boolean) => Promise<void>;
+    completeTournament: (tournamentId: string) => Promise<void>;
     addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<Tournament>;
     createTeamTournament: (payload: {
         name: string;
@@ -113,6 +114,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const bulkSaveInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -177,18 +179,35 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     const addMultipleMatches = async (matchDataList: Omit<Match, 'id'>[], newTournamentData: Omit<Tournament, 'id'>): Promise<void> => {
         console.log('🔄 addMultipleMatches called with:', { matchesCount: matchDataList.length, tournament: newTournamentData.name });
-        try {
-            const response = await apiRequest('/api/tournaments/bulk-matches', {
-                method: 'POST',
-                body: JSON.stringify({ matches: matchDataList, tournament: newTournamentData }),
-            });
-            console.log('✅ addMultipleMatches API response:', response);
-            await fetchData();
-            console.log('✅ addMultipleMatches completed successfully');
-        } catch (error) {
-            console.error('❌ addMultipleMatches failed:', error);
-            throw error;
-        }
+        const signature = JSON.stringify({
+            name: newTournamentData.name,
+            date: newTournamentData.date,
+            type: newTournamentData.type,
+            matches: matchDataList.map(match => ({ team1: match.team1, team2: match.team2, roundNumber: match.roundNumber, phase: match.phase })),
+        });
+        const pending = bulkSaveInFlightRef.current.get(signature);
+        if (pending) return pending;
+
+        const requestId = globalThis.crypto?.randomUUID?.() || `save-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const operation = (async () => {
+            try {
+                const response = await apiRequest('/api/tournaments/bulk-matches', {
+                    method: 'POST',
+                    headers: { 'Idempotency-Key': requestId },
+                    body: JSON.stringify({ matches: matchDataList, tournament: newTournamentData, requestId }),
+                });
+                console.log('✅ addMultipleMatches API response:', response);
+                await fetchData();
+                console.log('✅ addMultipleMatches completed successfully');
+            } catch (error) {
+                console.error('❌ addMultipleMatches failed:', error);
+                throw error;
+            } finally {
+                bulkSaveInFlightRef.current.delete(signature);
+            }
+        })();
+        bulkSaveInFlightRef.current.set(signature, operation);
+        return operation;
     };
 
     const updateTournamentMatches = async (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner'] }>, skipRefresh = false): Promise<void> => {

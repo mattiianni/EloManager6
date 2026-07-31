@@ -42,7 +42,7 @@ export const HIGListSection: React.FC<HIGListSectionProps> = ({ header, footer, 
       {header && (
         <div
           style={{
-            font: '400 13px/18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+            font: "400 13px/18px 'Manrope', sans-serif",
             color: 'var(--ios-secondaryLabel)',
             textTransform: 'uppercase',
             padding: '6px 20px 4px',
@@ -67,7 +67,7 @@ export const HIGListSection: React.FC<HIGListSectionProps> = ({ header, footer, 
       {footer && (
         <div
           style={{
-            font: '400 13px/18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+            font: "400 13px/18px 'Manrope', sans-serif",
             color: 'var(--ios-secondaryLabel)',
             padding: '4px 20px 6px',
           }}
@@ -118,6 +118,7 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
         <HIGSwitch 
           checked={switchChecked || false} 
           onChange={(c) => onSwitchChange && onSwitchChange(c)} 
+          aria-label={label}
         />
       );
     }
@@ -157,7 +158,7 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div
           style={{
-            font: '400 17px/22px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+            font: "400 17px/22px 'Manrope', sans-serif",
             color: destructive ? 'var(--ios-systemRed)' : 'var(--ios-label)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -169,7 +170,7 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
         {subtitle && (
           <div
             style={{
-              font: '400 15px/20px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              font: "400 15px/20px 'Manrope', sans-serif",
               color: 'var(--ios-secondaryLabel)',
               marginTop: '2px',
               whiteSpace: 'nowrap',
@@ -187,7 +188,7 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
           {detail && (
             <div
               style={{
-                font: '400 17px/22px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                font: "400 17px/22px 'Manrope', sans-serif",
                 color: 'var(--ios-secondaryLabel)',
                 marginRight: accessoryElement ? '8px' : '0',
               }}

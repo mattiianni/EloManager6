@@ -14,6 +14,7 @@ import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
+import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -183,8 +184,26 @@ const countPlayerOverlap = (match1: Omit<Match, 'id' | 'date' | 'winner' | 'sets
 };
 
 // Generate finals matches for top 4 teams
-const generateFinalsMatches = (top4Standings: TournamentStandingEntry[]): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
+const generateFinalsMatches = (
+ top4Standings: TournamentStandingEntry[],
+ playoffType: 'finals_only' | 'semifinals' = 'finals_only',
+): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
  if (top4Standings.length < 4) return [];
+
+ if (playoffType === 'semifinals') {
+ return [
+ {
+ team1: [top4Standings[0].team[0].id, top4Standings[0].team[1].id],
+ team2: [top4Standings[3].team[0].id, top4Standings[3].team[1].id],
+ phase: 'semifinal',
+ },
+ {
+ team1: [top4Standings[1].team[0].id, top4Standings[1].team[1].id],
+ team2: [top4Standings[2].team[0].id, top4Standings[2].team[1].id],
+ phase: 'semifinal',
+ },
+ ];
+ }
  
  const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
  
@@ -192,12 +211,14 @@ const generateFinalsMatches = (top4Standings: TournamentStandingEntry[]): Omit<M
  matches.push({
  team1: [top4Standings[0].team[0].id, top4Standings[0].team[1].id],
  team2: [top4Standings[1].team[0].id, top4Standings[1].team[1].id],
+ phase: 'final_1_2',
  });
  
  // Finale 3°-4° posto
  matches.push({
  team1: [top4Standings[2].team[0].id, top4Standings[2].team[1].id],
  team2: [top4Standings[3].team[0].id, top4Standings[3].team[1].id],
+ phase: 'final_3_4',
  });
  
  return matches;
@@ -380,9 +401,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [roundRobinScores, setRoundRobinScores] = useState<Record<number, SetScore[]>>({});
  const [roundRobinStandings, setRoundRobinStandings] = useState<TournamentStandingEntry[]>([]);
  const [finalsMatches, setFinalsMatches] = useState<Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[]>([]);
+ const [roundRobinSemifinalMatches, setRoundRobinSemifinalMatches] = useState<Omit<Match, 'id'>[]>([]);
  const [roundRobinFields, setRoundRobinFields] = useState<number>(2);
  const [roundRobinHomeAway, setRoundRobinHomeAway] = useState<boolean>(false);
  const [roundRobinPlayoffType, setRoundRobinPlayoffType] = useState<'no_finals' | 'finals_only' | 'semifinals'>('semifinals');
+ const [resultValidationError, setResultValidationError] = useState<string | null>(null);
  
  // Torneo Libero specific states
  const [numeroPartite, setNumeroPartite] = useState<number>(1);
@@ -706,19 +729,27 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleSemifinalsComplete = () => {
  console.log('🎯 Semifinali completate, creo finali');
+
+ const outcomes = gironiSemifinalsMatches.map(match => validateMatchOutcome({
+ sets: match.sets,
+ tournamentType: TournamentType.GironiFaseFinale,
+ phase: 'semifinal',
+ }));
+ const invalidOutcome = outcomes.find(outcome => outcome.status !== MATCH_OUTCOME.VALID_WIN);
+ if (invalidOutcome) {
+ setResultValidationError(outcomeErrorMessage(invalidOutcome.status) || 'Le semifinali devono avere un vincitore');
+ return;
+ }
+ setResultValidationError(null);
  
  // Calcola vincitori e perdenti delle semifinali
  const semi1 = gironiSemifinalsMatches[0];
  const semi2 = gironiSemifinalsMatches[1];
  
- const semi1Team1Games = semi1.sets.reduce((sum, set) => sum + set.team1, 0);
- const semi1Team2Games = semi1.sets.reduce((sum, set) => sum + set.team2, 0);
- const semi1Winner = semi1Team1Games > semi1Team2Games ? 'team1' : 'team2';
+ const semi1Winner = outcomes[0].winner as 'team1' | 'team2';
  const semi1Loser = semi1Winner === 'team1' ? 'team2' : 'team1';
  
- const semi2Team1Games = semi2.sets.reduce((sum, set) => sum + set.team1, 0);
- const semi2Team2Games = semi2.sets.reduce((sum, set) => sum + set.team2, 0);
- const semi2Winner = semi2Team1Games > semi2Team2Games ? 'team1' : 'team2';
+ const semi2Winner = outcomes[1].winner as 'team1' | 'team2';
  const semi2Loser = semi2Winner === 'team1' ? 'team2' : 'team1';
  
  // Crea finale 1°-2°
@@ -752,38 +783,56 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setIsSubmitting(true);
  
  try {
+ const finalOutcomes = gironiFinalsMatches.map((match, index) => validateMatchOutcome({
+ sets: match.sets,
+ tournamentType: TournamentType.GironiFaseFinale,
+ phase: index === 0 ? 'final_3_4' : 'final_1_2',
+ }));
+ const invalidFinal = finalOutcomes.find(outcome => outcome.status !== MATCH_OUTCOME.VALID_WIN);
+ if (invalidFinal) {
+ setResultValidationError(outcomeErrorMessage(invalidFinal.status) || 'Le finali devono avere un vincitore');
+ return;
+ }
+ setResultValidationError(null);
  // Combina tutte le partite: gironi + semifinali + finali
  const allMatches: Omit<Match, 'id'>[] = [];
  
  // Aggiungi partite dei gironi
- gironiMatches.flat().forEach(match => {
+ gironiMatches.flat().forEach((match, index) => {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+ phase: 'group',
+ roundNumber: match.roundNumber || index + 1,
  date: tournamentDate
  });
  });
  
  // Aggiungi semifinali
- gironiSemifinalsMatches.forEach(match => {
- const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+ gironiSemifinalsMatches.forEach((match, index) => {
+ const semifinalOutcome = validateMatchOutcome({
+ sets: match.sets,
+ tournamentType: TournamentType.GironiFaseFinale,
+ phase: 'semifinal',
+ });
  allMatches.push({
  ...match,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+ winner: semifinalOutcome.winner,
+ phase: 'semifinal',
  date: tournamentDate
  });
  });
  
  // Aggiungi finali
- gironiFinalsMatches.forEach(match => {
+ gironiFinalsMatches.forEach((match, index) => {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+ winner: finalOutcomes[index].winner,
+ phase: index === 0 ? 'final_3_4' : 'final_1_2',
  date: tournamentDate
  });
  });
@@ -1062,7 +1111,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const top4Standings = roundRobinStandings.slice(0, 4);
  
  // Generate finals matches
- const finals = generateFinalsMatches(top4Standings);
+ const finals = generateFinalsMatches(top4Standings, roundRobinPlayoffType === 'semifinals' ? 'semifinals' : 'finals_only');
  setFinalsMatches(finals);
  setFinalsScores({});
  
@@ -1075,6 +1124,18 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  alert('Per favore inserisci i risultati di tutte le partite finali.');
  return;
  }
+ const invalidOutcome = finalsMatches
+ .map((match, index) => validateMatchOutcome({
+ sets: finalsScores[index],
+ tournamentType: TournamentType.RoundRobinFinali,
+ phase: match.phase,
+ }))
+ .find(outcome => outcome.status !== MATCH_OUTCOME.VALID_WIN);
+ if (invalidOutcome) {
+ setResultValidationError(outcomeErrorMessage(invalidOutcome.status) || 'Ogni partita della fase finale deve avere un vincitore');
+ return;
+ }
+ setResultValidationError(null);
  
  // Check if tournament was already saved
  if (isTournamentSaved) {
@@ -1094,6 +1155,28 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
  
  setShowFinalsConfirmModal(false);
+
+ if (roundRobinPlayoffType === 'semifinals' && roundRobinSemifinalMatches.length === 0 && finalsMatches.every(match => match.phase === 'semifinal')) {
+ const completedSemifinals = finalsMatches.map((match, index) => ({
+ ...match,
+ date: new Date(tournamentDate).toISOString(),
+ sets: finalsScores[index],
+ winner: validateMatchOutcome({ sets: finalsScores[index], phase: 'semifinal' }).winner,
+ phase: 'semifinal' as const,
+ }));
+ const firstWinner = completedSemifinals[0].winner === 'team1' ? completedSemifinals[0].team1 : completedSemifinals[0].team2;
+ const firstLoser = completedSemifinals[0].winner === 'team1' ? completedSemifinals[0].team2 : completedSemifinals[0].team1;
+ const secondWinner = completedSemifinals[1].winner === 'team1' ? completedSemifinals[1].team1 : completedSemifinals[1].team2;
+ const secondLoser = completedSemifinals[1].winner === 'team1' ? completedSemifinals[1].team2 : completedSemifinals[1].team1;
+ setRoundRobinSemifinalMatches(completedSemifinals);
+ setFinalsMatches([
+ { team1: firstWinner, team2: secondWinner, phase: 'final_1_2' },
+ { team1: firstLoser, team2: secondLoser, phase: 'final_3_4' },
+ ]);
+ setFinalsScores({});
+ setResultValidationError(null);
+ return;
+ }
  setIsSubmitting(true);
  setIsTournamentSaved(true);
  
@@ -1101,15 +1184,16 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
 
  // Combine Round Robin and Finals matches
- const allMatches = [...roundRobinMatches, ...finalsMatches];
+ const allMatches = [...roundRobinMatches, ...roundRobinSemifinalMatches, ...finalsMatches];
  
  // Reindex finals scores to avoid overwriting round robin scores
  const reindexedFinalsScores: Record<number, SetScore[]> = {};
  Object.keys(finalsScores).forEach(key => {
- const newIndex = roundRobinMatches.length + parseInt(key);
+ const newIndex = roundRobinMatches.length + roundRobinSemifinalMatches.length + parseInt(key);
  reindexedFinalsScores[newIndex] = finalsScores[parseInt(key)];
  });
- const allScores = { ...roundRobinScores, ...reindexedFinalsScores };
+ const semifinalScores = Object.fromEntries(roundRobinSemifinalMatches.map((match, index) => [roundRobinMatches.length + index, match.sets]));
+ const allScores = { ...roundRobinScores, ...semifinalScores, ...reindexedFinalsScores };
  
  console.log('🎯 Round Robin matches:', roundRobinMatches.length);
  console.log('🎯 Finals matches:', finalsMatches.length);
@@ -1124,6 +1208,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  club: clubName,
  matchIds: [],
  status: 'completed'
+ ,roundRobinPlayoffType,
+ roundRobinFields,
+ roundRobinHomeAway: roundRobinHomeAway,
  };
  
  const finalMatches: Omit<Match, 'id'>[] = allMatches.map((match, index) => {
@@ -1134,7 +1221,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  ...match,
  date: new Date(tournamentDate).toISOString(),
  sets,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+ winner: validateMatchOutcome({
+ sets,
+ tournamentType: TournamentType.RoundRobinFinali,
+ phase: match.phase || 'round_robin',
+ }).winner,
+ phase: match.phase || 'round_robin',
  };
  });
 
@@ -1303,6 +1395,30 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎯 Standings calculated:', standings);
  
  setRoundRobinStandings(standings);
+ if (roundRobinPlayoffType === 'no_finals') {
+ const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
+ const tournamentData: Omit<Tournament, 'id'> = {
+ name: finalName,
+ type: TournamentType.RoundRobinFinali,
+ date: new Date(tournamentDate).toISOString(),
+ club: clubName,
+ matchIds: [],
+ status: 'completed',
+ roundRobinPlayoffType,
+ roundRobinFields,
+ roundRobinHomeAway,
+ };
+ const ordinaryMatches = roundRobinCompletedMatches.map(match => ({ ...match, phase: 'round_robin' as const }));
+ await addMultipleMatches(ordinaryMatches, tournamentData);
+ const createdTournament = { ...tournamentData, id: 'temp' } as Tournament;
+ setCreatedTournament(createdTournament);
+ setCompletedMatches(ordinaryMatches);
+ setFinalStandings(standings);
+ setStep('results');
+ setIsSuccessModalOpen(true);
+ setIsSubmitting(false);
+ return;
+ }
  console.log('🎯 Standings set, showing finals modal...');
  
  // Show modal to proceed to finals
@@ -1807,6 +1923,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  Procedi
  </Button>
  </div>
+ {resultValidationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-600 dark:text-red-300">{resultValidationError}</p>}
  </div>
  </Card>
  );
@@ -1865,47 +1982,53 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               Scelta Fase Conclusiva
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              <button
+                type="button"
+                className={`border-2 rounded-xl p-4 cursor-pointer text-left ${
                   roundRobinPlayoffType === 'no_finals'
                     ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                    : 'border-gray-200 dark:border-gray-700'
                 }`}
                 onClick={() => setRoundRobinPlayoffType('no_finals')}
+                aria-pressed={roundRobinPlayoffType === 'no_finals'}
               >
                 <h4 className="font-bold text-base mb-1">Solo Girone</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Classifica diretta senza playoff finale.
                 </p>
-              </div>
+              </button>
 
-              <div
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              <button
+                type="button"
+                className={`border-2 rounded-xl p-4 cursor-pointer text-left ${
                   roundRobinPlayoffType === 'finals_only'
                     ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                    : 'border-gray-200 dark:border-gray-700'
                 }`}
                 onClick={() => setRoundRobinPlayoffType('finals_only')}
+                aria-pressed={roundRobinPlayoffType === 'finals_only'}
               >
                 <h4 className="font-bold text-base mb-1">Solo Finale</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Finale secca 1° vs 2° classificata.
                 </p>
-              </div>
+              </button>
 
-              <div
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
+              <button
+                type="button"
+                className={`border-2 rounded-xl p-4 cursor-pointer text-left ${
                   roundRobinPlayoffType === 'semifinals'
                     ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-sky-300'
+                    : 'border-gray-200 dark:border-gray-700'
                 }`}
                 onClick={() => setRoundRobinPlayoffType('semifinals')}
+                aria-pressed={roundRobinPlayoffType === 'semifinals'}
               >
                 <h4 className="font-bold text-base mb-1">Semifinali + Finali</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   1° vs 4° e 2° vs 3° prima della finale.
                 </p>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -2039,6 +2162,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   Avanti - Impostazioni Torneo
  </Button>
  </div>
+ {resultValidationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-600 dark:text-red-300">{resultValidationError}</p>}
  </div>
  </Card>
  );

@@ -11,7 +11,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, action }) =
       {typeof title === 'string' ? (
         <span
           style={{
-            font: '400 13px/18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+            font: "400 13px/18px 'Manrope', sans-serif",
             color: 'var(--ios-secondaryLabel)',
             textTransform: 'uppercase',
             letterSpacing: '0.02em',

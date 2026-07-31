@@ -121,7 +121,7 @@ const HIGDemoPage: React.FC = () => {
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         title="Sheet Title"
-        leadingAction={{ label: 'Cancel', onPress: () => setIsSheetOpen(false) }}
+        leadingAction={{ label: 'Annulla', onPress: () => setIsSheetOpen(false) }}
         trailingAction={{ label: 'Done', onPress: () => setIsSheetOpen(false), bold: true }}
       >
         <div className="pt-4 pb-8">
@@ -141,7 +141,7 @@ const HIGDemoPage: React.FC = () => {
         message="Sei sicuro di voler riportare tutte le impostazioni ai valori di fabbrica? Questa azione è irreversibile."
         actions={[
           { label: 'Reset', style: 'destructive', onPress: () => setIsAlertOpen(false) },
-          { label: 'Cancel', style: 'cancel', onPress: () => setIsAlertOpen(false) }
+          { label: 'Annulla', style: 'cancel', onPress: () => setIsAlertOpen(false) }
         ]}
       />
     </div>

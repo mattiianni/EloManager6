@@ -173,6 +173,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     <div 
                         key={idx} 
                         onClick={() => onNavigateToPage?.(kpi.targetPage)}
+                        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToPage?.(kpi.targetPage); } }}
+                        role="button"
+                        tabIndex={0}
                         className={`cursor-pointer group relative flex flex-col justify-between p-2.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br ${kpi.bgGradient} border border-slate-200/70 dark:border-white/10 ${kpi.borderColor} shadow-md hover:shadow-xl backdrop-blur-2xl transition-all duration-300 active:scale-95`}
                     >
                         <div className="flex items-center justify-between gap-1 mb-1 sm:mb-2">
@@ -207,7 +210,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                         <div className="py-4 text-center text-slate-400 text-sm">Nessun giocatore registrato</div>
                     ) : (
                         top5.map((p, i) => (
-                            <div key={p.id} className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => setProfilePlayer(p)}>
+                            <div key={p.id} className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => setProfilePlayer(p)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(p); } }} role="button" tabIndex={0}>
                                 <div className="flex items-center gap-3">
                                     <div className="w-7 h-7 flex items-center justify-center shrink-0">
                                         {getMedalIcon(i)}
@@ -231,7 +234,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     <div className="py-4 text-center text-slate-400 text-sm">Nessuna giornata completata</div>
                 ) : (
                     <div className="divide-y divide-slate-200/60 dark:divide-white/10">
-                        <div className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => onNavigateToTournaments?.(lastGiornata.id)}>
+                        <div className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => onNavigateToTournaments?.(lastGiornata.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToTournaments?.(lastGiornata.id); } }} role="button" tabIndex={0}>
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-md text-white shrink-0">
                                     <SFIcon name="trophy.fill" size={18} color="white" />

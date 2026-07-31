@@ -86,26 +86,10 @@ export function resolveEventContext(
             dayLabel = computedDay;
             dateOfDay = tournament.date;
         } else {
-            // Torneo non trovato per ID (elo_history orfana) → cerca per data
-            const entryDate = new Date(entry.date).toISOString().split('T')[0];
-            const byDate = tournaments.find(t =>
-                new Date(t.date).toISOString().split('T')[0] === entryDate &&
-                t.type !== 'Torneo a Squadre'
-            );
-            if (byDate) {
-                parentTournamentName = byDate.parentTournamentName || byDate.giornataName || byDate.name;
-                
-                let computedDay = byDate.giornataName || byDate.type;
-                if (byDate.giornataName && (byDate.giornataName === byDate.parentTournamentName || byDate.giornataName === byDate.name)) {
-                    computedDay = byDate.type;
-                }
-                dayLabel = computedDay;
-                dateOfDay = byDate.date;
-            } else {
-                // Ultimo fallback: usa source_label come parentName, senza day label aggiuntivo
-                parentTournamentName = entry.sourceLabel || null;
-                dayLabel = entry.sourceLabel || 'Giornata Torneo';
-            }
+            // La data non è un'identità: due tornei possono svolgersi nello stesso giorno.
+            // Se l'ID autorevole non è risolvibile, non attribuire l'ELO a un torneo casuale.
+            parentTournamentName = entry.sourceLabel || null;
+            dayLabel = entry.sourceLabel || 'Evento non associato';
         }
     } else if (entry.type === 'match') {
         const match = matches.find(m => m.id === entry.eventId);

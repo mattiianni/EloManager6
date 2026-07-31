@@ -1002,7 +1002,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                             disabled={isSavingResults || loading || resultsLocked}
                                             className={`absolute -top-1 -right-1 h-6 w-6 rounded-full text-xs font-bold border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700`}
                                             title="Annulla partita"
-                                            aria-label="Cancel sub match"
+                                            aria-label="Annulla partita"
                                         >
                                             X
                                         </button>

@@ -191,6 +191,7 @@ const App: React.FC = () => {
                         clearTeamTournamentToConfigure={() => setTeamTournamentToConfigure(null)}
                         launchMode={drawLaunchMode}
                         clearLaunchMode={() => setDrawLaunchMode(null)}
+                        isNavigationOverlayOpen={isSidebarOpen}
                     />
                 );
             case 'Tournaments':
@@ -255,6 +256,7 @@ const App: React.FC = () => {
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     <Header 
                         toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
+                        isSidebarOpen={isSidebarOpen}
                         theme={theme}
                         toggleTheme={toggleTheme}
                     />
@@ -281,6 +283,7 @@ const App: React.FC = () => {
                                     key={item.id}
                                     type="button"
                                     onClick={() => setActivePage(item.id)}
+                                    aria-current={active ? 'page' : undefined}
                                     className="flex flex-1 flex-col items-center justify-center gap-1 h-full"
                                     style={{
                                         color: active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)',

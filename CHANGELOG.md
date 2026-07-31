@@ -1,3 +1,33 @@
+## v6.7.6 — 2026-07-31
+
+### Integrità risultati ed ELO
+
+- Creazione torneo, partite, storico ELO e aggiornamento giocatori sono ora atomici; retry e doppi invii usano una chiave idempotente e non generano duplicati.
+- Anche il completamento valida tutte le partite prima di modificare stato ed ELO e sostituisce lo storico precedente in una singola transazione.
+- `0-0` significa risultato non inserito. I pareggi sono ammessi nelle partite ordinarie e vietati in Eliminazione Diretta, semifinali, finali, finaline e consolazioni.
+- Una parità vietata non qualifica più automaticamente il secondo partecipante e non produce classifica, avanzamento o variazioni ELO.
+- Gli eventi ELO orfani non vengono più attribuiti a un torneo casuale soltanto perché disputato nella stessa data.
+
+### Fasi, Round Robin e tornei a squadre
+
+- Aggiunti metadati persistiti per fase, turno e tipo playoff Round Robin; UI, backend e stampa possono distinguere gironi, semifinali e finali senza usare la posizione nell'array.
+- Il percorso Round Robin con semifinali genera prima due semifinali validate e poi finale 1°/2° e finale 3°/4°.
+- Le partite incomplete dei tornei a squadre aprono l'editor della giornata; roster mancanti non provocano più il crash `team1.map`.
+- Nelle giornate ordinarie a squadre il pareggio è valido e viene calcolato correttamente come esito ELO 0,5.
+
+### PDF, Apple HIG e accessibilità
+
+- I documenti di stampa incorporano realmente Manrope, attendono il font e gestiscono contenuti multipagina senza bloccare intere sezioni.
+- Risultati vuoti sono mostrati come `Da definire`, mai come `0-0`; rimossi footer pagina hardcoded e aggiunto escaping dei testi utente nei template consolidati.
+- Pulsanti HIG, switch, modal e bottom sheet ora propagano ARIA, gestiscono focus/Escape e rispettano target minimi da 44 pt.
+- Navigazione con stato corrente accessibile, focus visibile, Manrope nei componenti condivisi e supporto `prefers-reduced-motion`.
+- Il pulsante flottante Sorteggia viene nascosto quando è aperto il menu laterale.
+
+### Qualità
+
+- Suite ampliata a 33 test, includendo matrice pareggi, `0-0`, associazione ELO e struttura dei documenti PDF.
+- Build di produzione e controllo sintattico backend verificati.
+
 ## v6.7.5 — 2026-07-31
 
 ### Stabilizzazione flussi torneo e risultati

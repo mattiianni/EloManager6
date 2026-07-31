@@ -17,6 +17,7 @@ import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName } from '../utils/format.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
+import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 
 type Page = 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'TeamSummary';
 
@@ -245,6 +246,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     const [singleMatchSets, setSingleMatchSets] = useState<{ team1: number; team2: number }[]>([{ team1: 0, team2: 0 }]);
     const [isSingleMatchModalOpen, setIsSingleMatchModalOpen] = useState(false);
     const [isSavingSingleMatch, setIsSavingSingleMatch] = useState(false);
+    const [singleMatchError, setSingleMatchError] = useState<string | null>(null);
 
     const handleOpenSingleMatchModal = (m: Match) => {
         if (!Array.isArray(m?.team1) || !Array.isArray(m?.team2)) {
@@ -254,30 +256,35 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         setSelectedSingleMatch(m);
         const parsed = parseMatchSets(m.sets);
         setSingleMatchSets(parsed.length > 0 ? parsed : [{ team1: 0, team2: 0 }]);
+        setSingleMatchError(null);
         setIsSingleMatchModalOpen(true);
     };
 
     const handleSaveSingleMatch = async () => {
         if (!selectedSingleMatch) return;
+        const parentTournament = tournaments.find(t => t.id === selectedSingleMatch.tournamentId);
+        const outcome = validateMatchOutcome({
+            sets: singleMatchSets,
+            tournamentType: parentTournament?.type,
+            phase: selectedSingleMatch.phase,
+        });
+        if (outcome.status === MATCH_OUTCOME.NOT_ENTERED || outcome.status === MATCH_OUTCOME.FORBIDDEN_DRAW || outcome.status === MATCH_OUTCOME.INVALID_SCORE) {
+            setSingleMatchError(outcomeErrorMessage(outcome.status));
+            return;
+        }
+        setSingleMatchError(null);
         setIsSavingSingleMatch(true);
         try {
-            const t1Games = singleMatchSets.reduce((sum, s) => sum + (Number(s.team1) || 0), 0);
-            const t2Games = singleMatchSets.reduce((sum, s) => sum + (Number(s.team2) || 0), 0);
-            let winner: 'team1' | 'team2' | 'draw' = 'draw';
-            if (t1Games > t2Games) winner = 'team1';
-            else if (t2Games > t1Games) winner = 'team2';
-
             await updateTournamentMatches([
-                { matchId: selectedSingleMatch.id, sets: singleMatchSets, winner }
+                { matchId: selectedSingleMatch.id, sets: singleMatchSets, winner: outcome.winner }
             ]);
 
             // Check if all matches of this tournament are complete
-            const parentTournament = tournaments.find(t => t.id === selectedSingleMatch.tournamentId);
             if (parentTournament && parentTournament.status !== 'completed') {
                 const tournamentMatches = matches.filter(m => m.tournamentId === parentTournament.id);
                 const allOtherDone = tournamentMatches
                     .filter(m => m.id !== selectedSingleMatch.id)
-                    .every(m => m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
+                    .every(m => m.winner !== null);
                 if (allOtherDone) {
                     await completeTournament(parentTournament.id);
                 }
@@ -1071,7 +1078,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             if (teamTournamentRootId) onNavigateToTeamTournamentConfiguration?.(teamTournamentRootId);
                                                         }}
                                                         className={tournamentActionButtonClass}
-                                                        aria-label="Edit Team Tournament"
+                                                        aria-label="Modifica torneo a squadre"
                                                     >
                                                         <PencilIcon />
                                                     </Button>
@@ -1083,7 +1090,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             if (teamTournamentRoot) handlePrint(teamTournamentRoot);
                                                         }}
                                                         className={tournamentActionButtonClass}
-                                                        aria-label="Print Team Tournament"
+                                                        aria-label="Stampa torneo a squadre"
                                                     >
                                                         <PrintIcon />
                                                     </Button>
@@ -1095,7 +1102,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             if (teamTournamentRoot) handleDelete(teamTournamentRoot.id);
                                                         }}
                                                         className={tournamentActionButtonClass}
-                                                        aria-label="Delete Team Tournament"
+                                                        aria-label="Elimina torneo a squadre"
                                                     >
                                                         <TrashIcon />
                                                     </Button>
@@ -1155,12 +1162,12 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                     if (teamTournamentRootId) onNavigateToTeamTournamentConfiguration(teamTournamentRootId);
                                                                 }}
                                                                 className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}
-                                                                aria-label="Edit Team Tournament"
+                                                                aria-label="Modifica torneo a squadre"
                                                             >
                                                                 <PencilIcon />
                                                             </Button>
-                                                            <Button size="sm" variant="secondary" onClick={() => handlePrint(teamTournamentRoot)} aria-label="Print Team Tournament" className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}><PrintIcon /></Button>
-                                                            <Button size="sm" variant="danger" onClick={() => handleDelete(teamTournamentRoot.id)} className={`${tournamentActionButtonClass} !p-1.25 sm:!p-1.5`} aria-label="Delete Team Tournament"><TrashIcon /></Button>
+                                                            <Button size="sm" variant="secondary" onClick={() => handlePrint(teamTournamentRoot)} aria-label="Stampa torneo a squadre" className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}><PrintIcon /></Button>
+                                                            <Button size="sm" variant="danger" onClick={() => handleDelete(teamTournamentRoot.id)} className={`${tournamentActionButtonClass} !p-1.25 sm:!p-1.5`} aria-label="Elimina torneo a squadre"><TrashIcon /></Button>
                                                         </div>
                                                     </div>
                                                     <p className="text-sm text-app-soft dark:text-white/80">
@@ -1911,7 +1918,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                         />
                     </div>
                     <div>
-                        <label htmlFor="edit-date" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Date</label>
+                        <label htmlFor="edit-date" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Data</label>
                         <input
                             type="date"
                             id="edit-date"
@@ -1923,7 +1930,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                         />
                     </div>
                     <div className="flex justify-end pt-4">
-                        <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} className="mr-2" disabled={isSubmitting}>Cancel</Button>
+                        <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} className="mr-2" disabled={isSubmitting}>Annulla</Button>
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
                         </Button>
@@ -1997,9 +2004,18 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
                             <MatchScoreInput
                                 sets={singleMatchSets}
-                                onSetsChange={setSingleMatchSets}
+                                onSetsChange={(sets) => {
+                                    setSingleMatchSets(sets);
+                                    setSingleMatchError(null);
+                                }}
                                 disabled={isSavingSingleMatch}
                             />
+
+                            {singleMatchError && (
+                                <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                                    {singleMatchError}
+                                </p>
+                            )}
 
                             <div className="mt-8 flex items-center gap-3">
                                 <HIGButton

@@ -34,7 +34,23 @@ export interface Match {
     tournamentId?: string;
     roundNumber?: number;
     createdAt?: string;
+    phase?: MatchPhase;
 }
+
+export type MatchPhase =
+    | 'ordinary'
+    | 'group'
+    | 'round_robin'
+    | 'direct_elimination_round'
+    | 'round_of_32'
+    | 'round_of_16'
+    | 'quarterfinal'
+    | 'semifinal'
+    | 'final_1_2'
+    | 'final_3_4'
+    | 'finalina'
+    | 'consolation'
+    | 'consolation_final';
 
 export interface SetScore {
     team1: number;

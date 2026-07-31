@@ -1753,6 +1753,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <span>Inserisci Risultato Singolo</span>
  <Button 
  onClick={() => setIsMatchFormOpen(!isMatchFormOpen)} 
+ onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsMatchFormOpen(!isMatchFormOpen); } }}
+ role="button"
+ tabIndex={0}
+ aria-expanded={isMatchFormOpen}
  variant="ghost" 
  size="sm"
  className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
@@ -1819,6 +1823,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <div
  className="flex items-center w-full cursor-pointer"
  onClick={() => toggleExpand(`name_${name}`)}
+ onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleExpand(`name_${name}`); } }}
+ role="button"
+ tabIndex={0}
+ aria-expanded={expandedItems.has(`name_${name}`)}
  >
  <ChevronDownIcon className={`h-5 w-5 mr-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
  <span className="font-bold text-xl">{name}</span>
@@ -1832,7 +1840,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const tournamentDayDisplayName = getTournamentDisplayName(day, tournaments);
  return (
  <div key={day.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
- <div className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50" onClick={() => toggleExpand(`day_${day.id}`)}>
+ <div className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50" onClick={() => toggleExpand(`day_${day.id}`)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleExpand(`day_${day.id}`); } }} role="button" tabIndex={0} aria-expanded={expandedItems.has(`day_${day.id}`)}>
  <div className="flex items-center">
  <ChevronDownIcon className={`h-5 w-5 mr-2 transition-transform ${isDayExpanded ? 'rotate-180' : ''}`} />
  <div>

@@ -30,6 +30,7 @@ const NavItem: React.FC<{
                     e.preventDefault();
                     onClick();
                 }}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all duration-200 ${itemClassName}`}
             >
                 <div className="flex w-6 items-center justify-center">
@@ -78,6 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
 
             {/* Sidebar */}
             <aside
+                id="app-sidebar"
                 className={`fixed top-0 left-0 z-40 flex h-full w-[min(82vw,300px)] flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl text-slate-900 dark:text-white border-r border-slate-200/60 dark:border-white/10 shadow-2xl transform transition-transform duration-300 md:relative md:w-[260px] md:translate-x-0 ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
@@ -86,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
                     <div>
                         <h2 className="sf-title2 font-bold text-[var(--ios-label)]">Menu</h2>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="md:hidden rounded-lg p-2 text-[var(--ios-systemBlue)]">
+                    <button onClick={() => setIsOpen(false)} className="hig-focus-ring md:hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-[var(--ios-systemBlue)]" aria-label="Chiudi menu">
                         <SFIcon name="xmark" size={20} />
                     </button>
                 </div>

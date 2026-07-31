@@ -12,6 +12,10 @@ export interface HIGSwitchProps {
   disabled?: boolean;
   /** Additional CSS class names for the outer wrapper */
   className?: string;
+  /** Accessible name when no visible label is associated with the switch. */
+  'aria-label'?: string;
+  /** ID of the visible element that labels the switch. */
+  'aria-labelledby'?: string;
 }
 
 /* ─── Constant dimensions (iOS UISwitch spec) ─────────────────────────── */
@@ -42,39 +46,42 @@ export const HIGSwitch: React.FC<HIGSwitchProps> = ({
   onChange,
   disabled = false,
   className = '',
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }) => {
   const toggle = useCallback(() => {
     if (!disabled) onChange(!checked);
   }, [checked, disabled, onChange]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        toggle();
-      }
-    },
-    [toggle],
-  );
-
   /* ── Track styles ──────────────────────────────────────────────────── */
-  const trackStyle: React.CSSProperties = {
+  const controlStyle: React.CSSProperties = {
     position: 'relative',
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    width: TRACK_WIDTH,
+    minWidth: 44,
+    height: 44,
+    minHeight: 44,
+    padding: 0,
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 12,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    WebkitTapHighlightColor: 'transparent',
+    flexShrink: 0,
+  };
+
+  const trackStyle: React.CSSProperties = {
+    position: 'relative',
     width: TRACK_WIDTH,
     height: TRACK_HEIGHT,
     borderRadius: TRACK_RADIUS,
     backgroundColor: checked ? 'var(--ios-systemGreen)' : 'var(--ios-systemFill)',
     border: checked ? 'none' : '2px solid var(--ios-separator)',
     boxSizing: 'border-box',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-    pointerEvents: disabled ? 'none' : 'auto',
     transition: `background-color ${TRANSITION}, border-color ${TRANSITION}`,
-    WebkitTapHighlightColor: 'transparent',
-    outline: 'none',
-    flexShrink: 0,
   };
 
   /* ── Thumb styles ──────────────────────────────────────────────────── */
@@ -94,17 +101,21 @@ export const HIGSwitch: React.FC<HIGSwitchProps> = ({
   };
 
   return (
-    <div
-      className={className}
+    <button
+      type="button"
+      className={`hig-focus-ring ${className}`.trim()}
       role="switch"
       aria-checked={checked}
-      tabIndex={disabled ? -1 : 0}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      disabled={disabled}
       onClick={toggle}
-      onKeyDown={handleKeyDown}
-      style={trackStyle}
+      style={controlStyle}
     >
-      <div style={thumbStyle} />
-    </div>
+      <span aria-hidden="true" style={trackStyle}>
+        <span style={thumbStyle} />
+      </span>
+    </button>
   );
 };
 

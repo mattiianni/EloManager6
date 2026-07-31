@@ -1,4 +1,4 @@
-# Padel ELO Manager — Design (v6.7.5)
+# Padel ELO Manager — Design (v6.7.6)
 
 Questo documento descrive l’architettura e le scelte di design dell’app **Padel ELO Manager** (frontend React/Vite + backend Express + PostgreSQL su Neon), con focus su flussi utente, modello dati e punti “non ovvi” (stampa PDF, PWA, multi-workspace, tornei a squadre).
 
@@ -33,6 +33,10 @@ PDF:
 `utils/tournamentRounds.ts` è la fonte comune per ordinamento di turni/giornate, ordine stabile delle partite, numerazione campi e riposi. UI e PDF non devono ricostruire autonomamente questi dati né affidarsi all'ordine restituito dal database.
 
 L'identità di una partita tra due coppie è indipendente dall'ordine interno dei giocatori e dal lato del campo; `utils/matchIdentity.ts` evita duplicazioni durante la modifica dei tabelloni TPRA.
+
+`utils/matchOutcome.js` è la policy condivisa degli esiti. `0-0` è sempre non inserito; i pareggi sono ammessi nelle fasi ordinarie e vietati in Eliminazione Diretta, semifinali, finali, finaline e consolazioni. Il backend ripete sempre la validazione prima di salvare, avanzare il tabellone o calcolare l'ELO.
+
+La creazione bulk e il completamento di un torneo sono transazioni atomiche. Ogni creazione porta una chiave idempotente per rendere sicuri retry, timeout e doppio clic.
 
 ## Runtime e entrypoint
 

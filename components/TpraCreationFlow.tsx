@@ -60,6 +60,7 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
                     team2: node.team2 ? [node.team2[0].id, node.team2[1].id] : ['bye1', 'bye2'],
                     sets: [],
                     winner: node.isBye ? node.winner : null,
+                    phase: 'direct_elimination_round',
                     isBye: node.isBye,
                 } as any;
             });

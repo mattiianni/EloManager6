@@ -425,7 +425,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             {rankingData.length >= 3 && !selectedTournamentId && (
                 <div className="grid grid-cols-3 gap-2 pt-2 items-end">
                     {/* 2° Posto */}
-                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[1])}>
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[1])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[1]); } }} role="button" tabIndex={0}>
                         <div className="w-12 h-12 rounded-full border-2 border-slate-300 bg-slate-100 dark:bg-slate-800 dark:border-slate-500 flex items-center justify-center text-lg font-black shadow-md mb-2">
                             🥈
                         </div>
@@ -435,7 +435,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         </div>
                     </div>
                     {/* 1° Posto */}
-                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[0])}>
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[0])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[0]); } }} role="button" tabIndex={0}>
                         <div className="w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center text-2xl font-black shadow-xl mb-2 animate-bounce">
                             🥇
                         </div>
@@ -445,7 +445,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         </div>
                     </div>
                     {/* 3° Posto */}
-                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[2])}>
+                    <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[2])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[2]); } }} role="button" tabIndex={0}>
                         <div className="w-12 h-12 rounded-full border-2 border-amber-700 bg-orange-100 dark:bg-slate-800 dark:border-amber-700 flex items-center justify-center text-lg font-black shadow-md mb-2">
                             🥉
                         </div>
@@ -504,7 +504,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                     )}
                                     
                                     <div className="py-3 px-1">
-                                        <div className="flex justify-between items-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 p-1 rounded-xl transition-colors" onClick={() => handleToggleExpand(player.id)}>
+                                        <div className="flex justify-between items-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 p-1 rounded-xl transition-colors" onClick={() => handleToggleExpand(player.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleToggleExpand(player.id); } }} role="button" tabIndex={0} aria-expanded={expandedPlayerId === player.id}>
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="w-7 h-7 flex items-center justify-center shrink-0">
                                                     {getMedalIcon(idx)}

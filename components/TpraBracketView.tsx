@@ -147,7 +147,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
 
         const selectedTeam1: [string, string] = [selectedNode.team1[0].id, selectedNode.team1[1].id];
         const selectedTeam2: [string, string] = [selectedNode.team2[0].id, selectedNode.team2[1].id];
-        const existingMatch = findMatchBetweenTeams(matches, selectedTeam1, selectedTeam2);
+        const existingMatch = findMatchBetweenTeams<Match>(matches, selectedTeam1, selectedTeam2);
 
         if (existingMatch) {
             const orientedResult = orientResultForStoredMatch(existingMatch, selectedTeam1, currentSets, winner);
@@ -168,6 +168,11 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
             sets: currentSets,
             winner: winner,
             tournamentId: tournament.id,
+            phase: selectedNode.round === rounds.length - 1
+                ? 'final_1_2'
+                : selectedNode.round === rounds.length - 2
+                    ? 'semifinal'
+                    : 'direct_elimination_round',
         };
 
         await addMatch(newMatch);

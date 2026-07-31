@@ -5,11 +5,12 @@ import { APP_MONTH, APP_VERSION } from '../../constants.ts';
 
 interface HeaderProps {
     toggleSidebar: () => void;
+    isSidebarOpen: boolean;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, toggleTheme }) => {
     const { logout, workspace } = useAuth();
 
     return (
@@ -24,8 +25,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
               <div className="flex flex-[2] md:flex-1 items-center justify-start overflow-hidden gap-1.5 md:gap-0">
                   <button
                       onClick={toggleSidebar}
-                      className="flex items-center justify-center text-sky-500 dark:text-sky-400 md:hidden focus:outline-none w-[44px] h-[44px] -ml-2 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                      aria-label="Toggle sidebar"
+                      className="hig-focus-ring flex items-center justify-center text-sky-500 dark:text-sky-400 md:hidden w-[44px] h-[44px] -ml-2 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                      aria-label={isSidebarOpen ? 'Chiudi menu' : 'Apri menu'}
+                      aria-expanded={isSidebarOpen}
+                      aria-controls="app-sidebar"
                   >
                       <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'wght' 400" }}>menu</span>
                   </button>
@@ -71,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
 
               {/* Right Actions */}
               <div className="flex flex-1 justify-end items-center flex-row gap-1 md:gap-3 -mr-1 shrink-0">
-                  <div className="flex items-center justify-center w-[40px] h-[40px] scale-90 md:scale-100">
+                  <div className="flex items-center justify-center min-w-[44px] min-h-[44px] scale-90 md:scale-100">
                       <ThemeToggle theme={theme} onToggle={toggleTheme} />
                   </div>
                   <button
@@ -80,9 +83,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
                               logout();
                           }
                       }}
-                      className="flex items-center justify-center text-rose-500 hover:text-rose-600 focus:outline-none w-[40px] h-[40px] rounded-xl hover:bg-rose-500/10 transition-colors"
+                      className="hig-focus-ring flex min-h-[44px] min-w-[44px] items-center justify-center text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-500/10 transition-colors"
                       title="Esci"
-                      aria-label="Logout"
+                      aria-label="Esci"
                   >
                       <span className="material-symbols-outlined text-[22px]">logout</span>
                   </button>

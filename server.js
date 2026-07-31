@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { randomUUID } from 'crypto';
 import stringSimilarity from 'string-similarity';
+import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from './utils/matchOutcome.js';
 
 // Auth configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'padel-elo-manager-dev-secret-change-in-production';
@@ -257,10 +258,20 @@ async function ensureTablesExist() {
     try {
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`;
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS round_number INTEGER`;
+        await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS phase VARCHAR(40)`;
         // Backfill existing rows: set created_at = date for old matches
         await sql`UPDATE matches SET created_at = date WHERE created_at IS NULL`;
     } catch (error) {
         logger.debug('created_at column migration attempt', { message: error.message });
+    }
+
+    try {
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_playoff_type VARCHAR(30)`;
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_fields INTEGER`;
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_home_away BOOLEAN DEFAULT FALSE`;
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(100)`;
+    } catch (error) {
+        logger.debug('Tournament phase/idempotency migration attempt', { message: error.message });
     }
     await sql`
         CREATE TABLE IF NOT EXISTS elo_history (
@@ -500,6 +511,11 @@ async function ensureTablesExist() {
         await sql`ALTER TABLE elo_history ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE`;
     } catch (error) {
         logger.debug('workspace_id columns migration attempt', { message: error.message });
+    }
+    try {
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS tournaments_workspace_idempotency_uidx ON tournaments(workspace_id, idempotency_key) WHERE idempotency_key IS NOT NULL`;
+    } catch (error) {
+        logger.debug('tournaments idempotency index migration attempt', { message: error.message });
     }
 
     try {
@@ -1558,6 +1574,43 @@ const hasAnyTeamTournamentResults = async (rootTournamentId, workspaceId) => {
     return !!result?.[0]?.has_results;
 };
 
+const inferLegacyMatchPhase = (tournament, match, index, totalMatches) => {
+    if (match?.phase) return match.phase;
+    if (tournament?.type === 'Eliminazione Diretta') return 'direct_elimination_round';
+    if (tournament?.type === 'Gironi + Fase Finale' && totalMatches >= 4) {
+        const offset = totalMatches - index;
+        if (offset === 4 || offset === 3) return 'semifinal';
+        if (offset === 2) return 'final_3_4';
+        if (offset === 1) return 'final_1_2';
+        return 'group';
+    }
+    if (tournament?.type === 'Round Robin + Finali') {
+        const playoffType = tournament.roundRobinPlayoffType || tournament.round_robin_playoff_type;
+        const playoffCount = playoffType === 'semifinals' ? 4 : (playoffType === 'no_finals' ? 0 : 2);
+        const offset = totalMatches - index;
+        if (playoffCount === 4 && (offset === 4 || offset === 3)) return 'semifinal';
+        if (playoffCount > 0 && offset === 2) return 'final_1_2';
+        if (playoffCount > 0 && offset === 1) return 'final_3_4';
+        return 'round_robin';
+    }
+    return 'ordinary';
+};
+
+const validateStoredMatch = ({ match, tournament, phase }) => validateMatchOutcome({
+    sets: match?.sets,
+    tournamentType: tournament?.type,
+    phase,
+    isDirectElimination: tournament?.format === 'ELIMINAZIONE DIRETTA',
+});
+
+const sendOutcomeError = (res, status, matchId = null) => res.status(400).json({
+    code: String(status || 'invalid_score').toUpperCase(),
+    matchId,
+    reason: outcomeErrorMessage(status) || 'Risultato non valido',
+    drawAllowed: status !== MATCH_OUTCOME.FORBIDDEN_DRAW,
+    message: outcomeErrorMessage(status) || 'Risultato non valido',
+});
+
 // GET /api/data - Fetch all data
 app.get('/api/data', async (req, res) => {
     try {
@@ -1568,7 +1621,7 @@ app.get('/api/data', async (req, res) => {
             sql`SELECT * FROM players WHERE workspace_id = ${wsId} AND (is_deleted = FALSE OR is_deleted IS NULL);`,
             sql`SELECT id, name, surname FROM players WHERE workspace_id = ${wsId} AND is_deleted = TRUE;`,
             sql`
-                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number, created_at
+                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number, phase, created_at
                 FROM matches 
                 WHERE workspace_id = ${wsId}
                 ORDER BY round_number ASC NULLS LAST, created_at ASC, id ASC
@@ -1590,7 +1643,7 @@ app.get('/api/data', async (req, res) => {
             sql`
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
-                    t.playoff_type, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
+                    t.playoff_type, t.round_robin_playoff_type, t.round_robin_fields, t.round_robin_home_away, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
                     c.config_completed AS team_tournament_config_completed,
                     d.round_number AS team_tournament_round_number,
                     d.team1_number AS team_tournament_team1_number,
@@ -1641,6 +1694,9 @@ app.get('/api/data', async (req, res) => {
             dayLabel: t.day_label || null,
             numGironi: t.num_gironi || null,
             playoffType: t.playoff_type || null,
+            roundRobinPlayoffType: t.round_robin_playoff_type || undefined,
+            roundRobinFields: t.round_robin_fields || undefined,
+            roundRobinHomeAway: !!t.round_robin_home_away,
             teamTournamentConfigCompleted: !!t.team_tournament_config_completed,
             teamTournamentRootId: t.team_tournament_root_id || null,
             teamTournamentRoundNumber: t.team_tournament_round_number || null,
@@ -1692,6 +1748,7 @@ app.get('/api/data', async (req, res) => {
             winner: m.winner,
             tournamentId: m.tournament_id,
             roundNumber: m.round_number || undefined,
+            phase: m.phase || undefined,
             createdAt: m.created_at || undefined,
         }));
 
@@ -2020,14 +2077,26 @@ app.delete('/api/players', async (req, res) => {
 // POST /api/matches - Add match
 app.post('/api/matches', async (req, res) => {
     try {
-        const { date, team1, team2, sets, winner, tournamentId, roundNumber } = req.body;
+        const { date, team1, team2, sets, tournamentId, roundNumber, phase: providedPhase } = req.body;
         if (!date || !team1 || !team2 || !sets) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        let tournamentType = null;
+        if (tournamentId) {
+            const tournamentRows = await sql`SELECT type FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId} LIMIT 1`;
+            if (tournamentRows.length === 0) return res.status(404).json({ code: 'TOURNAMENT_NOT_FOUND', message: 'Torneo non trovato' });
+            tournamentType = tournamentRows[0].type;
+        }
+        const phase = providedPhase || (tournamentType === 'Eliminazione Diretta' ? 'direct_elimination_round' : 'ordinary');
+        const outcome = validateMatchOutcome({ sets, tournamentType, phase });
+        if (![MATCH_OUTCOME.VALID_WIN, MATCH_OUTCOME.VALID_DRAW].includes(outcome.status)) {
+            return sendOutcomeError(res, outcome.status);
+        }
+
         const result = await sql`
-            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number)
-            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null})
+            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, phase)
+            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${outcome.winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null}, ${phase})
             RETURNING id
         `;
         const matchId = result[0].id;
@@ -2046,7 +2115,7 @@ app.post('/api/matches', async (req, res) => {
 
         const team1EloAvg = (playersData[team1[0]] + playersData[team1[1]]) / 2;
         const team2EloAvg = (playersData[team2[0]] + playersData[team2[1]]) / 2;
-        const score1 = winner === 'team1' ? 1 : 0;
+        const score1 = outcome.winner === 'team1' ? 1 : (outcome.winner === 'draw' ? 0.5 : 0);
         
         // ELO calculation using configured K-factors for Friendly Match
         const { delta1, delta2 } = calculateEloChange(team1EloAvg, team2EloAvg, score1, 'Friendly Match');
@@ -2097,45 +2166,64 @@ app.post('/api/matches', async (req, res) => {
 app.put('/api/matches', async (req, res) => {
     try {
         const { matchUpdates } = req.body;
-        if (!matchUpdates || !Array.isArray(matchUpdates)) {
+        if (!matchUpdates || !Array.isArray(matchUpdates) || matchUpdates.length === 0) {
             return res.status(400).json({ message: 'Match updates array is required' });
         }
-        
-        logger.info('Updating match scores', { count: matchUpdates.length });
-        
-        for (const update of matchUpdates) {
-            const { matchId, sets, winner: providedWinner } = update;
-            if (!matchId || !sets || !Array.isArray(sets)) {
-                logger.warn('Invalid match update data', { matchId });
-                continue;
-            }
-            
-            // Calculate team games for logging/stats
-            const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
-            const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
-            
-            // Use provided winner if available, otherwise fallback to games (legacy behavior)
-            let winner = providedWinner;
-            if (!winner) {
-                if (team1Games === team2Games) {
-                    winner = 'draw';
-                } else {
-                    winner = team1Games > team2Games ? 'team1' : 'team2';
-                }
-            }
-            
-            // Update match with sets and winner
-            await sql`
-                UPDATE matches
-                SET sets = ${JSON.stringify(sets)}, winner = ${winner}
-                WHERE id = ${matchId} AND workspace_id = ${req.workspaceId}
-            `;
-            
-            logger.match('update', matchId, { winner, team1Games, team2Games });
+
+        const invalidShape = matchUpdates.find(update => !update?.matchId || !Array.isArray(update?.sets));
+        if (invalidShape) {
+            return res.status(400).json({
+                code: 'INVALID_UPDATE',
+                matchId: invalidShape?.matchId || null,
+                message: 'Ogni aggiornamento deve contenere partita e punteggio',
+            });
         }
-        
-        logger.info('Partite aggiornate con successo', { count: matchUpdates.length });
-        res.json({ message: 'Partite aggiornate con successo' });
+
+        const ids = matchUpdates.map(update => update.matchId);
+        if (new Set(ids).size !== ids.length) {
+            return res.status(400).json({ code: 'DUPLICATE_MATCH_ID', message: 'La stessa partita compare più volte' });
+        }
+
+        const storedRows = await sql`
+            SELECT m.id, m.phase, t.type, t.round_robin_playoff_type,
+                   ROW_NUMBER() OVER (PARTITION BY m.tournament_id ORDER BY m.round_number ASC NULLS LAST, m.created_at ASC, m.id ASC) AS match_position,
+                   COUNT(*) OVER (PARTITION BY m.tournament_id) AS match_count
+            FROM matches m
+            JOIN tournaments t ON t.id = m.tournament_id
+            WHERE m.id = ANY(${ids}::uuid[])
+              AND m.workspace_id = ${req.workspaceId}
+        `;
+        if (storedRows.length !== ids.length) {
+            const found = new Set(storedRows.map(row => row.id));
+            const missingId = ids.find(id => !found.has(id));
+            return res.status(404).json({ code: 'MATCH_NOT_FOUND', matchId: missingId, message: 'Partita non trovata' });
+        }
+
+        const storedById = new Map(storedRows.map(row => [row.id, row]));
+        const validated = [];
+        for (const update of matchUpdates) {
+            const stored = storedById.get(update.matchId);
+            const phase = inferLegacyMatchPhase(stored, stored, Number(stored.match_position) - 1, Number(stored.match_count));
+            const outcome = validateMatchOutcome({
+                sets: update.sets,
+                tournamentType: stored.type,
+                phase,
+            });
+            if ([MATCH_OUTCOME.NOT_ENTERED, MATCH_OUTCOME.FORBIDDEN_DRAW, MATCH_OUTCOME.INVALID_SCORE].includes(outcome.status)) {
+                return sendOutcomeError(res, outcome.status, update.matchId);
+            }
+            validated.push({ ...update, phase, winner: outcome.winner });
+        }
+
+        const queries = validated.map(update => sql`
+            UPDATE matches
+            SET sets = ${JSON.stringify(update.sets)}::jsonb, winner = ${update.winner}, phase = ${update.phase}
+            WHERE id = ${update.matchId} AND workspace_id = ${req.workspaceId}
+        `);
+        await sql.transaction(queries);
+
+        logger.info('Partite aggiornate atomicamente', { count: validated.length });
+        res.json({ message: 'Partite aggiornate con successo', updated: validated.length });
     } catch (error) {
         logger.error('Failed to update matches', error);
         res.status(500).json({ message: 'Failed to update matches', error: error.message });
@@ -3509,7 +3597,7 @@ const calcMatchWinnerFromSets = (sets, scoringType = 'Punti') => {
 
 const calcTeamMatchdaySummary = ({ matchesPerDay, subMatchWinners, subMatchSets, scoringType = 'Punti' }) => {
     const neededWins = matchesPerDay === 5 ? 3 : 2;
-    const playedWinners = subMatchWinners.filter(w => w === 'team1' || w === 'team2');
+    const playedWinners = subMatchWinners.filter(w => w === 'team1' || w === 'team2' || w === 'draw');
     const team1Wins = playedWinners.filter(w => w === 'team1').length;
     const team2Wins = playedWinners.filter(w => w === 'team2').length;
     const playedCount = playedWinners.length;
@@ -3531,6 +3619,7 @@ const calcTeamMatchdaySummary = ({ matchesPerDay, subMatchWinners, subMatchSets,
     let decidedWinner = null;
     if (team1Wins >= neededWins && team1Wins > team2Wins) decidedWinner = 'team1';
     if (team2Wins >= neededWins && team2Wins > team1Wins) decidedWinner = 'team2';
+    if (playedCount === matchesPerDay && team1Wins === team2Wins) decidedWinner = 'draw';
 
     if (scoringType === 'Punti + Resilienza') {
         for (let i = 0; i < subMatchSets.length; i++) {
@@ -3567,7 +3656,11 @@ const calcTeamMatchdaySummary = ({ matchesPerDay, subMatchWinners, subMatchSets,
             }
         }
     } else {
-        if (decidedWinner) {
+        if (decidedWinner === 'draw') {
+            team1Points = 1;
+            team2Points = 1;
+        }
+        if (decidedWinner === 'team1' || decidedWinner === 'team2') {
             const winnerWins = decidedWinner === 'team1' ? team1Wins : team2Wins;
             const loserWins = decidedWinner === 'team1' ? team2Wins : team1Wins;
             const isAllPlayed = playedCount === matchesPerDay;
@@ -4125,7 +4218,7 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     };
 
     for (const m of matches) {
-        if (m.cancelled || !m.winner || m.winner === 'draw') continue;
+        if (m.cancelled || !m.winner) continue;
 
         const team1P1Id = await getPlayerId(m.team1_players?.[0]);
         const team1P2Id = await getPlayerId(m.team1_players?.[1]);
@@ -4142,7 +4235,7 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
         const avg1 = (t1p1Elo + t1p2Elo) / 2;
         const avg2 = (t2p1Elo + t2p2Elo) / 2;
 
-        const score = m.winner === 'team1' ? 1 : 0;
+        const score = m.winner === 'team1' ? 1 : (m.winner === 'draw' ? 0.5 : 0);
         const { delta1, delta2 } = calculateEloChange(avg1, avg2, score, 'team_tournament', matchday.phase);
 
         if (team1P1Id) {
@@ -4198,7 +4291,7 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
         const matchdayResult = await sql`
             SELECT m.id, m.root_tournament_id, m.tournament_day_id, m.phase, m.status AS previous_status, m.matches_per_day,
                    m.team1_number, m.team2_number,
-                   c.scoring_type
+                   c.scoring_type, c.format
             FROM team_tournament_matchdays m
             JOIN tournaments t ON t.id = m.tournament_day_id
             JOIN team_tournament_configs c ON c.tournament_id = m.root_tournament_id
@@ -4213,6 +4306,7 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
         const matchesPerDay = Number(matchdayResult[0].matches_per_day) === 5 ? 5 : 3;
         const scoringType = matchdayResult[0].scoring_type || 'Punti';
         const phase = matchdayResult[0].phase || 'round_robin';
+        const isDirectElimination = matchdayResult[0].format === 'ELIMINAZIONE DIRETTA';
         const previousStatus = matchdayResult[0].previous_status || 'scheduled';
 
         if (subMatches.length !== matchesPerDay) {
@@ -4228,15 +4322,28 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
                 continue;
             }
             const sets = Array.isArray(sm?.sets) ? sm.sets : null;
-            const winner = calcMatchWinnerFromSets(sets, scoringType);
-            if (winner === 'draw' && scoringType !== 'Punti + Resilienza') {
-                return res.status(400).json({ message: 'Il pareggio non e\' previsto. Inserisci un vincitore (o lascia 0-0 per partita non giocata).' });
+            const outcome = validateMatchOutcome({ sets, phase, isDirectElimination });
+            if (outcome.status === MATCH_OUTCOME.FORBIDDEN_DRAW || outcome.status === MATCH_OUTCOME.INVALID_SCORE) {
+                return sendOutcomeError(res, outcome.status, `index:${winners.length}`);
             }
-            winners.push(winner);
+            winners.push(outcome.winner);
             allSets.push(Array.isArray(sets) ? sets : null);
         }
 
         const summary = calcTeamMatchdaySummary({ matchesPerDay, subMatchWinners: winners, subMatchSets: allSets, scoringType });
+        const normalizedStatus = status === 'completed' ? 'completed' : 'scheduled';
+        if (normalizedStatus === 'completed') {
+            const incompleteIndex = winners.findIndex(winner => winner === null);
+            if (incompleteIndex >= 0) {
+                return res.status(400).json({ code: 'INCOMPLETE_MATCH', matchId: `index:${incompleteIndex}`, message: 'Inserisci tutti i risultati prima di completare la giornata' });
+            }
+            if (summary.winner === 'draw' && (isDirectElimination || phase !== 'round_robin')) {
+                return sendOutcomeError(res, MATCH_OUTCOME.FORBIDDEN_DRAW, matchdayId);
+            }
+            if (!summary.winner) {
+                return res.status(400).json({ code: 'INCOMPLETE_MATCHDAY', message: 'La giornata non contiene un risultato completo' });
+            }
+        }
 
         // Persist each sub-match result
         for (let i = 0; i < subMatches.length; i++) {
@@ -4245,7 +4352,7 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
             const sets = cancelled
                 ? null
                 : (Array.isArray(sm?.sets) ? sm.sets.map(s => ({ team1: Number(s?.team1 || 0), team2: Number(s?.team2 || 0) })) : null);
-            const winner = cancelled ? null : calcMatchWinnerFromSets(sets, scoringType);
+            const winner = cancelled ? null : validateMatchOutcome({ sets, phase, isDirectElimination }).winner;
             
             let updateQuery;
             if (Array.isArray(sm?.team1Players) && Array.isArray(sm?.team2Players)) {
@@ -4276,10 +4383,6 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
             await updateQuery;
         }
 
-        const normalizedStatus = status === 'completed' ? 'completed' : 'scheduled';
-        if (normalizedStatus === 'completed' && !summary.winner) {
-            return res.status(400).json({ message: 'Non puoi chiudere la giornata senza un vincitore deciso.' });
-        }
         await sql`
             UPDATE team_tournament_matchdays
             SET status = ${normalizedStatus},
@@ -5317,176 +5420,114 @@ app.get('/api/team-tournaments/:id/fixtures', async (req, res) => {
 app.post('/api/tournaments/bulk-matches', async (req, res) => {
     try {
         const { tournament, matches } = req.body;
-        if (!tournament || !matches || !Array.isArray(matches)) {
-            return res.status(400).json({ message: 'Missing or invalid tournament/matches data' });
+        if (!tournament || !Array.isArray(matches) || matches.length === 0) {
+            return res.status(400).json({ code: 'INVALID_PAYLOAD', message: 'Torneo o partite mancanti' });
+        }
+        if (!String(tournament.name || '').trim() || !String(tournament.club || '').trim() || !tournament.date) {
+            return res.status(400).json({ code: 'MISSING_TOURNAMENT_INFO', message: 'Nome, data e circolo sono obbligatori' });
         }
 
-        let tournamentId;
+        const idempotencyKey = String(req.get('Idempotency-Key') || req.body.requestId || '').trim() || randomUUID();
+        if (idempotencyKey.length > 100) {
+            return res.status(400).json({ code: 'INVALID_IDEMPOTENCY_KEY', message: 'Chiave di salvataggio non valida' });
+        }
+        const existing = await sql`
+            SELECT id FROM tournaments
+            WHERE workspace_id = ${req.workspaceId} AND idempotency_key = ${idempotencyKey}
+            LIMIT 1
+        `;
+        if (existing.length > 0) {
+            return res.json({ message: 'Torneo già salvato', tournamentId: existing[0].id, idempotent: true });
+        }
+
+        const tournamentId = randomUUID();
         const parentTournamentName = tournament.parentTournamentName || tournament.giornataName || null;
         const dayLabel = tournament.dayLabel || tournament.name;
-        
-        // ALWAYS create a new tournament entry for each giornata
-        // giornataName is used to link multiple giornate to the same tournament series
-        const tournamentResult = await sql`
-            INSERT INTO tournaments (name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, workspace_id)
-            VALUES (${tournament.name}, ${tournament.type}, ${tournament.date}, ${tournament.club}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${req.workspaceId})
-            RETURNING id
+
+        const normalizedMatches = [];
+        for (let index = 0; index < matches.length; index++) {
+            const match = matches[index];
+            if (!Array.isArray(match?.team1) || match.team1.length !== 2 || !Array.isArray(match?.team2) || match.team2.length !== 2) {
+                return res.status(400).json({ code: 'INVALID_TEAMS', matchId: match?.id || null, message: 'Ogni partita deve contenere due coppie complete' });
+            }
+            if (new Set([...match.team1, ...match.team2]).size !== 4) {
+                return res.status(400).json({ code: 'DUPLICATE_PLAYER', matchId: match?.id || null, message: 'I quattro giocatori della partita devono essere distinti' });
+            }
+            const phase = inferLegacyMatchPhase(tournament, match, index, matches.length);
+            const outcome = validateStoredMatch({ match, tournament, phase });
+            if (outcome.status === MATCH_OUTCOME.FORBIDDEN_DRAW || outcome.status === MATCH_OUTCOME.INVALID_SCORE || (tournament.status === 'completed' && outcome.status === MATCH_OUTCOME.NOT_ENTERED)) {
+                return sendOutcomeError(res, outcome.status, match?.id || `index:${index}`);
+            }
+            const fields = tournament.type === 'TorneOtto 30\'' ? 2 : Math.max(1, Number(tournament.americanoFields || tournament.roundRobinFields || 1));
+            normalizedMatches.push({
+                ...match,
+                id: randomUUID(),
+                phase,
+                winner: outcome.winner,
+                roundNumber: Number(match.roundNumber) > 0 ? Number(match.roundNumber) : Math.floor(index / fields) + 1,
+            });
+        }
+
+        const playerIds = [...new Set(normalizedMatches.flatMap(match => [...match.team1, ...match.team2]))];
+        const playerRows = await sql`
+            SELECT id, current_elo FROM players
+            WHERE id = ANY(${playerIds}::uuid[]) AND workspace_id = ${req.workspaceId} AND (is_deleted = FALSE OR is_deleted IS NULL)
         `;
-        tournamentId = tournamentResult[0].id;
-        
-        if (tournament.giornataName) {
-            logger.info("Created new giornata linked to tournament series", { 
-                tournamentId, 
-                giornataName: tournament.giornataName,
-                date: tournament.date,
-                name: tournament.name
-            });
-        } else {
-            logger.info("Created new standalone tournament", { 
-                tournamentId, 
-                name: tournament.name,
-                date: tournament.date
-            });
+        if (playerRows.length !== playerIds.length) {
+            return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non sono disponibili nel workspace' });
         }
 
-        const allPlayerIds = new Set();
-        matches.forEach((match) => {
-            match.team1.forEach(id => allPlayerIds.add(id));
-            match.team2.forEach(id => allPlayerIds.add(id));
-        });
-
-        // Get their starting ELOs for this tournament (use current global ELO)
-        const playerIdsArray = Array.from(allPlayerIds);
-
-        // USE GLOBAL ELO: Always use current_elo from players table
-        // This ensures tournaments always use the latest ELO rating
-        const playersData = {};
-        for (const playerId of playerIdsArray) {
-            const playerResult = await sql`
-                SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}
-            `;
-            if (playerResult.length > 0) {
-                playersData[playerId] = playerResult[0].current_elo;
-                logger.debug("Player ELO starting point", { playerId: playerId.substring(0, 8), elo: playerResult[0].current_elo, source: "global current_elo" });
-            } else {
-                playersData[playerId] = 1500;
-                logger.warn("Player not found, using default ELO", { playerId: playerId.substring(0, 8) });
-            }
-        }
-
-        // Track ELO changes for each player across all matches
+        const playersData = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo)]));
         const playerEloChanges = new Map();
-
-        // Determine if this is Round Robin + Finali to use phase-specific K factors
-        const isRoundRobinFinali = tournament.type === 'Round Robin + Finali';
-        const totalMatches = matches.length;
-        const roundRobinMatchCount = isRoundRobinFinali ? totalMatches - 2 : totalMatches;
-        
-        // Process matches sequentially
-        for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
-            const match = matches[matchIndex];
-            const result = await sql`
-                INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number)
-                VALUES (${match.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets)}, ${match.winner || null}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber || null})
-                RETURNING id
-            `;
-            const matchId = result[0].id;
-
-            // Only calculate ELO if tournament is completed and match has a winner
-            if (tournament.status === 'completed' && match.winner) {
-                // Use tournament-specific ELOs (updated as we process matches)
-                const team1P1Elo = playersData[match.team1[0]];
-                const team1P2Elo = playersData[match.team1[1]];
-                const team2P1Elo = playersData[match.team2[0]];
-                const team2P2Elo = playersData[match.team2[1]];
-
-                const team1EloAvg = (team1P1Elo + team1P2Elo) / 2;
-                const team2EloAvg = (team2P1Elo + team2P2Elo) / 2;
-                let score1;
-                if (match.winner === 'team1') {
-                    score1 = 1;
-                } else if (match.winner === 'team2') {
-                    score1 = 0;
-                } else { // draw
-                    score1 = 0.5;
-                }
-                
-                // Determine phase for Round Robin + Finali
-                let phase;
-                if (isRoundRobinFinali) {
-                    if (matchIndex < roundRobinMatchCount) {
-                        phase = 'roundRobin';
-                    } else if (matchIndex === roundRobinMatchCount) {
-                        phase = 'finals1st2nd'; // First final is for 1st-2nd place
-                    } else {
-                        phase = 'finals3rd4th'; // Second final is for 3rd-4th place
-                    }
-                }
-                
-                // Determine phase for Gironi + Fase Finale
-                if (tournament.type === 'Gironi + Fase Finale') {
-                    const finalsCount = 4;
-                    const gironiMatchCount = totalMatches - finalsCount;
-                    
-                    if (matchIndex < gironiMatchCount) {
-                        phase = 'gironi';
-                    } else if (matchIndex < gironiMatchCount + 2) {
-                        phase = 'semifinals';
-                    } else if (matchIndex === gironiMatchCount + 2) {
-                        phase = 'finals3rd4th';
-                    } else {
-                        phase = 'finals1st2nd';
-                    }
-                }
-                
-                const { delta1, delta2 } = calculateEloChange(team1EloAvg, team2EloAvg, score1, tournament.type, phase);
-                
-                logger.debug("Match ELO calculation", { match: matchIndex + 1, team1Avg: team1EloAvg.toFixed(2), team2Avg: team2EloAvg.toFixed(2), delta1: delta1.toFixed(2), delta2: delta2.toFixed(2) });
-                
-                // Update tournament-specific ELO (in memory, not in DB current_elo)
-                for (const playerId of match.team1) {
-                    const oldElo = playersData[playerId];
-                    const newElo = oldElo + delta1;
-                    playersData[playerId] = newElo; // Update for next match in this tournament
-                    
-                    // Track total change for this player
-                    if (!playerEloChanges.has(playerId)) {
-                        playerEloChanges.set(playerId, { oldElo, totalDelta: 0 });
-                    }
-                    playerEloChanges.get(playerId).totalDelta += delta1;
-                }
-                
-                for (const playerId of match.team2) {
-                    const oldElo = playersData[playerId];
-                    const newElo = oldElo + delta2;
-                    playersData[playerId] = newElo; // Update for next match in this tournament
-                    
-                    // Track total change for this player
-                    if (!playerEloChanges.has(playerId)) {
-                        playerEloChanges.set(playerId, { oldElo, totalDelta: 0 });
-                    }
-                    playerEloChanges.get(playerId).totalDelta += delta2;
-                }
-            }
-        }
-        
-        // Create SINGLE ELO history record per player for the entire tournament (only if completed)
         if (tournament.status === 'completed') {
-            for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
-                const newElo = oldElo + totalDelta;
-                await sql`
-                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                    VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${tournament.name})
-                `;
-
-                const currentGlobalElo = (await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`)[0].current_elo;
-                const newGlobalElo = currentGlobalElo + totalDelta;
-                await sql`UPDATE players SET current_elo = ${newGlobalElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-                logger.eloChange(playerId, currentGlobalElo, newGlobalElo, totalDelta, 'tournament (global update)');
+            for (const match of normalizedMatches) {
+                const avg1 = (playersData[match.team1[0]] + playersData[match.team1[1]]) / 2;
+                const avg2 = (playersData[match.team2[0]] + playersData[match.team2[1]]) / 2;
+                const score1 = match.winner === 'team1' ? 1 : (match.winner === 'team2' ? 0 : 0.5);
+                const { delta1, delta2 } = calculateEloChange(avg1, avg2, score1, tournament.type, match.phase);
+                for (const playerId of match.team1) {
+                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                    playerEloChanges.get(playerId).totalDelta += delta1;
+                    playersData[playerId] += delta1;
+                }
+                for (const playerId of match.team2) {
+                    if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
+                    playerEloChanges.get(playerId).totalDelta += delta2;
+                    playersData[playerId] += delta2;
+                }
             }
         }
 
-        res.json({ message: 'Torneo e partite aggiunti con successo', tournamentId });
+        const queries = [
+            sql`
+                INSERT INTO tournaments (id, name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, round_robin_playoff_type, round_robin_fields, round_robin_home_away, idempotency_key, workspace_id)
+                VALUES (${tournamentId}, ${String(tournament.name).trim()}, ${tournament.type}, ${tournament.date}, ${String(tournament.club).trim()}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${tournament.roundRobinPlayoffType || null}, ${tournament.roundRobinFields || null}, ${!!tournament.roundRobinHomeAway}, ${idempotencyKey}, ${req.workspaceId})
+            `,
+            ...normalizedMatches.map(match => sql`
+                INSERT INTO matches (id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, phase)
+                VALUES (${match.id}, ${match.date || tournament.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets || [])}::jsonb, ${match.winner}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber}, ${match.phase})
+            `),
+        ];
+        for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
+            queries.push(sql`
+                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${oldElo + totalDelta}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${String(tournament.name).trim()})
+            `);
+            queries.push(sql`UPDATE players SET current_elo = current_elo + ${totalDelta} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+        }
+
+        try {
+            await sql.transaction(queries);
+        } catch (error) {
+            if (error?.code === '23505') {
+                const duplicate = await sql`SELECT id FROM tournaments WHERE workspace_id = ${req.workspaceId} AND idempotency_key = ${idempotencyKey} LIMIT 1`;
+                if (duplicate.length > 0) return res.json({ message: 'Torneo già salvato', tournamentId: duplicate[0].id, idempotent: true });
+            }
+            throw error;
+        }
+
+        logger.info('Torneo salvato atomicamente', { tournamentId, matches: normalizedMatches.length });
+        res.json({ message: 'Torneo e partite aggiunti con successo', tournamentId, idempotent: false });
     } catch (error) {
         logger.error("Failed to bulk add matches", error);
         res.status(500).json({ message: 'Failed to bulk add matches', error: error.message });
@@ -5498,185 +5539,84 @@ app.put('/api/tournaments/complete', async (req, res) => {
     try {
         const { tournamentId } = req.body;
         if (!tournamentId) {
-            return res.status(400).json({ message: 'Tournament ID is required' });
+            return res.status(400).json({ code: 'TOURNAMENT_ID_REQUIRED', message: 'Tournament ID is required' });
         }
-        
-        logger.tournament("complete", tournamentId, { action: "starting completion" });
-        
-        // Update tournament status to completed
-        logger.debug("Updating tournament status", { tournamentId, newStatus: "completed" });
-        const updateResult = await sql`
-            UPDATE tournaments SET status = 'completed' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}
-        `;
-        logger.debug("Tournament status updated", { rows: updateResult.length });
 
-        // Verify the update
-        const verifyResult = await sql`
-            SELECT status FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}
+        const tournamentRows = await sql`
+            SELECT id, name, type, date, status, round_robin_playoff_type
+            FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}
+            LIMIT 1
         `;
-        logger.debug("Tournament status verified", { status: verifyResult[0]?.status });
+        if (tournamentRows.length === 0) return res.status(404).json({ code: 'TOURNAMENT_NOT_FOUND', message: 'Torneo non trovato' });
+        const tournament = tournamentRows[0];
 
-        // Get all matches for this tournament
         const matchesResult = await sql`
-            SELECT id, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner
+            SELECT id, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, phase, round_number, created_at
             FROM matches WHERE tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId}
-            ORDER BY date ASC, id ASC
+            ORDER BY round_number ASC NULLS LAST, created_at ASC, id ASC
         `;
+        if (matchesResult.length === 0) return res.status(400).json({ code: 'NO_MATCHES', message: 'Il torneo non contiene partite' });
 
-        logger.info("Processing tournament matches", { tournamentId, matchCount: matchesResult.length });
-
-        // Idempotency: clean up any existing elo_history for this tournament BEFORE loading player ELOs
-        const existingHistory = await sql`
-            SELECT player_id, delta FROM elo_history
-            WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}
-        `;
-        if (existingHistory.length > 0) {
-            logger.warn("Found existing elo_history for tournament, reverting before re-completion", {
-                tournamentId, existingRecords: existingHistory.length
-            });
-            for (const record of existingHistory) {
-                await sql`UPDATE players SET current_elo = current_elo - ${record.delta} WHERE id = ${record.player_id} AND workspace_id = ${req.workspaceId}`;
+        const normalizedMatches = [];
+        for (let index = 0; index < matchesResult.length; index++) {
+            const match = matchesResult[index];
+            const phase = inferLegacyMatchPhase(tournament, match, index, matchesResult.length);
+            const outcome = validateStoredMatch({ match, tournament, phase });
+            if (![MATCH_OUTCOME.VALID_WIN, MATCH_OUTCOME.VALID_DRAW].includes(outcome.status)) {
+                return sendOutcomeError(res, outcome.status, match.id);
             }
-            await sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`;
+            normalizedMatches.push({ ...match, phase, winner: outcome.winner });
         }
 
-        // Get tournament info
-        const tournamentInfo = await sql`SELECT name, type, date FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`;
-        const tournamentName = tournamentInfo[0].name;
-        const tournamentType = tournamentInfo[0].type;
-        const tournamentDate = tournamentInfo[0].date;
-        
-        // Get all player IDs involved
-        const allPlayerIds = new Set();
-        matchesResult.forEach(m => {
-            allPlayerIds.add(m.team1_p1_id);
-            allPlayerIds.add(m.team1_p2_id);
-            allPlayerIds.add(m.team2_p1_id);
-            allPlayerIds.add(m.team2_p2_id);
-        });
-        
-        // USE GLOBAL ELO: Always use current_elo from players table
-        const playerIdsArray = Array.from(allPlayerIds);
-        const playersData = {};
+        const playerIds = [...new Set(normalizedMatches.flatMap(match => [match.team1_p1_id, match.team1_p2_id, match.team2_p1_id, match.team2_p2_id]))];
+        if (playerIds.some(id => !id)) return res.status(400).json({ code: 'INCOMPLETE_TEAMS', message: 'Una o più partite hanno coppie incomplete' });
 
-        for (const playerId of playerIdsArray) {
-            const playerResult = await sql`
-                SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}
-            `;
-            if (playerResult.length > 0) {
-                playersData[playerId] = playerResult[0].current_elo;
-                logger.debug("Player ELO starting point", { playerId: playerId.substring(0, 8), elo: playerResult[0].current_elo, source: "global current_elo" });
-            } else {
-                playersData[playerId] = 1500;
-                logger.warn("Player not found, using default ELO", { playerId: playerId.substring(0, 8) });
-            }
-        }
+        const [playerRows, existingHistory] = await Promise.all([
+            sql`SELECT id, current_elo FROM players WHERE id = ANY(${playerIds}::uuid[]) AND workspace_id = ${req.workspaceId}`,
+            sql`SELECT player_id, delta FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`,
+        ]);
+        if (playerRows.length !== playerIds.length) return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non esistono nel workspace' });
 
+        const oldDeltas = new Map(existingHistory.map(row => [row.player_id, Number(row.delta)]));
+        const playersData = Object.fromEntries(playerRows.map(player => [player.id, Number(player.current_elo) - (oldDeltas.get(player.id) || 0)]));
         const playerEloChanges = new Map();
-
-        // Process each match using tournament-specific ELO
-        for (let matchIndex = 0; matchIndex < matchesResult.length; matchIndex++) {
-            const match = matchesResult[matchIndex];
-            
-            if (!match.winner) {
-                logger.warn("Match has no winner, skipping ELO calculation", { matchId: match.id });
-                continue;
-            }
-            
-            // Use tournament-specific ELOs (updated as we process matches)
-            const team1P1Elo = playersData[match.team1_p1_id];
-            const team1P2Elo = playersData[match.team1_p2_id];
-            const team2P1Elo = playersData[match.team2_p1_id];
-            const team2P2Elo = playersData[match.team2_p2_id];
-
-            const team1EloAvg = (team1P1Elo + team1P2Elo) / 2;
-            const team2EloAvg = (team2P1Elo + team2P2Elo) / 2;
-            const score1 = match.winner === 'team1' ? 1 : (match.winner === 'draw' ? 0.5 : 0);
-            
-            // Determine phase securely using distance from end of array
-            let phase = null;
-            const isRoundRobinFinali = tournamentType === 'Round Robin + Finali';
-            if (isRoundRobinFinali) {
-                if (matchIndex === matchesResult.length - 2) {
-                    phase = 'finals1st2nd';
-                } else if (matchIndex === matchesResult.length - 1) {
-                    phase = 'finals3rd4th';
-                } else {
-                    phase = 'roundRobin';
-                }
-            } else if (tournamentType === 'Gironi + Fase Finale') {
-                if (matchIndex === matchesResult.length - 1) {
-                    phase = 'finals1st2nd';
-                } else if (matchIndex === matchesResult.length - 2) {
-                    phase = 'finals3rd4th';
-                } else if (matchIndex === matchesResult.length - 3 || matchIndex === matchesResult.length - 4) {
-                    phase = 'semifinals';
-                } else {
-                    phase = 'gironi';
-                }
-            }
-            
-            // ELO calculation using configured K-factors (with phase support)
-            const { delta1, delta2 } = calculateEloChange(team1EloAvg, team2EloAvg, score1, tournamentType, phase);
-            
-            logger.debug('Match ELO calculation', { 
-                match: matchIndex + 1, 
-                team1Avg: team1EloAvg.toFixed(2), 
-                team2Avg: team2EloAvg.toFixed(2), 
-                delta1: delta1.toFixed(2), 
-                delta2: delta2.toFixed(2), 
-                phase: phase || null 
-            });
-            
-            // Update tournament-specific ELO (in memory)
+        for (const match of normalizedMatches) {
+            const avg1 = (playersData[match.team1_p1_id] + playersData[match.team1_p2_id]) / 2;
+            const avg2 = (playersData[match.team2_p1_id] + playersData[match.team2_p2_id]) / 2;
+            const score1 = match.winner === 'team1' ? 1 : (match.winner === 'team2' ? 0 : 0.5);
+            const { delta1, delta2 } = calculateEloChange(avg1, avg2, score1, tournament.type, match.phase);
             for (const playerId of [match.team1_p1_id, match.team1_p2_id]) {
-                const oldElo = playersData[playerId];
-                const newElo = oldElo + delta1;
-                playersData[playerId] = newElo;
-                
-                // Track total change for this player
-                if (!playerEloChanges.has(playerId)) {
-                    playerEloChanges.set(playerId, { oldElo, totalDelta: 0 });
-                }
+                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
                 playerEloChanges.get(playerId).totalDelta += delta1;
+                playersData[playerId] += delta1;
             }
-            
             for (const playerId of [match.team2_p1_id, match.team2_p2_id]) {
-                const oldElo = playersData[playerId];
-                const newElo = oldElo + delta2;
-                playersData[playerId] = newElo;
-                
-                // Track total change for this player
-                if (!playerEloChanges.has(playerId)) {
-                    playerEloChanges.set(playerId, { oldElo, totalDelta: 0 });
-                }
+                if (!playerEloChanges.has(playerId)) playerEloChanges.set(playerId, { oldElo: playersData[playerId], totalDelta: 0 });
                 playerEloChanges.get(playerId).totalDelta += delta2;
+                playersData[playerId] += delta2;
             }
         }
-        
-        // Create SINGLE ELO history record per player for the entire tournament
-        for (const [playerId, { totalDelta }] of playerEloChanges) {
-            const updateResult = await sql`
-                UPDATE players SET current_elo = current_elo + ${totalDelta} 
-                WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}
-                RETURNING current_elo
-            `;
-            const newGlobalElo = updateResult[0].current_elo;
-            const actualOldElo = newGlobalElo - totalDelta;
 
-            await sql`
-                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                VALUES (${tournamentId}, ${playerId}, ${actualOldElo}, ${newGlobalElo}, ${totalDelta}, ${tournamentDate}, 'tournament', ${req.workspaceId}, ${tournamentName})
-            `;
-
-            logger.eloChange(playerId, actualOldElo, newGlobalElo, totalDelta, 'tournament (global update)');
+        const queries = [
+            sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`,
+        ];
+        for (const playerId of playerIds) {
+            const oldDelta = oldDeltas.get(playerId) || 0;
+            const change = playerEloChanges.get(playerId);
+            const newDelta = change?.totalDelta || 0;
+            queries.push(sql`UPDATE players SET current_elo = current_elo - ${oldDelta} + ${newDelta} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+            if (change) {
+                queries.push(sql`
+                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${tournamentId}, ${playerId}, ${change.oldElo}, ${change.oldElo + newDelta}, ${newDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${tournament.name})
+                `);
+            }
         }
-        
-        logger.tournament("complete", tournamentId, { updatedPlayers: playerEloChanges.size, status: "success" });
-        res.json({ 
-            message: 'Torneo completato con successo',
-            updatedPlayers: playerEloChanges.size
-        });
+        queries.push(sql`UPDATE tournaments SET status = 'completed' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
+        await sql.transaction(queries);
+
+        logger.tournament('complete', tournamentId, { updatedPlayers: playerEloChanges.size, status: 'success' });
+        res.json({ message: 'Torneo completato con successo', updatedPlayers: playerEloChanges.size });
     } catch (error) {
         logger.error("Failed to complete tournament", error);
         res.status(500).json({ message: 'Failed to complete tournament', error: error.message });

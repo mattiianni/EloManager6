@@ -24,6 +24,7 @@ interface DrawPageProps {
     clearTeamTournamentToConfigure: () => void;
     launchMode?: 'launcher' | null;
     clearLaunchMode?: () => void;
+    isNavigationOverlayOpen?: boolean;
 }
 
 type DrawFlow = 'pairs' | 'team-tournament' | 'single-tournament-format-first';
@@ -87,7 +88,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
     teamTournamentToConfigure,
     clearTeamTournamentToConfigure,
     launchMode = null,
-    clearLaunchMode
+    clearLaunchMode,
+    isNavigationOverlayOpen = false,
 }) => {
     const { workspace } = useAuth();
     const workspaceId = workspace?.id;
@@ -2206,7 +2208,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         </Card>
                     )}
                     
-                    {!isTeamTournamentFlow && (
+                    {!isTeamTournamentFlow && !isNavigationOverlayOpen && (
                         <div className="fixed left-4 right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 rounded-2xl bg-white/90 p-2 shadow-lg backdrop-blur-xl dark:bg-slate-900/90 xl:static xl:px-4 xl:py-0 xl:bg-transparent xl:shadow-none xl:backdrop-blur-none">
                             <Button
                                 onClick={handleDraw}
