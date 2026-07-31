@@ -12,7 +12,7 @@ Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo ca
 Ho sviluppato *Padel ELO Manager v6.7.5* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
 
 Cosa fa in pratica:
-- *Interfaccia 2x2 Ultra-Moderna* per la selezione del torneo (Multi Giornata, Torneo a Squadre, Torneo Singolo, Nuova Giornata) con descrizioni chiare e pulsante di ripristino rapido
+- *Flusso guidato di creazione* per Multi Giornata, Torneo a Squadre, Torneo Singolo e Nuova Giornata, con descrizioni chiare e passaggi coerenti
 - *8 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta, Torneo Libero, Torneo a Squadre)
 - *Sorteggio coppie intelligente* con 4 modalita (casuale, bilanciato forte+debole, teste di serie, manuale)
 - *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia con K-factor unificato K=16

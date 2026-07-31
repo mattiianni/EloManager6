@@ -194,7 +194,7 @@
 - UI Turni Americano: Aggiunta sfumatura/fade visivo sulla barra dei turni scorrevole in mobile.
 
 ## v6.0.3 — 2026-07-27
-- UI Redesign "Cosa Vuoi Organizzare Oggi": Riprogettata la schermata iniziale di selezione tipo torneo/giornata con un layout a griglia 2x2 moderna di Card interattive dotate di icone flat e descrizioni sintetiche dedicate.
+- UI Redesign "Cosa Vuoi Organizzare Oggi": Riprogettata la schermata iniziale di selezione tipo torneo/giornata con card interattive, icone flat e descrizioni sintetiche dedicate.
 - Navigazione & Back Button: Aggiunto pulsante di ritorno rapido "← Torna indietro" nella vista di configurazione del sorteggio per rientrare istantaneamente al menu principale.
 - Aggiornamento Documentazione Applicativa: Aggiornata la Guida HTML V5.0.3, la Presentazione HTML, i Testi Promo, la guida uso e il README con i riferimenti della versione 6.0.3 e della nuova interfaccia.
 

@@ -24,7 +24,7 @@ In `Giocatori` puoi:
 
 ## Sorteggi (Cosa Vuoi Organizzare Oggi)
 
-In `Sorteggi` l'interfaccia 2x2 ti permette di scegliere la modalità desiderata con icone flat dedicate:
+In `Sorteggi` il flusso guidato ti permette di scegliere la modalità desiderata con card e descrizioni dedicate:
 
 1. **Multi Giornata**: Tornei a coppie su più tappe.
 2. **Torneo a Squadre**: Sfide tra team e squadre numerate.
