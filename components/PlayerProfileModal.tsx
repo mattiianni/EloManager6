@@ -8,6 +8,7 @@ import { XIcon, ArrowUpIcon, ArrowDownIcon, ArrowStableIcon } from './ui/Icons.t
 import { printPlayerProfiles } from '../services/printService.ts';
 import PlayerAvatar from './ui/PlayerAvatar.tsx';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { buildPlayerEloTimeline, formatLabel } from '../services/eloEventsService.ts';
 
 interface PlayerProfileModalProps {
     player: Player | null;
@@ -120,112 +121,37 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         return { total, totalClassic: playerMatches.length, ttMatchesCount, wins, gamesWon, gamesLost, form, bestStreak, lastDelta };
     }, [player, playerMatches, eloHistory]);
 
-    // ELO chart data: turn-by-turn for selected tournament, or historical by date for global
+    // ELO chart data: one point per giornata/evento aggregato, never per match.
     const eloChartData = useMemo(() => {
         if (!player) return [];
+        const timeline = buildPlayerEloTimeline(
+            player.id,
+            eloHistory,
+            matches,
+            tournaments,
+            [],
+            { parentTournamentName: selectedSeriesKey }
+        );
+        const chronologicalTimeline = [...timeline].reverse();
+        if (chronologicalTimeline.length === 0) return [];
 
-        // --- CASE 1: SINGLE TOURNAMENT FILTERED ---
-        if (selectedSeriesKey) {
-            const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
-            data.push({ eventIndex: -1, elo: 1500, sourceLabel: 'Start (1500)' });
+        const initialElo = selectedSeriesKey ? 1500 : (player.initialElo || 1500);
+        let currentElo = initialElo;
+        const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [
+            { eventIndex: -1, elo: initialElo, sourceLabel: selectedSeriesKey ? 'Start (1500)' : 'Start' }
+        ];
 
-            const K = 16;
-            const currentCumElo = new Map<string, number>();
-            currentCumElo.set(player.id, 1500);
-
-            playerMatches.forEach((m, idx) => {
-                if (!m.winner) return;
-                const isTeam1 = m.team1.includes(player.id);
-                
-                const t1P1Elo = currentCumElo.get(m.team1[0]) ?? 1500;
-                const t1P2Elo = currentCumElo.get(m.team1[1]) ?? t1P1Elo;
-                const team1Avg = (t1P1Elo + t1P2Elo) / 2;
-
-                const t2P1Elo = currentCumElo.get(m.team2[0]) ?? 1500;
-                const t2P2Elo = currentCumElo.get(m.team2[1]) ?? t2P1Elo;
-                const team2Avg = (t2P1Elo + t2P2Elo) / 2;
-
-                const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
-                const score1 = m.winner === 'team1' ? 1 : m.winner === 'team2' ? 0 : 0.5;
-                const delta1 = K * (score1 - expected1);
-                const delta2 = K * ((1 - score1) - (1 - expected1));
-
-                // Update ELOs
-                m.team1.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta1));
-                m.team2.forEach(pid => currentCumElo.set(pid, (currentCumElo.get(pid) ?? 1500) + delta2));
-
-                const label = m.roundNumber ? `Turno ${m.roundNumber}` : `Match #${idx + 1}`;
-                data.push({
-                    eventIndex: idx,
-                    elo: currentCumElo.get(player.id) ?? 1500,
-                    sourceLabel: label
-                });
-            });
-
-            return data;
-        }
-
-        // --- CASE 2: GLOBAL VIEW ---
-        const playerHistory = eloHistory
-            .filter(e => e.playerId === player.id)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        if (playerHistory.length === 0) return [];
-
-        const dateFirstEntry = new Map<string, typeof playerHistory[number]>();
-        const dateDeltaSum = new Map<string, number>();
-        
-        playerHistory.forEach(entry => {
-            const dateStr = entry.date.split('T')[0];
-            if (!dateFirstEntry.has(dateStr)) dateFirstEntry.set(dateStr, entry);
-            dateDeltaSum.set(dateStr, (dateDeltaSum.get(dateStr) || 0) + entry.delta);
-        });
-
-        const orderedDates = [...dateFirstEntry.keys()].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-
-        const firstDate = orderedDates[0];
-        const firstEntry = dateFirstEntry.get(firstDate);
-        const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
-
-        const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
-        data.push({ eventIndex: -1, elo: base, sourceLabel: 'Start' });
-
-        let cumulative = 0;
-        orderedDates.forEach((dateStr, index) => {
-            const deltaForDate = dateDeltaSum.get(dateStr) || 0;
-            const firstEntryForDate = dateFirstEntry.get(dateStr);
-            cumulative += deltaForDate;
-
-            let label = firstEntryForDate?.sourceLabel && !firstEntryForDate.sourceLabel.startsWith('Date ')
-                ? firstEntryForDate.sourceLabel
-                : '';
-
-            if (!label && firstEntryForDate?.eventId) {
-                const tourney = tournaments.find(t => t.id === firstEntryForDate.eventId);
-                if (tourney) label = tourney.giornataName || tourney.name;
-            }
-
-            if (!label) {
-                const tourneyByDate = tournaments.find(t => t.date.split('T')[0] === dateStr);
-                if (tourneyByDate) label = tourneyByDate.giornataName || tourneyByDate.name;
-            }
-
-            if (!label) {
-                const dateObj = new Date(dateStr);
-                label = !isNaN(dateObj.getTime())
-                    ? `Giornata del ${dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}`
-                    : `Giornata ${index + 1}`;
-            }
-
-            data.push({ 
-                eventIndex: index, 
-                elo: base + cumulative,
-                sourceLabel: label
+        chronologicalTimeline.forEach((event, index) => {
+            currentElo += event.delta;
+            data.push({
+                eventIndex: index,
+                elo: currentElo,
+                sourceLabel: formatLabel(event, !selectedSeriesKey)
             });
         });
 
         return data;
-    }, [player, eloHistory, playerMatches, selectedSeriesKey, tournaments]);
+    }, [player, eloHistory, matches, selectedSeriesKey, tournaments]);
 
     const partners = useMemo(() => {
         if (!player) return [];
@@ -338,7 +264,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Andamento ELO</h3>
                             <div style={{ width: '100%', height: 250 }}>
                                 <ResponsiveContainer>
-                                    <LineChart data={eloChartData} margin={{ top: 10, right: 25, left: 15, bottom: 5 }}>
+                                    <LineChart data={eloChartData} margin={{ top: 10, right: 12, left: 0, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
                                         <XAxis
                                             dataKey="eventIndex"
@@ -347,7 +273,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                                         />
                                         <YAxis
                                             type="number"
-                                            width={65}
+                                            width={52}
                                             domain={['dataMin - 15', 'dataMax + 15']}
                                             stroke={axisStrokeColor}
                                             tickFormatter={(v) => Math.round(Number(v)).toString()}
@@ -405,7 +331,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                     {/* Partners & Opponents */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Compagni Frequenti</h3>
+                            <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-2">Compagni Frequenti</h3>
                             {partners.length === 0 ? (
                                 <p className="text-sm text-gray-400">Nessun dato.</p>
                             ) : (
@@ -424,7 +350,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                             )}
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Avversari Frequenti</h3>
+                            <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-2">Avversari Frequenti</h3>
                             {opponents.length === 0 ? (
                                 <p className="text-sm text-gray-400">Nessun dato.</p>
                             ) : (

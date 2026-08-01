@@ -1,4 +1,4 @@
-# Padel ELO Manager — Design (v6.7.7)
+# Padel ELO Manager — Design (v6.7.8)
 
 Questo documento descrive l’architettura e le scelte di design dell’app **Padel ELO Manager** (frontend React/Vite + backend Express + PostgreSQL su Neon), con focus su flussi utente, modello dati e punti “non ovvi” (stampa PDF, PWA, multi-workspace, tornei a squadre).
 
@@ -31,6 +31,8 @@ PDF:
 ### Normalizzazione condivisa di turni e partite
 
 `utils/tournamentRounds.ts` è la fonte comune per ordinamento di turni/giornate, ordine stabile delle partite, numerazione campi e riposi. UI e PDF non devono ricostruire autonomamente questi dati né affidarsi all'ordine restituito dal database.
+
+Per `Gironi + Fase Finale`, `group_number`, `phase` e `gironi_playoff_type` sono dati persistiti. La gerarchia è sempre `girone → turno → partita`; quarti, semifinali e finali non possono essere dedotti dalla posizione nell'array. Il PDF può calcolare e mostrare gli accoppiamenti della fase successiva soltanto quando la fase precedente è integralmente conclusa.
 
 L'identità di una partita tra due coppie è indipendente dall'ordine interno dei giocatori e dal lato del campo; `utils/matchIdentity.ts` evita duplicazioni durante la modifica dei tabelloni TPRA.
 
@@ -200,3 +202,5 @@ Linee guida chiave:
 - Tutte le query lato backend devono filtrare per `workspace_id` dove applicabile
 - Nessuna cache su API: i risultati devono aggiornarsi immediatamente dopo salvataggi
 - `Torneo a squadre` resta un flusso separato: non forzare le logiche “a coppie” dentro i matchday
+- Un torneo multifase resta `scheduled` fino alla conclusione dell'ultima finale. Il completamento dei gironi/box/round robin non deve attivare ELO finale né nascondere le azioni “In corso”.
+- Se cambia un risultato della fase iniziale, le fasi conclusive dipendenti devono essere eliminate e rigenerate dopo conferma; il PDF deve leggere le stesse fasi persistite usate dalla UI.

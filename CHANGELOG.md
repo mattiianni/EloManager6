@@ -1,3 +1,27 @@
+## v6.7.8 — 2026-08-01
+
+### Gironi e fasi conclusive
+
+- Aggiunta per `Gironi + Fase Finale`, con almeno 8 coppie, la scelta tra `Semifinali e Finali` e `Quarti, Semifinali e Finali`.
+- Implementata la qualificazione per 2, 3 e 4 gironi, comprese le migliori terze normalizzate quando le dimensioni dei gironi differiscono.
+- Persistiti `groupNumber`, `phase` e tipo di playoff; eliminata la deduzione delle ultime quattro partite come fase finale.
+- Corretto il flusso di modifica: una variazione dei gironi può rigenerare le fasi successive senza confondere o cancellare partite ordinarie.
+- Il salvataggio rapido di una partita non completa più prematuramente Beat the Box, Round Robin + Finali o Gironi + Fase Finale.
+
+### PDF e statistiche
+
+- I PDF separano prima il girone, poi turni e partite, mantenendo risultati parziali e campi coerenti.
+- Le fasi successive mostrano nomi reali soltanto quando la fase precedente è completa; risultati vuoti non vengono stampati come `0-0`.
+- Le classifiche dei gironi compaiono appena il singolo girone è concluso, anche con torneo ancora `scheduled`.
+- Ridisegnata la classifica giocatori PDF con riepilogo compatto e storico giornate a larghezza piena; migliorati grafici ELO e stampa profilo.
+- Consolidato l'andamento ELO per giornata nei profili e corretta l'associazione delle variazioni agli eventi.
+
+### Interfaccia e qualità
+
+- Migliorati layout mobile, safe area, pulsanti di salvataggio/avanzamento, descrizioni formati e controlli per 9+ coppie.
+- Uniformati i pulsanti Indietro, le azioni verdi di salvataggio e le azioni blu di avanzamento/chiusura.
+- Build di produzione completata e suite automatica ampliata a 51 test.
+
 ## v6.7.7 — 2026-07-31
 
 ### Dialoghi Apple HIG

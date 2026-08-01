@@ -183,7 +183,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             name: newTournamentData.name,
             date: newTournamentData.date,
             type: newTournamentData.type,
-            matches: matchDataList.map(match => ({ team1: match.team1, team2: match.team2, roundNumber: match.roundNumber, phase: match.phase })),
+            matches: matchDataList.map(match => ({ team1: match.team1, team2: match.team2, roundNumber: match.roundNumber, groupNumber: match.groupNumber, phase: match.phase })),
         });
         const pending = bulkSaveInFlightRef.current.get(signature);
         if (pending) return pending;

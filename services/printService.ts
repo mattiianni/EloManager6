@@ -7,6 +7,8 @@ import { BracketNode, generateTpraBracket } from './tpraService.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
+import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 
 export const MANROPE_PRINT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
 
@@ -32,11 +34,13 @@ const normalizedMatchPhase = (match: Match): string => String((match as Match & 
     .replace(/[-\s]+/g, '_');
 
 export const partitionMatchesByPhase = (matches: Match[]) => {
+    const quarterfinals = matches.filter(match => ['quarterfinal', 'quarterfinals'].includes(normalizedMatchPhase(match)));
     const semifinals = matches.filter(match => ['semifinal', 'semifinals'].includes(normalizedMatchPhase(match)));
     const finals = matches.filter(match => ['final', 'finals', 'final_1_2', 'final_3_4', 'finals1st2nd', 'finals3rd4th'].includes(normalizedMatchPhase(match)));
-    const phaseIds = new Set([...semifinals, ...finals].map(match => match.id));
+    const phaseIds = new Set([...quarterfinals, ...semifinals, ...finals].map(match => match.id));
     return {
         regular: matches.filter(match => !phaseIds.has(match.id)),
+        quarterfinals,
         semifinals,
         finals,
         hasExplicitPhases: phaseIds.size > 0,
@@ -98,7 +102,7 @@ const renderBlankFinalPhaseBlock = (
                     <tr style="height: 22px;">
                         <td style="width: 37%; text-align: right; padding: 5px 6px; line-height: 1.3;">
                             <div style="font-size: 9px; color: #666; margin-bottom: 2px;">${match.left}</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff; color: #64748b;">Da definire</span>
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
                         </td>
                         <td style="text-align: center; width: 26%; padding: 5px 6px; white-space: nowrap;">
                             <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; display: inline-block; background: #fff;">&nbsp;&nbsp;&nbsp;</span>
@@ -107,7 +111,7 @@ const renderBlankFinalPhaseBlock = (
                         </td>
                         <td style="width: 37%; text-align: left; padding: 5px 6px; line-height: 1.3;">
                             <div style="font-size: 9px; color: #666; margin-bottom: 2px;">${match.right}</div>
-                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff; color: #64748b;">Da definire</span>
+                            <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-block; width: 85%; min-width: 120px; background: #fff;">&nbsp;</span>
                         </td>
                     </tr>
                 `).join('')}
@@ -146,10 +150,10 @@ export const getPrintStyles = (fontImport: boolean = false) => `
     ${fontImport ? manropePrintLink : ''}
     <style>
         @media screen {
-            body { 
+            body {
                 font-family: 'Manrope', sans-serif;
-                line-height: 1.5; 
-                color: #1c1c1e; 
+                line-height: 1.5;
+                color: #1c1c1e;
                 font-size: 11px;
                 background-color: #f2f2f7;
                 -webkit-text-size-adjust: 100%;
@@ -157,9 +161,9 @@ export const getPrintStyles = (fontImport: boolean = false) => `
             }
         }
         @media print {
-            body { 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
                 -webkit-text-size-adjust: 100% !important;
                 text-size-adjust: 100% !important;
                 font-family: 'Manrope', sans-serif;
@@ -215,30 +219,30 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 page-break-after: avoid;
             }
         }
-        table { 
-            width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0; 
-            margin-top: 8px; 
-            margin-bottom: 14px; 
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 8px;
+            margin-bottom: 14px;
             font-size: 11px;
             border-radius: 6px;
             overflow: hidden;
             border: 1px solid #cbd5e1;
         }
-        th, td { 
-            border-bottom: 1px solid #e2e8f0; 
+        th, td {
+            border-bottom: 1px solid #e2e8f0;
             border-right: 1px solid #e2e8f0;
-            padding: 6px 8px; 
-            text-align: left; 
-            vertical-align: middle; 
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: middle;
             color: #0f172a;
         }
         th:last-child, td:last-child { border-right: none; }
         tr:last-child td { border-bottom: none; }
-        th { 
-            background-color: #f1f5f9; 
-            font-weight: 700; 
+        th {
+            background-color: #f1f5f9;
+            font-weight: 700;
             color: #0f172a;
             text-transform: uppercase;
             font-size: 9.5px;
@@ -247,12 +251,12 @@ export const getPrintStyles = (fontImport: boolean = false) => `
         h1, h2, h3 { color: #0f172a; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
         h1 { font-size: 22px; margin-bottom: 6px; font-weight: 800; letter-spacing: -0.02em; }
         h2 { font-size: 15px; margin-bottom: 6px; font-weight: 700; letter-spacing: -0.01em; color: #0284c7; }
-        h3 { 
-            font-size: 13px; 
-            margin-top: 14px; 
-            margin-bottom: 6px; 
-            padding-bottom: 4px; 
-            border-bottom: 1px solid #cbd5e1; 
+        h3 {
+            font-size: 13px;
+            margin-top: 14px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #cbd5e1;
             font-weight: 700;
         }
         .delta-positive { color: #16a34a !important; font-weight: 700; }
@@ -278,11 +282,11 @@ export const getPrintStyles = (fontImport: boolean = false) => `
 export const formatScoreBoxes = (sets: any[], isScheduled: boolean = false) => {
     if (isScheduled) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
     if (!sets || sets.length === 0) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
-    
+
     const isBlank = sets.every((s: any) => Number(s?.team1 || 0) === 0 && Number(s?.team2 || 0) === 0);
     if (isBlank) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
 
-    return sets.map((s: any) => 
+    return sets.map((s: any) =>
         `<span style="background: linear-gradient(135deg, #0284c7, #0284c7); color: #ffffff; padding: 3px 8px; border-radius: 5px; font-weight: 800; font-size: 11px; display: inline-block; margin: 0 2px; box-shadow: 0 1px 2px rgba(2,132,199,0.3);">${s.team1}-${s.team2}</span>`
     ).join('');
 };
@@ -789,6 +793,86 @@ export const printRanking = (
     // Players without history will still be shown with '-' details
     const playersForReport = rankingData;
 
+    type RankingHistoryOutcome = 'win' | 'loss' | 'draw';
+
+    const rankingColumnHeaders = `
+        <tr>
+            <th style="text-align: center; width: 5%;">Rank</th>
+            <th style="width: 28%;">Player</th>
+            <th style="width: 11%;">ELO</th>
+            <th style="text-align: center; width: 14%;">Last Δ</th>
+            <th style="text-align: center; width: 9%;">Played</th>
+            <th style="text-align: center; width: 8%;">Won</th>
+            <th style="text-align: center; width: 17%;">Games (W-L)</th>
+            <th style="text-align: center; width: 8%;">Win %</th>
+        </tr>`;
+
+    const outcomeDots = (outcomes: RankingHistoryOutcome[]): string => outcomes.length > 0
+        ? outcomes.map(outcome => `<span class="outcome-dot outcome-${outcome}"></span>`).join('')
+        : '<span class="history-no-results">—</span>';
+
+    const eventOutcomesForPlayer = (
+        player: RankingEntry,
+        sourceEvents: Array<{ id: string; type: EloHistoryEntry['type'] }>,
+    ): RankingHistoryOutcome[] => {
+        const classicMatches = new Map<string, Match>();
+        const eventMatchdays: TeamTournamentMatchday[] = [];
+
+        sourceEvents.forEach(source => {
+            if (source.type === 'tournament') {
+                const tournamentMatches = matches.filter(match => match.tournamentId === source.id);
+                if (tournamentMatches.length > 0) {
+                    tournamentMatches.forEach(match => classicMatches.set(match.id, match));
+                } else {
+                    // Gli storici legacy/ricalcolati possono conservare il match ID
+                    // pur usando il tipo "tournament".
+                    const linkedMatch = matches.find(match => match.id === source.id);
+                    if (linkedMatch) classicMatches.set(linkedMatch.id, linkedMatch);
+                }
+            } else if (source.type === 'match') {
+                const match = matches.find(item => item.id === source.id);
+                if (match) classicMatches.set(match.id, match);
+            } else if (source.type === 'team_tournament_matchday') {
+                const matchday = (teamMatchdays || []).find(item => item.id === source.id);
+                if (matchday && !eventMatchdays.some(item => item.id === matchday.id)) {
+                    eventMatchdays.push(matchday);
+                }
+            }
+        });
+
+        const classicOutcomes = Array.from(classicMatches.values())
+            .sort((a, b) => (Number(a.roundNumber) || 0) - (Number(b.roundNumber) || 0)
+                || String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+                || a.id.localeCompare(b.id))
+            .flatMap(match => {
+                const isTeam1 = match.team1.includes(player.id);
+                const isTeam2 = match.team2.includes(player.id);
+                if ((!isTeam1 && !isTeam2) || !match.winner) return [];
+                if (match.winner === 'draw') return ['draw' as const];
+                return [match.winner === (isTeam1 ? 'team1' : 'team2') ? 'win' as const : 'loss' as const];
+            });
+
+        const normalizedPlayerName = `${player.name} ${player.surname}`.trim().toLocaleLowerCase('it-IT');
+        const teamOutcomes = eventMatchdays
+            .sort((a, b) => (Number(a.roundNumber) || 0) - (Number(b.roundNumber) || 0)
+                || a.date.localeCompare(b.date)
+                || a.id.localeCompare(b.id))
+            .flatMap(matchday => (matchday.subMatches || [])
+                .filter(subMatch => !subMatch.cancelled && !!subMatch.winner)
+                .sort((a, b) => a.matchIndex - b.matchIndex)
+                .flatMap(subMatch => {
+                    const team1HasPlayer = (subMatch.team1Players || []).some(entry => entry.id === player.id
+                        || `${entry.name} ${entry.surname}`.trim().toLocaleLowerCase('it-IT') === normalizedPlayerName);
+                    const team2HasPlayer = (subMatch.team2Players || []).some(entry => entry.id === player.id
+                        || `${entry.name} ${entry.surname}`.trim().toLocaleLowerCase('it-IT') === normalizedPlayerName);
+                    if (!team1HasPlayer && !team2HasPlayer) return [];
+                    if (subMatch.winner === 'draw') return ['draw' as const];
+                    return [subMatch.winner === (team1HasPlayer ? 'team1' : 'team2') ? 'win' as const : 'loss' as const];
+                }));
+
+        return [...classicOutcomes, ...teamOutcomes];
+    };
+
     const tableRows = playersForReport.map(player => {
         const playerHistory = buildPlayerEloTimeline(
             player.id,
@@ -799,44 +883,48 @@ export const printRanking = (
             { parentTournamentName: selectedTournamentId }
         );
 
-        const historyList = playerHistory.length > 0 ? `
-            <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #f0f0f0;">
-                ${playerHistory.map(entry => {
-                    const labelText = formatLabel(entry, !selectedTournamentId);
-                    const deltaSign = entry.delta >= 0 ? '+' : '';
-                    return `<div style="font-size: 8px; padding: 2px 0; display: flex; justify-content: space-between;">
-                                <span>
-                                    <span style="color: #777;">${labelText} il ${new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}:</span>
-                                </span>
-                                <strong style="white-space: nowrap; padding-left: 10px;" class="${entry.delta >= 0 ? 'delta-positive' : 'delta-negative'}">
-                                    ${deltaSign}${entry.delta.toFixed(2)}
-                                </strong>
-                            </div>`;
-                }).join('')}
-            </div>
-        ` : '';
-        
-        return `
-            <tr style="background-color: #fff;">
+        const lastDeltaValue = player.lastDelta === null
+            ? '—'
+            : `${player.lastDelta > 0 ? '+' : ''}${player.lastDelta.toFixed(2)}`;
+        const playerRows = `
+            <tr class="player-summary-row">
                 <td style="text-align: center;">${player.rank}</td>
-                <td>
-                    <div style="font-weight: bold; font-size: 11px;">${player.name} ${player.surname}</div>
-                    ${historyList}
-                </td>
-                <td style="vertical-align: top; font-weight: bold; font-size: 11px;">${player.currentElo.toFixed(2)}</td>
-                <td style="vertical-align: top; text-align: center;">${getDeltaArrow(player.lastDelta)}</td>
-                <td style="vertical-align: top; text-align: center;">${player.matchesPlayed}</td>
-                <td style="vertical-align: top; text-align: center;">${player.matchesWon}</td>
-                <td style="vertical-align: top; text-align: center;">${player.gamesWon} - ${player.gamesLost}</td>
-                <td style="vertical-align: top; text-align: center;">${player.winPercentage.toFixed(1)}%</td>
-            </tr>
-        `;
+                <td><div class="player-name">${escapeHtml(`${player.name} ${player.surname}`)}</div></td>
+                <td class="summary-number summary-elo">${player.currentElo.toFixed(2)}</td>
+                <td class="summary-number summary-delta ${player.lastDelta !== null && player.lastDelta < 0 ? 'delta-negative' : 'delta-positive'}">${getDeltaArrow(player.lastDelta)} ${lastDeltaValue}</td>
+                <td class="summary-number">${player.matchesPlayed}</td>
+                <td class="summary-number">${player.matchesWon}</td>
+                <td class="summary-number games-record">${player.gamesWon} - ${player.gamesLost}</td>
+                <td class="summary-number">${player.winPercentage.toFixed(1)}%</td>
+            </tr>`;
+        const historyRows = playerHistory.map(entry => {
+            const labelText = escapeHtml(formatLabel(entry, !selectedTournamentId));
+            const deltaSign = entry.delta > 0 ? '+' : '';
+            const formattedDate = new Date(entry.date).toLocaleDateString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+            });
+            const outcomes = eventOutcomesForPlayer(player, entry.sourceEvents);
+            return `
+                <tr class="player-history-row">
+                    <td colspan="8">
+                        <div class="history-event">
+                            <div class="history-label">${labelText} <span class="history-date">· ${formattedDate}</span></div>
+                            <div class="outcome-dots" aria-label="${outcomes.length} partite">${outcomeDots(outcomes)}</div>
+                            <strong class="history-delta ${entry.delta >= 0 ? 'delta-positive' : 'delta-negative'}">${deltaSign}${entry.delta.toFixed(2)}</strong>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        return `${playerRows}${historyRows}`;
     });
 
     const tableRowsStr = tableRows.join('');
 
     // Get tournament info if filtered (by SERIES KEY)
-    const selectedTournament = selectedTournamentId 
+    const selectedTournament = selectedTournamentId
         ? tournaments.find(t => (t.giornataName || t.name) === selectedTournamentId)
         : null;
 
@@ -865,10 +953,10 @@ export const printRanking = (
 
     const content = `
         <style>
-            body { 
+            body {
                 font-family: 'Manrope', sans-serif;
-                font-feature-settings: 'cv11', 'tnum', 'lnum'; 
-                font-size: 11px; 
+                font-feature-settings: 'cv11', 'tnum', 'lnum';
+                font-size: 11px;
                 line-height: 1.4;
                 margin: 0;
                 padding: 20px;
@@ -899,23 +987,35 @@ export const printRanking = (
             .filter-info strong {
                 color: #111827;
             }
-            table { 
-                width: 100%; 
-                border-collapse: collapse; 
+            table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                table-layout: fixed;
                 margin: 8px 0 16px 0;
                 font-size: 11px;
             }
-            th { 
-                background-color: #1e3a6e; /* Blu più chiaro */
-                color: white; 
-                padding: 8px 4px; 
-                text-align: left; 
-                font-weight: bold;
-                font-size: 10px;
+            thead {
+                display: table-header-group !important;
+                break-inside: auto !important;
+                page-break-inside: auto !important;
             }
-            td { 
-                padding: 8px 4px; 
-                border-bottom: 1px solid #e5e7eb; 
+            tbody { display: table-row-group; }
+            thead tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            th {
+                background-color: #1e3a6e; /* Blu più chiaro */
+                color: white;
+                padding: 8px 4px;
+                text-align: left;
+                font-weight: bold;
+                font-size: 8px;
+            }
+            td {
+                padding: 8px 4px;
+                border-bottom: 1px solid #e5e7eb;
                 vertical-align: top;
                 font-size: 11px;
                 line-height: 1.3;
@@ -925,14 +1025,106 @@ export const printRanking = (
                 font-size: 9px;
                 white-space: nowrap;
             }
-            tr:nth-child(even) {
-                background-color: #f0f5ff;
-            }
             .delta-positive {
-                color: #111827; /* Verde più chiaro */
+                color: #16a34a;
             }
             .delta-negative {
                 color: #dc2626; /* Rosso per perdite */
+            }
+            .player-summary-row {
+                background: #f0f5ff;
+                border-top: 2px solid #cbd5e1;
+                break-after: avoid;
+                page-break-after: avoid;
+            }
+            .player-summary-row td {
+                padding-top: 9px;
+                padding-bottom: 9px;
+                vertical-align: middle;
+            }
+            .player-name {
+                font-size: 11px;
+                font-weight: 800;
+                overflow-wrap: anywhere;
+            }
+            .summary-number {
+                text-align: center;
+                vertical-align: middle;
+                white-space: nowrap;
+                font-size: 10px;
+            }
+            .summary-elo {
+                font-size: 11px;
+                font-weight: 800;
+            }
+            .summary-delta {
+                font-size: 9px;
+                font-weight: 700;
+            }
+            .games-record {
+                font-variant-numeric: tabular-nums;
+            }
+            .player-history-row {
+                background: #fff;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .player-history-row td {
+                padding: 0 6px;
+                border-bottom: 1px solid #edf2f7;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .history-event {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(74px, auto) 64px;
+                align-items: center;
+                gap: 10px;
+                min-height: 16px;
+                padding: 1px 2px 1px 14px;
+                font-size: 8px;
+                line-height: 1.1;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .history-label {
+                min-width: 0;
+                color: #475569;
+                font-weight: 600;
+                overflow-wrap: anywhere;
+            }
+            .history-date {
+                color: #64748b;
+                white-space: nowrap;
+                font-weight: 500;
+            }
+            .outcome-dots {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                gap: 3px;
+                min-height: 10px;
+            }
+            .outcome-dot {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex: 0 0 8px;
+            }
+            .outcome-win { background: #22c55e; }
+            .outcome-loss { background: #ef4444; }
+            .outcome-draw { background: #f59e0b; }
+            .history-no-results {
+                color: #94a3b8;
+                font-size: 9px;
+            }
+            .history-delta {
+                text-align: right;
+                white-space: nowrap;
+                font-size: 9px;
+                font-variant-numeric: tabular-nums;
             }
             .footer {
                 margin-top: 24px;
@@ -971,18 +1163,9 @@ export const printRanking = (
 
         <div class="separator"></div>
 
-        <table>
+        <table class="ranking-table">
             <thead>
-                <tr>
-                    <th style="text-align: center; width: 5%;">Rank</th>
-                    <th style="width: 45%;">Player & ELO History</th>
-                    <th style="width: 10%;">ELO</th>
-                    <th style="text-align: center; width: 8%;">Last Δ</th>
-                    <th style="text-align: center; width: 8%;">Played</th>
-                    <th style="text-align: center; width: 8%;">Won</th>
-                    <th style="text-align: center; width: 8%;">Games (W-L)</th>
-                    <th style="text-align: center; width: 8%;">Win %</th>
-                </tr>
+                ${rankingColumnHeaders}
             </thead>
             <tbody>
                 ${tableRowsWithSeparator || tableRowsStr}
@@ -999,16 +1182,16 @@ export const printRanking = (
         </div>
     `;
 
-    const pageTitle = selectedTournament 
-        ? `Classifica Giocatori (${selectedTournament.giornataName || selectedTournament.name})` 
+    const pageTitle = selectedTournament
+        ? `Classifica Giocatori (${selectedTournament.giornataName || selectedTournament.name})`
         : 'Classifica Generale';
     return openPrintWindow(`${pageTitle}, ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
 export const printTournamentReport = (
-    tournament: Tournament, 
-    standings: TournamentStandingEntry[], 
-    matches: Match[], 
+    tournament: Tournament,
+    standings: TournamentStandingEntry[],
+    matches: Match[],
     getPlayerById: (id: string) => Player | undefined,
     americanoFields?: number,
     americanoScoringType?: 'games-diff' | 'points',
@@ -1019,7 +1202,7 @@ export const printTournamentReport = (
     const displayName = displayNameOverride || tournament.name;
     const safeDisplayName = escapeHtml(displayName);
     const safeClubName = escapeHtml(tournament.club);
-    const isAmericano = tournament.type === TournamentType.Americano || 
+    const isAmericano = tournament.type === TournamentType.Americano ||
                         (tournament.type === TournamentType.Serie && (americanoScoringType !== undefined || americanoFields !== undefined));
     const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
     const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
@@ -1027,7 +1210,7 @@ export const printTournamentReport = (
     if (isGironiFaseFinale) {
         return printGironiTournament(tournament, matches, getPlayerById, displayName);
     }
-    
+
     // Teams section (only for non-Americano tournaments)
     let teamsContent = '';
     if (!isAmericano) {
@@ -1055,21 +1238,21 @@ export const printTournamentReport = (
         const t2p2 = resolveP(match.team2[1]);
 
         const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-        
+
         if (isAmericano) {
             // Americano: show individual players, not teams
             const team1Name = printableTeamName([t1p1, t1p2]);
             const team2Name = printableTeamName([t2p1, t2p2]);
             const maxCourts = americanoFields || 2; // Use provided fields or default to 2
             const court = `Campo ${(index % maxCourts) + 1}`;
-            
+
             return `
                 <tr style="height: 20px;">
                     <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
                     <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
                     <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
-                        ${tournament.status === 'scheduled' ? 
-                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' : 
+                        ${tournament.status === 'scheduled' ?
+                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' :
                             scoreHtml
                         }
                     </td>
@@ -1080,7 +1263,7 @@ export const printTournamentReport = (
             // Regular tournaments: show teams
             const team1Name = printableTeamName([t1p1, t1p2]);
             const team2Name = printableTeamName([t2p1, t2p2], ' / ');
-            
+
             let court = '-';
             if (isFinal && finalsIndex >= 0) {
                 court = finalsIndex === 0 ? 'Finale 1°-2°' : 'Finale 3°-4°';
@@ -1096,8 +1279,8 @@ export const printTournamentReport = (
                     <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
                     <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
                     <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
-                        ${tournament.status === 'scheduled' ? 
-                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' : 
+                        ${tournament.status === 'scheduled' ?
+                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' :
                             scoreHtml
                         }
                     </td>
@@ -1106,7 +1289,7 @@ export const printTournamentReport = (
             `;
         }
     };
-    
+
     // Split matches into Round Robin and Finals if applicable
     const phasePartition = partitionMatchesByPhase(matches);
     const hasExtraFinals = isRoundRobinFinali && (
@@ -1120,7 +1303,7 @@ export const printTournamentReport = (
         ? [...phasePartition.semifinals, ...phasePartition.finals]
         : (hasExtraFinals ? matches.slice(fallbackRoundRobinMatchCount) : []);
     const isFinalsCompleted = tournament.status === 'completed' && finalsMatches.length > 0 && finalsMatches.some(m => m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
-    
+
     let roundRobinContent = '';
     const isRoundRobin = tournament.type === TournamentType.RoundRobinFinali;
     const isTorneOtto = tournament.type === TournamentType.TorneOtto;
@@ -1173,10 +1356,10 @@ export const printTournamentReport = (
         roundRobinContent = orderedRoundRobinMatches.map((match, index) => {
             const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
             let rowHtml = '';
-            
+
             if (r !== currentRound) {
                 currentRound = r;
-                
+
                 const roundTitle = normalizedRoundByNumber.get(currentRound)?.label || `Turno ${currentRound}`;
 
                 const matchesInRound = roundsMap.get(currentRound) || [];
@@ -1211,23 +1394,23 @@ export const printTournamentReport = (
                     </tr>
                 `;
             }
-            
+
             rowHtml += generateMatchRow(match, (courtByMatch.get(match) || 1) - 1, false, -1);
             return rowHtml;
         }).join('');
     } else {
         roundRobinContent = roundRobinMatches.map((match, index) => generateMatchRow(match, index, false, -1)).join('');
     }
-    
+
     const finalsContent = finalsMatches.map((match, index) => generateMatchRow(match, index, true, index)).join('');
-    
+
     // For Gironi + Fase Finale tournaments, split matches into gironi, semifinals, and finals
     let gironiContent = '';
     let gironiStandingsContent = '';
     let gironiSemifinalsContent = '';
     let gironiFinals34Content = '';
     let gironiFinalsContent = '';
-    
+
     if (isGironiFaseFinale) {
         let gironiMatches = matches;
         let semifinalMatches: Match[] = [];
@@ -1244,13 +1427,13 @@ export const printTournamentReport = (
             semifinalMatches = matches.slice(-4, -2);
             finalMatches = matches.slice(-2);
         }
-        
+
         // Calculate number of gironi (each girone has 6 matches for 4 teams)
         const numGironi = Math.ceil(gironiMatches.length / 6);
-        
+
         // Store girone standings
         const gironiStandings: Map<string, { pair: [Player, Player], punti: number, gamesWon: number, gamesLost: number }[]> = new Map();
-        
+
         // Create content for each girone
         for (let i = 0; i < numGironi; i++) {
             const gironeName = String.fromCharCode(65 + i); // A, B, C, D
@@ -1261,17 +1444,19 @@ export const printTournamentReport = (
                 const t2p1 = getPlayerById(match.team2[0]);
                 const t2p2 = getPlayerById(match.team2[1]);
                 if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-                
+
                 const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
                 const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-                const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-                
+                // Lo stato del torneo non determina se questa singola partita ha un
+                // risultato: nei tornei in corso i risultati possono essere parziali.
+                const scoreHtml = formatScoreBoxes(match.sets, false);
+
                 return `
                     <tr style="height: 16px;">
                         <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
                         <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ? 
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' : 
+                            ${tournament.status === 'scheduled' ?
+                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
                                 scoreHtml
                             }
                         </td>
@@ -1279,7 +1464,7 @@ export const printTournamentReport = (
                     </tr>
                 `;
             }).join('');
-            
+
             gironiContent += `
                 <div class="section-block">
                 <h3 style="font-size: 11px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #f0f0f0;">PARTITE E RISULTATI GIRONE ${gironeName}</h3>
@@ -1290,15 +1475,15 @@ export const printTournamentReport = (
                 </table>
                 </div>
             `;
-            
+
             // Calculate standings for this girone
             const gironeTeams = new Map<string, { pair: [Player, Player], punti: number, gamesWon: number, gamesLost: number }>();
-            
+
             // Get all unique teams from girone matches
             gironeMatches.forEach(match => {
                 const team1Key = `${match.team1[0]}-${match.team1[1]}`;
                 const team2Key = `${match.team2[0]}-${match.team2[1]}`;
-                
+
                 if (!gironeTeams.has(team1Key)) {
                     const p1 = getPlayerById(match.team1[0]);
                     const p2 = getPlayerById(match.team1[1]);
@@ -1313,36 +1498,36 @@ export const printTournamentReport = (
                         gironeTeams.set(team2Key, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0 });
                     }
                 }
-                
+
                 // Calculate stats
                 const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
                 const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-                
+
                 const team1Stat = gironeTeams.get(team1Key);
                 const team2Stat = gironeTeams.get(team2Key);
-                
+
                 if (team1Stat) {
                     team1Stat.gamesWon += team1Games;
                     team1Stat.gamesLost += team2Games;
                     if (team1Games > team2Games) team1Stat.punti += 3;
                 }
-                
+
                 if (team2Stat) {
                     team2Stat.gamesWon += team2Games;
                     team2Stat.gamesLost += team1Games;
                     if (team2Games > team1Games) team2Stat.punti += 3;
                 }
             });
-            
+
             // Sort standings
             const sortedStandings = Array.from(gironeTeams.values()).sort((a, b) => {
                 if (b.punti !== a.punti) return b.punti - a.punti;
                 return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
             });
-            
+
             gironiStandings.set(gironeName, sortedStandings);
         }
-        
+
         // Create standings tables side by side
         const standingsTables = Array.from(gironiStandings.entries()).map(([gironeName, standings]) => {
             const standingsRows = standings.map((entry, idx) => `
@@ -1353,7 +1538,7 @@ export const printTournamentReport = (
                     <td style="text-align: center; width: 15%; font-size: 8px; padding: 1px 2px; height: 14px; line-height: 1.0;">${entry.gamesWon - entry.gamesLost >= 0 ? '+' : ''}${entry.gamesWon - entry.gamesLost}</td>
                 </tr>
             `).join('');
-            
+
             return `
                 <div class="section-block" style="flex: 1; min-width: 0;">
                     <h3 style="font-size: 10px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #e8f5e9; text-align: center;">CLASSIFICA GIRONE ${gironeName}</h3>
@@ -1373,13 +1558,13 @@ export const printTournamentReport = (
                 </div>
             `;
         }).join('');
-        
+
         gironiStandingsContent = `
             <div style="display: flex; gap: 4px; margin: 12px 0;">
                 ${standingsTables}
             </div>
         `;
-        
+
         // Semifinals content
         if (semifinalMatches.length > 0) {
             const generateSemifinalRow = (match: Match) => {
@@ -1388,17 +1573,17 @@ export const printTournamentReport = (
                 const t2p1 = getPlayerById(match.team2[0]);
                 const t2p2 = getPlayerById(match.team2[1]);
                 if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-                
+
                 const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
                 const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
                 const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-                
+
                 return `
                     <tr style="height: 16px;">
                         <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
                         <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ? 
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' : 
+                            ${tournament.status === 'scheduled' ?
+                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
                                 scoreHtml
                             }
                         </td>
@@ -1406,7 +1591,7 @@ export const printTournamentReport = (
                     </tr>
                 `;
             };
-            
+
             gironiSemifinalsContent = `
                 <div class="section-block">
                 <h3 style="font-size: 11px; font-weight: bold; margin: 16px 0 2px 0; padding: 1px 2px; background: #eff6ff;">SEMIFINALE A</h3>
@@ -1428,7 +1613,7 @@ export const printTournamentReport = (
                 ` : ''}
             `;
         }
-        
+
         // Finals content
         if (finalMatches.length > 0) {
             const generateFinalRow = (match: Match) => {
@@ -1437,17 +1622,17 @@ export const printTournamentReport = (
                 const t2p1 = getPlayerById(match.team2[0]);
                 const t2p2 = getPlayerById(match.team2[1]);
                 if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-                
+
                 const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
                 const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
                 const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-                
+
                 return `
                     <tr style="height: 16px;">
                         <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
                         <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ? 
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' : 
+                            ${tournament.status === 'scheduled' ?
+                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
                                 scoreHtml
                             }
                         </td>
@@ -1455,7 +1640,7 @@ export const printTournamentReport = (
                     </tr>
                 `;
             };
-            
+
             gironiFinals34Content = `
                 <div class="section-block">
                 <h3 style="font-size: 11px; font-weight: bold; margin: 16px 0 2px 0; padding: 1px 2px; background: #ffe0b2;">FINALE 3° E 4° POSTO</h3>
@@ -1466,7 +1651,7 @@ export const printTournamentReport = (
                 </table>
                 </div>
             `;
-            
+
             if (finalMatches.length > 1) {
                 gironiFinalsContent = `
                     <div class="section-block">
@@ -1481,7 +1666,7 @@ export const printTournamentReport = (
             }
         }
     }
-    
+
     // For non-RoundRobinFinali and non-GironiFaseFinale tournaments, use all matches
     const matchesContent = !isRoundRobinFinali && !isGironiFaseFinale ? roundRobinContent : '';
 
@@ -2464,7 +2649,7 @@ export const printTeamTournamentMatchdayReport = (
         const t2Players = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
         const sets = sm.sets;
         const scoreTextHtml = formatScoreBoxes(sets, false);
-        
+
         const t1Won = sm.winner === 'team1';
         const t2Won = sm.winner === 'team2';
         const t1Weight = t1Won ? 'bold' : 'normal';
@@ -2968,7 +3153,7 @@ export const printTeamTournamentReport = (
 	        const rows = visible.map((sm, idx) => {
 	            const rawT1 = (sm.team1Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
 	            const rawT2 = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
-                
+
                 const t1Players = swap ? rawT2 : rawT1;
                 const t2Players = swap ? rawT1 : rawT2;
 
@@ -3593,11 +3778,11 @@ const buildTeamTournamentStatisticsBlocksHtml = (
         })
         .slice(0, 5);
 
-    const playerStandings = derivedStats && derivedStats.playerRows 
+    const playerStandings = derivedStats && derivedStats.playerRows
         ? [...derivedStats.playerRows].sort((a: any, b: any) => {
             if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
             return b.gamesDiff - a.gamesDiff;
-        }) 
+        })
         : Array.from(playerAggByKey.values())
         .map(p => {
             const diff = p.gamesWon - p.gamesLost;
@@ -3898,14 +4083,14 @@ export const printBlankScoreSheet = (
     }
 
     let matchesContent = '';
-    
+
     if (isAmericano) {
         const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
         const numPlayers = allPlayersIds.size;
         const matchesPerRound = Math.min(americanoFields || 2, Math.floor(numPlayers / 4));
 
         let currentRound = 0;
-        
+
         matchesContent = matches.map((match, index) => {
             const t1p1 = getPlayerById(match.team1[0]);
             const t1p2 = getPlayerById(match.team1[1]);
@@ -3915,16 +4100,16 @@ export const printBlankScoreSheet = (
 
             const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
             const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
-            
+
             const maxCourts = americanoFields || 2;
             const court = `Campo ${(index % maxCourts) + 1}`;
-            
+
             const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
             let rowHtml = '';
-            
+
             if (r !== currentRound) {
                 currentRound = r;
-                
+
                 const playersInRound = new Set(
                     matches
                         .filter((m, i) => (m.roundNumber || (matchesPerRound > 0 ? Math.floor(i / matchesPerRound) + 1 : 1)) === currentRound)
@@ -3956,7 +4141,7 @@ export const printBlankScoreSheet = (
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
                 </tr>
             `;
-            
+
             return rowHtml;
         }).join('');
     } else if (isTorneOtto || isRoundRobin) {
@@ -4028,7 +4213,7 @@ export const printBlankScoreSheet = (
             `;
         }).join('');
     }
-    
+
     const content = `
         <style>
             @page {
@@ -4073,12 +4258,12 @@ export const printBlankScoreSheet = (
                 margin: 6px 0 0 0;
             }
             .team-box {
-                text-align: center; 
-                font-weight: bold; 
-                padding: 6px; 
-                background-color: #f0f5ff; 
+                text-align: center;
+                font-weight: bold;
+                padding: 6px;
+                background-color: #f0f5ff;
                 border: 2px solid #1e3a6e; /* Blu chiaro */
-                border-radius: 8px; 
+                border-radius: 8px;
                 font-size: 12px;
                 height: 66px;
                 display: flex;
@@ -4104,24 +4289,24 @@ export const printBlankScoreSheet = (
                 font-weight: bold;
                 color: #3b82f6;
             }
-            table { 
-                width: 100%; 
-                border-collapse: collapse; 
+            table {
+                width: 100%;
+                border-collapse: collapse;
                 margin: 8px 0 16px 0;
                 font-size: 13px;
             }
-            th { 
+            th {
                 background-color: #1e3a6e; /* Blu più chiaro */
-                color: white; 
-                padding: 6px 7px; 
-                text-align: left; 
+                color: white;
+                padding: 6px 7px;
+                text-align: left;
                 font-weight: bold;
                 font-size: 12px;
                 height: 26px;
             }
-            td { 
-                padding: 6px 7px; 
-                border-bottom: 1px solid #e5e7eb; 
+            td {
+                padding: 6px 7px;
+                border-bottom: 1px solid #e5e7eb;
                 vertical-align: middle;
                 font-size: 12px;
                 line-height: 1.3;
@@ -4210,7 +4395,7 @@ export const printBlankScoreSheet = (
             </div>
         </div>
     `;
-    
+
     return openPrintWindow(`Scheda Punteggi - ${tournamentDetails.name}`, content);
 };
 
@@ -4227,14 +4412,16 @@ export const printGironiTournament = (
 
     // 1. SPLIT MATCHES
     let gironiMatchesFlat: Match[];
+    let quarterfinalsMatches: Match[] = [];
     let semifinalsMatches: Match[] = [];
     let finalsMatches: Match[] = [];
-    
+
     // 1. SPLIT MATCHES: Only extract semifinals/finals if tournament is completed and has played extra phase matches
     const explicitPhases = partitionMatchesByPhase(matches);
     const hasFinalsMatches = tournament.status === 'completed' && matches.length >= 8 && matches.slice(matches.length - 4).some(m => !!m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
     if (explicitPhases.hasExplicitPhases) {
         gironiMatchesFlat = explicitPhases.regular;
+        quarterfinalsMatches = explicitPhases.quarterfinals;
         semifinalsMatches = explicitPhases.semifinals;
         finalsMatches = explicitPhases.finals;
     } else if (hasFinalsMatches) {
@@ -4248,100 +4435,16 @@ export const printGironiTournament = (
         finalsMatches = [];
     }
 
+    const hasEnteredScore = (match: Match) => Array.isArray(match.sets)
+        && match.sets.some(set => Number(set.team1 || 0) !== 0 || Number(set.team2 || 0) !== 0);
+    const hasDecisiveResult = (match: Match) => hasEnteredScore(match)
+        && (match.winner === 'team1' || match.winner === 'team2');
+    const groupStageIsComplete = gironiMatchesFlat.length > 0
+        && gironiMatchesFlat.every(match => hasEnteredScore(match) && !!match.winner);
     const teamKey = (team: [string, string]) => [...team].sort().join('-');
-    const roundRobinMatchCount = (teamsCount: number) => teamsCount * (teamsCount - 1) / 2;
     const explicitNumGironi = Number(tournament.numGironi || 0);
-    const groupGironiMatchesByConnectedTeams = () => {
-        const parent = new Map<string, string>();
-        const order: string[] = [];
-        const ensure = (key: string) => {
-            if (!parent.has(key)) {
-                parent.set(key, key);
-                order.push(key);
-            }
-        };
-        const find = (key: string): string => {
-            const current = parent.get(key) || key;
-            if (current === key) return key;
-            const root = find(current);
-            parent.set(key, root);
-            return root;
-        };
-        const union = (a: string, b: string) => {
-            ensure(a);
-            ensure(b);
-            const rootA = find(a);
-            const rootB = find(b);
-            if (rootA !== rootB) parent.set(rootB, rootA);
-        };
-
-        gironiMatchesFlat.forEach(match => union(teamKey(match.team1), teamKey(match.team2)));
-
-        const rootOrder: string[] = [];
-        order.forEach(key => {
-            const root = find(key);
-            if (!rootOrder.includes(root)) rootOrder.push(root);
-        });
-
-        const groupsByRoot = new Map<string, Match[]>();
-        gironiMatchesFlat.forEach(match => {
-            const root = find(teamKey(match.team1));
-            const group = groupsByRoot.get(root) || [];
-            group.push(match);
-            groupsByRoot.set(root, group);
-        });
-
-        return rootOrder
-            .map(root => groupsByRoot.get(root) || [])
-            .filter(group => group.length > 0);
-    };
-
-    const inferGironiConfig = () => {
-        const totalGironiMatches = gironiMatchesFlat.length;
-        const uniqueTeams = new Set<string>();
-        gironiMatchesFlat.forEach(match => {
-            uniqueTeams.add(teamKey(match.team1));
-            uniqueTeams.add(teamKey(match.team2));
-        });
-        const totalTeams = uniqueTeams.size;
-        const candidates = [explicitNumGironi, 4, 3, 2]
-            .filter((value, index, array) => value >= 2 && array.indexOf(value) === index);
-
-        for (const candidate of candidates) {
-            if (totalTeams % candidate !== 0) continue;
-            const teamsPerGirone = totalTeams / candidate;
-            const expectedMatchesPerGirone = roundRobinMatchCount(teamsPerGirone);
-            if (expectedMatchesPerGirone > 0 && totalGironiMatches === expectedMatchesPerGirone * candidate) {
-                return { numGironi: candidate, matchesPerGirone: expectedMatchesPerGirone };
-            }
-        }
-
-        if (explicitNumGironi >= 2) {
-            return {
-                numGironi: explicitNumGironi,
-                matchesPerGirone: Math.ceil(totalGironiMatches / explicitNumGironi)
-            };
-        }
-
-        const fallbackNumGironi = Math.max(1, Math.ceil(totalGironiMatches / 6));
-        return {
-            numGironi: fallbackNumGironi,
-            matchesPerGirone: Math.ceil(totalGironiMatches / fallbackNumGironi)
-        };
-    };
-    const { numGironi, matchesPerGirone } = inferGironiConfig();
-    
-    // 2. RAGGRUPPA MATCH PER GIRONE
-    const connectedGironiGroups = groupGironiMatchesByConnectedTeams();
-    const shouldUseConnectedGroups = connectedGironiGroups.length > 1
-        && (explicitNumGironi < 2 || connectedGironiGroups.length === explicitNumGironi);
-    const gironiGroups: Match[][] = shouldUseConnectedGroups
-        ? connectedGironiGroups
-        : Array.from({ length: numGironi }, (_, i) => {
-            const start = i * matchesPerGirone;
-            const end = Math.min(start + matchesPerGirone, gironiMatchesFlat.length);
-            return gironiMatchesFlat.slice(start, end);
-        });
+    // 2. PRIMA separa i gironi; turni e partite vengono elaborati solo dopo.
+    const gironiGroups: Match[][] = separateTournamentGroups(gironiMatchesFlat, explicitNumGironi);
 
     const getTeamsFromGironeMatches = (gironeMatches: Match[]) => {
         const teams: { key: string; pair: [Player, Player] }[] = [];
@@ -4369,7 +4472,7 @@ export const printGironiTournament = (
         });
 
     const calculateGironeStandings = (gironeMatches: Match[]) => {
-        const pairStats = new Map<string, { key: string; pair: [Player, Player]; punti: number; gamesWon: number; gamesLost: number }>();
+        const pairStats = new Map<string, { key: string; pair: [Player, Player]; punti: number; gamesWon: number; gamesLost: number; matchesPlayed: number }>();
 
         getTeamsFromGironeMatches(gironeMatches).forEach(team => {
             pairStats.set(team.key, {
@@ -4377,7 +4480,8 @@ export const printGironiTournament = (
                 pair: team.pair,
                 punti: 0,
                 gamesWon: 0,
-                gamesLost: 0
+                gamesLost: 0,
+                matchesPlayed: 0,
             });
         });
 
@@ -4391,12 +4495,14 @@ export const printGironiTournament = (
             const team2Stat = pairStats.get(team2Key);
 
             if (team1Stat) {
+                team1Stat.matchesPlayed += 1;
                 team1Stat.gamesWon += team1Games;
                 team1Stat.gamesLost += team2Games;
                 if (team1Games > team2Games) team1Stat.punti += 3;
             }
 
             if (team2Stat) {
+                team2Stat.matchesPlayed += 1;
                 team2Stat.gamesWon += team2Games;
                 team2Stat.gamesLost += team1Games;
                 if (team2Games > team1Games) team2Stat.punti += 3;
@@ -4407,6 +4513,63 @@ export const printGironiTournament = (
     };
 
     const gironiStandings = gironiGroups.map(calculateGironeStandings);
+
+    // Se la fase precedente è completa, le qualificate sono dati reali anche se
+    // le nuove partite non sono state ancora salvate: il PDF mostra gli
+    // accoppiamenti calcolati, lasciando vuoti soltanto i risultati.
+    if (groupStageIsComplete && tournament.gironiPlayoffType === 'quarterfinals' && quarterfinalsMatches.length === 0) {
+        const qualifiers = selectGironiQualifiers(gironiStandings, 'quarterfinals');
+        quarterfinalsMatches = buildQuarterfinalPairings(qualifiers).map(([first, second], index) => ({
+            id: `pdf-derived-quarterfinal-${index + 1}`,
+            date: tournament.date,
+            team1: [first.entry.pair[0].id, first.entry.pair[1].id],
+            team2: [second.entry.pair[0].id, second.entry.pair[1].id],
+            sets: [{ team1: 0, team2: 0 }],
+            winner: null,
+            phase: 'quarterfinal',
+            roundNumber: 1,
+        }));
+    }
+
+    const quarterfinalsAreReal = tournament.gironiPlayoffType === 'quarterfinals'
+        && quarterfinalsMatches.length === 4
+        && groupStageIsComplete;
+    const quarterfinalsAreComplete = quarterfinalsAreReal && quarterfinalsMatches.every(hasDecisiveResult);
+
+    const canCalculateSemifinals = tournament.gironiPlayoffType === 'quarterfinals'
+        ? quarterfinalsAreComplete
+        : groupStageIsComplete;
+    if (canCalculateSemifinals && semifinalsMatches.length === 0) {
+        const semifinalTeams = tournament.gironiPlayoffType === 'quarterfinals'
+            ? quarterfinalsMatches.map(match => match.winner === 'team1' ? match.team1 : match.team2)
+            : selectGironiQualifiers(gironiStandings, 'semifinals').map(item => [item.entry.pair[0].id, item.entry.pair[1].id] as [string, string]);
+        if (semifinalTeams.length === 4) {
+            const pairIndexes = tournament.gironiPlayoffType === 'quarterfinals' ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
+            semifinalsMatches = pairIndexes.map(([left, right], index) => ({
+                id: `pdf-derived-semifinal-${index + 1}`,
+                date: tournament.date,
+                team1: semifinalTeams[left],
+                team2: semifinalTeams[right],
+                sets: [{ team1: 0, team2: 0 }],
+                winner: null,
+                phase: 'semifinal',
+                roundNumber: 2,
+            }));
+        }
+    }
+
+    const semifinalsAreReal = semifinalsMatches.length === 2 && canCalculateSemifinals;
+    const semifinalsAreComplete = semifinalsAreReal && semifinalsMatches.every(hasDecisiveResult);
+    if (semifinalsAreComplete && finalsMatches.length === 0) {
+        const winners = semifinalsMatches.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+        const losers = semifinalsMatches.map(match => match.winner === 'team1' ? match.team2 : match.team1);
+        finalsMatches = [
+            { id: 'pdf-derived-final-3-4', date: tournament.date, team1: losers[0], team2: losers[1], sets: [{ team1: 0, team2: 0 }], winner: null, phase: 'final_3_4', roundNumber: 3 },
+            { id: 'pdf-derived-final-1-2', date: tournament.date, team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, phase: 'final_1_2', roundNumber: 3 },
+        ];
+    }
+    const finalsAreReal = finalsMatches.length === 2 && semifinalsAreComplete;
+
     const firstQualified = gironiStandings.map(standing => standing[0]).filter(Boolean);
     const secondQualifiedCount = Math.max(0, 4 - firstQualified.length);
     const secondQualified = sortGironeStandings(gironiStandings.map(standing => standing[1]).filter(Boolean))
@@ -4416,10 +4579,12 @@ export const printGironiTournament = (
     // 4. GENERA HTML PER OGNI GIRONE
     const gironiSections = gironiGroups.map((gironeMatches, gironeIdx) => {
         const gironeName = String.fromCharCode(65 + gironeIdx); // A, B, C
-        
+        const gironeIsComplete = gironeMatches.length > 0
+            && gironeMatches.every(match => hasEnteredScore(match) && !!match.winner);
+
         // 4a. ESTRAI SQUADRE DEL GIRONE
         const gironeTeams = getTeamsFromGironeMatches(gironeMatches);
-        
+
         // 4b. HTML SQUADRE
         const teamsHtml = gironeTeams.map(({ pair }, idx) => `
             <div class="team-box">
@@ -4429,39 +4594,52 @@ export const printGironiTournament = (
                 <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
             </div>
         `).join('');
-        
-        // 4c. HTML PARTITE
-        const matchesHtml = gironeMatches.map((match, matchIdx) => {
-        const t1p1 = getPlayerById(match.team1[0]);
-        const t1p2 = getPlayerById(match.team1[1]);
-        const t2p1 = getPlayerById(match.team2[0]);
-        const t2p2 = getPlayerById(match.team2[1]);
-        if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = printableTeamName([t1p1, t1p2]);
-            const team2Name = printableTeamName([t2p1, t2p2]);
-        const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-
-        return `
-            <tr>
-                    <td style="text-align: center; width: 25%; font-size: 10px; padding: 3px 4px; white-space: nowrap;">G${gironeName}${matchIdx + 1}</td>
-                <td style="width: 30%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
-                <td style="text-align: center; width: 25%; font-size: 11px; padding: 3px 4px; white-space: nowrap;">
-                    ${tournament.status === 'scheduled' ? 
-                        '<span style="border: 1px solid #ccc; padding: 4px 12px; display: inline-block; font-size: 11px;">&nbsp;</span>' : 
-                            scoreHtml
-                    }
+        // 4c. Solo dopo aver separato il girone, suddividi le sue partite per turno.
+        const gironeRounds = normalizeTournamentRounds(
+            gironeMatches,
+            TournamentType.GironiFaseFinale,
+            { fields: Math.max(1, Math.floor(gironeTeams.length / 2)) },
+        );
+        const matchesHtml = gironeRounds.map(round => `
+            <tr class="round-heading avoid-break">
+                <td colspan="4" style="padding: 4px 6px; background: #eef6ff; color: #0369a1; font-size: 10px; font-weight: 700; border-left: 3px solid #0284c7;">
+                    TURNO ${round.roundNumber}
                 </td>
-                <td style="width: 30%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
             </tr>
-        `;
-        }).join('');
-        
-        // 4d. CALCOLA CLASSIFICA GIRONE (solo se completed)
+            ${round.matches.map(({ match, courtNumber }) => {
+                const t1p1 = getPlayerById(match.team1[0]);
+                const t1p2 = getPlayerById(match.team1[1]);
+                const t2p1 = getPlayerById(match.team2[0]);
+                const t2p2 = getPlayerById(match.team2[1]);
+                if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+                const team1Name = printableTeamName([t1p1, t1p2]);
+                const team2Name = printableTeamName([t2p1, t2p2]);
+                // Un torneo in corso può contenere risultati già salvati e partite vuote.
+                const scoreHtml = formatScoreBoxes(match.sets, false);
+
+                return `
+                    <tr>
+                        <td style="text-align: center; width: 15%; font-size: 10px; padding: 3px 4px; white-space: nowrap;">Campo ${courtNumber}</td>
+                        <td style="width: 30%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                        <td style="text-align: center; width: 15%; font-size: 11px; padding: 3px 4px; white-space: nowrap;">
+                            ${hasEnteredScore(match)
+                                ? scoreHtml
+                                : '<span style="border: 1px solid #ccc; padding: 4px 12px; display: inline-block; font-size: 11px;">&nbsp;</span>'}
+                        </td>
+                        <td style="width: 30%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                    </tr>
+                `;
+            }).join('')}
+        `).join('');
+
+        // 4d. La classifica dipende dal completamento del singolo girone, non
+        // dallo stato dell'intero torneo, che resta in corso fino alle finali.
         let standingsHtml = '';
-        if (tournament.status !== 'scheduled') {
+        if (gironeIsComplete) {
             const standings = gironiStandings[gironeIdx] || [];
-            
+
             standingsHtml = standings.map((entry, idx) => {
                 const isQualified = qualifiedKeys.has(entry.key);
         return `
@@ -4476,17 +4654,17 @@ export const printGironiTournament = (
                 `;
             }).join('');
         }
-        
+
         // 4e. RETURN SEZIONE GIRONE COMPLETA
         return `
             <div class="section-block" style="margin-bottom: 20px;">
                 <h2 style="font-size: 14px; font-weight: bold; margin: 10px 0; padding: 5px; background: #f0f0f0; border-left: 4px solid #007bff;">GIRONE ${gironeName}</h2>
-                
+
                 <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Squadre</h3>
                 <div class="team-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
                     ${teamsHtml}
                 </div>
-                
+
                 <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Partite</h3>
                 <table>
                     <thead>
@@ -4501,8 +4679,8 @@ export const printGironiTournament = (
                         ${matchesHtml}
                     </tbody>
                 </table>
-                
-                ${tournament.status !== 'scheduled' ? `
+
+                ${gironeIsComplete ? `
                     <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Classifica Girone ${gironeName}</h3>
                     <table>
                         <thead>
@@ -4524,11 +4702,34 @@ export const printGironiTournament = (
         `;
     }).join('');
 
-    // 5. GENERA SEMIFINALS/FINALS
+    // 5. GENERA QUARTI/SEMIFINALI/FINALI
+    let quarterfinalsSection = '';
+    if (tournament.gironiPlayoffType === 'quarterfinals') {
+        if (!quarterfinalsAreReal) {
+            quarterfinalsSection = renderBlankFinalPhaseBlock(
+                'FASE FINALE - QUARTI',
+                '◆',
+                [1, 2, 3, 4].map(index => ({ left: `Qualificata ${index}`, right: `Qualificata ${9 - index}` })),
+                { background: '#f0f9ff', border: '#0ea5e9', color: '#0369a1' },
+            );
+        } else {
+            const rows = quarterfinalsMatches.map((match, index) => {
+                const team1Name = printableTeamName(match.team1.map(getPlayerById));
+                const team2Name = printableTeamName(match.team2.map(getPlayerById));
+                return `<tr>
+                    <td style="text-align:center;width:15%;">Q${index + 1}</td>
+                    <td style="text-align:right;width:30%;${match.winner === 'team1' ? 'font-weight:700;' : ''}">${team1Name}</td>
+                    <td style="text-align:center;width:15%;">${hasEnteredScore(match) ? formatScoreBoxes(match.sets, false) : '&nbsp;'}</td>
+                    <td style="text-align:left;width:30%;${match.winner === 'team2' ? 'font-weight:700;' : ''}">${team2Name}</td>
+                </tr>`;
+            }).join('');
+            quarterfinalsSection = `<div class="section-block"><h2 style="font-size:14px;margin-top:20px;">QUARTI DI FINALE</h2><table><thead><tr><th>Partita</th><th>Squadra A</th><th>Risultato</th><th>Squadra B</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        }
+    }
     let semifinalsSection = '';
     let finalsSection = '';
-    
-    if (semifinalsMatches.length === 0) {
+
+    if (!semifinalsAreReal) {
         semifinalsSection = `
             <div class="section-block" style="margin: 16px 0;">
                 <h3 style="font-size: 13px; font-weight: bold; margin: 10px 0 6px 0; padding: 4px 6px; background: #eff6ff; border-left: 4px solid #0284c7; color: #0369a1;">
@@ -4608,6 +4809,8 @@ export const printGironiTournament = (
                 </table>
             </div>
         `;
+        // Usa esattamente il modello condiviso delle fasi vuote stile Beat the Box.
+        semifinalsSection = renderBlankFinalPhase(true);
         finalsSection = '';
     } else {
         // PDF COMPLETO: Mostra semifinali/finali con risultati
@@ -4618,7 +4821,9 @@ export const printGironiTournament = (
             const t2p2 = getPlayerById(match.team2[1]);
             const team1Name = printableTeamName([t1p1, t1p2]);
             const team2Name = printableTeamName([t2p1, t2p2]);
-            const scoreHtml = formatScoreBoxes(match.sets, false);
+            const scoreHtml = hasEnteredScore(match)
+                ? formatScoreBoxes(match.sets, false)
+                : formatScoreBoxes([], true);
 
             return `
                 <tr>
@@ -4631,7 +4836,7 @@ export const printGironiTournament = (
                 </tr>
             `;
         };
-        
+
         const semifinalA = semifinalsMatches.length > 0 ? `
             <div class="section-block" style="margin: 8px 0;">
                 <h3 style="font-size: 11px; font-weight: bold; margin: 4px 0; padding: 3px; background: #eff6ff;">SEMIFINALE A</h3>
@@ -4669,7 +4874,7 @@ export const printGironiTournament = (
                 </table>
             </div>
         ` : '';
-        
+
         semifinalsSection = `
             <div class="section-block">
                 <h2 style="font-size: 14px; margin-top: 20px;">SEMIFINALI</h2>
@@ -4677,7 +4882,7 @@ export const printGironiTournament = (
             </div>
             ${semifinalB}
         `;
-        
+
         const finale34 = finalsMatches.length > 0 ? `
             <div class="section-block" style="margin: 8px 0;">
                 <h3 style="font-size: 11px; font-weight: bold; margin: 4px 0; padding: 3px; background: #ffe0b2;">FINALE 3° E 4° POSTO</h3>
@@ -4715,7 +4920,7 @@ export const printGironiTournament = (
                 </table>
             </div>
         ` : '';
-        
+
         finalsSection = `
             <div class="section-block">
                 <h2 style="font-size: 14px; margin-top: 20px;">FINALI</h2>
@@ -4723,6 +4928,23 @@ export const printGironiTournament = (
             </div>
             ${finalissima}
         `;
+        if (!finalsAreReal) {
+            finalsSection = `
+                <div class="section-block blank-final-phases" style="margin: 20px 0;">
+                    ${renderBlankFinalPhaseBlock(
+                        'FASE FINALE - 1°/2° POSTO',
+                        '🏆',
+                        [{ left: 'Vincitore SF A', right: 'Vincitore SF B' }],
+                        { background: '#fff3e0', border: '#ff9800', color: '#d97706' },
+                    )}
+                    ${renderBlankFinalPhaseBlock(
+                        'FASE FINALE - 3°/4° POSTO',
+                        '🥉',
+                        [{ left: 'Perdente SF A', right: 'Perdente SF B' }],
+                        { background: '#e8f5e8', border: '#4caf50', color: '#2e7d32' },
+                    )}
+                </div>`;
+        }
     }
 
     // 6. CLASSIFICA FINALE (solo se completed)
@@ -4735,7 +4957,7 @@ export const printGironiTournament = (
             match.team1.forEach(id => allPlayerIds.add(id));
             match.team2.forEach(id => allPlayerIds.add(id));
         });
-        
+
         const allPlayers = Array.from(allPlayerIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
         const allPairs: [Player, Player][] = [];
         for (let i = 0; i < allPlayers.length; i += 2) {
@@ -4743,9 +4965,9 @@ export const printGironiTournament = (
                 allPairs.push([allPlayers[i], allPlayers[i + 1]]);
             }
         }
-        
+
         const pairStats = new Map<string, any>();
-    
+
     allPairs.forEach(pair => {
         const key = `${pair[0].id}-${pair[1].id}`;
         pairStats.set(key, {
@@ -4755,34 +4977,34 @@ export const printGironiTournament = (
             gamesLost: 0
         });
     });
-    
+
     allMatches.forEach(match => {
         const team1Key = `${match.team1[0]}-${match.team1[1]}`;
         const team2Key = `${match.team2[0]}-${match.team2[1]}`;
         const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
         const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-        
+
         const team1Stat = pairStats.get(team1Key);
         const team2Stat = pairStats.get(team2Key);
-        
+
         if (team1Stat) {
             team1Stat.gamesWon += team1Games;
             team1Stat.gamesLost += team2Games;
             if (team1Games > team2Games) team1Stat.punti += 3;
         }
-        
+
         if (team2Stat) {
             team2Stat.gamesWon += team2Games;
             team2Stat.gamesLost += team1Games;
             if (team2Games > team1Games) team2Stat.punti += 3;
         }
     });
-    
+
     const standings = Array.from(pairStats.values()).sort((a, b) => {
         if (b.punti !== a.punti) return b.punti - a.punti;
         return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
     });
-    
+
         finalStandingsHtml = standings.map((entry, index) => {
         return `
                 <tr style="height: 20px;">
@@ -4880,7 +5102,7 @@ export const printGironiTournament = (
                 background-color: #f0f5ff;
             }
         </style>
-        
+
         <div style="text-align: center; margin-bottom: 3px;">
             <h1>${safeDisplayName}</h1>
             <h2>${safeClubName} - ${escapeHtml(tournament.type)}</h2>
@@ -4888,15 +5110,17 @@ export const printGironiTournament = (
                 Giornata del ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
         </div>
-        
+
         <div style="border-bottom: 1px solid #1e3a6e; margin: 5px 0;"></div>
-        
+
         ${gironiSections}
-        
+
+        ${quarterfinalsSection}
+
         ${semifinalsSection}
-        
+
         ${finalsSection}
-        
+
         ${!isScheduled && finalStandingsHtml ? `
             <div class="section-block">
             <h2 style="font-size: 14px; margin-top: 20px;">CLASSIFICA FINALE</h2>
@@ -4918,7 +5142,7 @@ export const printGironiTournament = (
             </div>
         ` : ''}
     `;
-    
+
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Gironi e Fase Finale, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
@@ -5146,12 +5370,12 @@ export const printTpraTournamentReport = (
             h1 { font-size: 20px; margin: 0 0 2px 0; color: #0f172a; font-weight: 900; }
             h2 { font-size: 12px; margin: 0; color: #64748b; font-weight: 600; }
         </style>
-        
+
         <div style="text-align: center; margin-bottom: 12px;">
             <h1>${displayName}</h1>
             <h2>${tournament.club} — Torneo TPRA ad Eliminazione Diretta (${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')})</h2>
         </div>
-        
+
         <div style="border-bottom: 2px solid #0f172a; margin-bottom: 12px;"></div>
 
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
@@ -5184,20 +5408,20 @@ export const printTournamentStatistics = (stats: any) => {
     }).join('');
 
     // Generate stat cards
-    const gamesVintiEntries = stats.giocatoreConPiuGamesVinti.slice(0, 3).map((e: any, i: number) => 
-        e.games > 0 
+    const gamesVintiEntries = stats.giocatoreConPiuGamesVinti.slice(0, 3).map((e: any, i: number) =>
+        e.games > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.games})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const gamesPersiEntries = stats.giocatoreConPiuGamesPersi.slice(0, 3).map((e: any, i: number) => 
-        e.games > 0 
+    const gamesPersiEntries = stats.giocatoreConPiuGamesPersi.slice(0, 3).map((e: any, i: number) =>
+        e.games > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.games})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const coppiaEntries = stats.coppiaFrequente.length > 0 
-        ? stats.coppiaFrequente.slice(0, 3).map((c: any, i: number) => 
+    const coppiaEntries = stats.coppiaFrequente.length > 0
+        ? stats.coppiaFrequente.slice(0, 3).map((c: any, i: number) =>
             `<div class="stat-card-entry">${i+1}. ${escapeHtml(formatPlayerShortName(c.players[0]))} & ${escapeHtml(formatPlayerShortName(c.players[1]))} (${c.partite})</div>`
         ).join('')
         : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>';
@@ -5214,63 +5438,63 @@ export const printTournamentStatistics = (stats: any) => {
           ).join('')
         : '<div class="stat-card-entry">Nessun upset</div>';
 
-    const guadagnoEntries = stats.maggiorGuadagnoElo.slice(0, 3).map((e: any, i: number) => 
-        e.guadagno > 0 
+    const guadagnoEntries = stats.maggiorGuadagnoElo.slice(0, 3).map((e: any, i: number) =>
+        e.guadagno > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (+${e.guadagno.toFixed(1)})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const perditaEntries = stats.peggiorPerditaElo.slice(0, 3).map((e: any, i: number) => 
-        e.perdita > 0 
+    const perditaEntries = stats.peggiorPerditaElo.slice(0, 3).map((e: any, i: number) =>
+        e.perdita > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (-${e.perdita.toFixed(1)})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const mvpEntries = stats.mvp.slice(0, 3).map((m: any) => 
-        m.vittorieGiornate > 0 
+    const mvpEntries = stats.mvp.slice(0, 3).map((m: any) =>
+        m.vittorieGiornate > 0
             ? `<div class="award-entry">${m.player.name} ${m.player.surname}<br/>${m.vittorieGiornate} giornat${m.vittorieGiornate === 1 ? 'a' : 'e'}</div>`
             : '<div class="award-entry" style="font-size: 8px;">(in attesa di dati ulteriori)</div>'
     ).join('');
 
     // Nuove statistiche per PDF
-    const gameWinRateEntries = stats.gameWinRate.slice(0, 3).map((e: any, i: number) => 
-        e.percentage > 0 
+    const gameWinRateEntries = stats.gameWinRate.slice(0, 3).map((e: any, i: number) =>
+        e.percentage > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.percentage.toFixed(1)}%)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const gameRatioEntries = stats.gameRatio.slice(0, 3).map((e: any, i: number) => 
-        e.ratio > 0 
+    const gameRatioEntries = stats.gameRatio.slice(0, 3).map((e: any, i: number) =>
+        e.ratio > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.ratio.toFixed(2)})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const partiteVinteEntries = stats.partiteVinte.slice(0, 3).map((e: any, i: number) => 
-        e.wins > 0 
+    const partiteVinteEntries = stats.partiteVinte.slice(0, 3).map((e: any, i: number) =>
+        e.wins > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.wins} vittorie)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const eloPerPartitaEntries = stats.eloPerPartita.slice(0, 3).map((e: any, i: number) => 
-        e.eloPerMatch !== 0 
+    const eloPerPartitaEntries = stats.eloPerPartita.slice(0, 3).map((e: any, i: number) =>
+        e.eloPerMatch !== 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.eloPerMatch >= 0 ? '+' : ''}${e.eloPerMatch.toFixed(1)})</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const upsetPercentageEntries = stats.upsetPercentage.slice(0, 3).map((e: any, i: number) => 
-        e.percentage > 0 
+    const upsetPercentageEntries = stats.upsetPercentage.slice(0, 3).map((e: any, i: number) =>
+        e.percentage > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.percentage.toFixed(1)}%)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const migliorCoppiaEntries = stats.migliorCoppiaWinRate.slice(0, 3).map((e: any, i: number) => 
-        e.winRate > 0 
+    const migliorCoppiaEntries = stats.migliorCoppiaWinRate.slice(0, 3).map((e: any, i: number) =>
+        e.winRate > 0
             ? `<div class="stat-card-entry">${i+1}. ${escapeHtml(formatPlayerShortName(e.players[0]))} & ${escapeHtml(formatPlayerShortName(e.players[1]))} (${e.winRate.toFixed(1)}% - ${e.partite} partite)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
 
-    const serieSconfitteEntries = stats.serieSconfitte.slice(0, 3).map((e: any, i: number) => 
-        e.sconfitte > 0 
+    const serieSconfitteEntries = stats.serieSconfitte.slice(0, 3).map((e: any, i: number) =>
+        e.sconfitte > 0
             ? `<div class="stat-card-entry">${i+1}. ${e.player.name} ${e.player.surname} (${e.sconfitte} sconfitte)</div>`
             : '<div class="stat-card-entry">(in attesa di dati ulteriori)</div>'
     ).join('');
@@ -5447,22 +5671,22 @@ export const printTournamentStatistics = (stats: any) => {
                 padding: 8px 10px;
                 text-align: center;
             }
-            
+
             /* WebKit Print Fix for Grids */
             @media print {
                 .info-grid { display: block; margin: 8px 0; }
                 .info-box { display: inline-block; width: 31%; box-sizing: border-box; vertical-align: top; margin-bottom: 8px; margin-right: 2%; }
                 .info-box:nth-child(3n) { margin-right: 0; }
-                
+
                 .stat-grid { display: block; margin: 8px 0; }
                 .stat-card { display: inline-block; width: 48%; box-sizing: border-box; vertical-align: top; margin-bottom: 8px; margin-right: 2%; }
                 .stat-card:nth-child(even) { margin-left: 0; margin-right: 0; }
-                
+
                 .award-grid { display: block; margin: 8px 0; }
                 .award-card { display: inline-block; width: 23%; box-sizing: border-box; vertical-align: top; margin-bottom: 8px; margin-right: 2%; }
                 .award-card:nth-child(4n) { margin-right: 0; }
             }
-            
+
             .award-title {
                 font-size: 10px;
                 font-weight: bold;
@@ -5545,131 +5769,131 @@ export const printTournamentStatistics = (stats: any) => {
             </tbody>
         </table>
 
-        
+
         <div class="stat-grid">
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Più Games Vinti</div>
                 <div style="padding: 8px;">
-                    
+
                 ${gamesVintiEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Più Games Persi</div>
                 <div style="padding: 8px;">
-                    
+
                 ${gamesPersiEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Coppia Più Frequente</div>
                 <div style="padding: 8px;">
-                    
+
                 ${coppiaEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Serie Vittorie</div>
                 <div style="padding: 8px;">
-                    
+
                 ${vittorieEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Upset</div>
                 <div style="padding: 8px;">
-                    
+
                 ${upsetEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Maggior Guadagno ELO</div>
                 <div style="padding: 8px;">
-                    
+
                 ${guadagnoEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Peggior Perdita ELO</div>
                 <div style="padding: 8px;">
-                    
+
                 ${perditaEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Game Win Rate %</div>
                 <div style="padding: 8px;">
-                    
+
                 ${gameWinRateEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Game Ratio</div>
                 <div style="padding: 8px;">
-                    
+
                 ${gameRatioEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Partite Vinte</div>
                 <div style="padding: 8px;">
-                    
+
                 ${partiteVinteEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">ELO per Partita</div>
                 <div style="padding: 8px;">
-                    
+
                 ${eloPerPartitaEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">% Upset Riusciti</div>
                 <div style="padding: 8px;">
-                    
+
                 ${upsetPercentageEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Miglior Coppia</div>
                 <div style="padding: 8px;">
-                    
+
                 ${migliorCoppiaEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Serie Sconfitte</div>
                 <div style="padding: 8px;">
-                    
+
                 ${serieSconfitteEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Resilienza</div>
                 <div style="padding: 8px;">
-                    
+
                 ${resilienzaEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Form (Ultimi Match)</div>
                 <div style="padding: 8px;">
-                    
+
                 ${formEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Clutch Performance</div>
                 <div style="padding: 8px;">
-                    
+
                 ${clutchEntries}
                 </div>
             </div>
             <div class="stat-card avoid-break" style="">
                 <div class="stat-card-title" style="background: #1e3a6e; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase; margin: 0;">Difesa Ferrea</div>
                 <div style="padding: 8px;">
-                    
+
                 ${difesaEntries}
                 </div>
             </div>
@@ -5732,7 +5956,7 @@ export const printBeatTheBoxBlank = (
     getPlayerById: (id: string) => Player | undefined
 ) => {
     const numBoxes = boxes.length;
-    
+
     // Genera il contenuto delle finali basato sul numero di box
     const generateFinalsContent = () => {
         if (numBoxes === 2) {
@@ -5772,7 +5996,7 @@ export const printBeatTheBoxBlank = (
                             </tr>
                         </tbody>
                     </table>
-                    
+
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50;">
                         🥉 FASE FINALE - 3°/4° POSTO
                     </h3>
@@ -5843,7 +6067,7 @@ export const printBeatTheBoxBlank = (
                             </tr>
                         </tbody>
                     </table>
-                    
+
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50;">
                         🥉 FASE FINALE - 3°/4° POSTO
                     </h3>
@@ -5875,7 +6099,7 @@ export const printBeatTheBoxBlank = (
                             </tr>
                         </tbody>
                     </table>
-                    
+
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #f3e5f5; border-left: 4px solid #9c27b0;">
                         🎯 PARTITA CONSOLAZIONE
                     </h3>
@@ -5950,11 +6174,11 @@ export const printBeatTheBoxBlank = (
                     </div>
                 `;
             }).join('');
-            
+
             return `
                 <div style="margin: 20px 0;">
                     ${semifinalsHtml}
-                    
+
                     <div class="section-block">
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">
                         🏆 FINALE 1°/2° POSTO
@@ -5977,7 +6201,7 @@ export const printBeatTheBoxBlank = (
                         </tbody>
                     </table>
                     </div>
-                    
+
                     <div class="section-block">
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50;">
                         🥉 FINALINA 3°/4° POSTO
@@ -6010,12 +6234,12 @@ export const printBeatTheBoxBlank = (
             const t1p2 = getPlayerById(match.team1[1]);
             const t2p1 = getPlayerById(match.team2[0]);
             const t2p2 = getPlayerById(match.team2[1]);
-            
+
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-            
+
             const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
             const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-            
+
             return `
                 <tr style="height: 22px;">
                     <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
@@ -6026,13 +6250,13 @@ export const printBeatTheBoxBlank = (
                 </tr>
             `;
         }).join('');
-        
+
         const playersHtml = box.players.map((player, idx) => `
             <div style="font-size: 10px; color: #555; margin: 2px 0;">
                 ${idx + 1}. ${player.name} ${player.surname} <span style="color: #999;">(ELO: ${player.currentElo.toFixed(2)})</span>
             </div>
         `).join('');
-        
+
         return `
             <div class="section-block box-card" style="margin-bottom: 20px;">
                 <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 4px 0; padding: 4px 6px; background: #eff6ff; border-left: 4px solid #2196f3;">
@@ -6049,7 +6273,7 @@ export const printBeatTheBoxBlank = (
             </div>
         `;
     }).join('');
-    
+
     const content = `
         <style>
             @page {
@@ -6077,15 +6301,15 @@ export const printBeatTheBoxBlank = (
                 color: #666;
                 font-weight: normal;
             }
-            table { 
-                width: 100%; 
-                border-collapse: collapse; 
+            table {
+                width: 100%;
+                border-collapse: collapse;
                 margin: 6px 0;
                 font-size: 11px;
             }
-            td { 
-                padding: 6px 7px; 
-                border-bottom: 1px solid #e5e7eb; 
+            td {
+                padding: 6px 7px;
+                border-bottom: 1px solid #e5e7eb;
                 vertical-align: middle;
                 font-size: 11px;
                 line-height: 1.3;
@@ -6125,7 +6349,7 @@ export const printBeatTheBoxBlank = (
             </div>
         </div>
     `;
-    
+
     return openPrintWindow(`${tournamentDetails.name.replace(' - ', ', ')}, Beat the Box, ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
@@ -6155,7 +6379,7 @@ export const printBeatTheBoxComplete = (
             matchesCount: box.matches.length
         });
     });
-    
+
     // Verifica duplicati nei box
     const allPlayerIdsInBoxes = boxes.flatMap(b => b.players.map(p => p.id));
     const uniquePlayerIdsInBoxes = [...new Set(allPlayerIdsInBoxes)];
@@ -6164,33 +6388,33 @@ export const printBeatTheBoxComplete = (
     if (allPlayerIdsInBoxes.length !== uniquePlayerIdsInBoxes.length) {
         console.warn('⚠️ DUPLICATI TROVATI nei box players!');
     }
-    
+
     console.log('📊 Individual standings ricevuti:', individualStandings.length);
     console.log('📊 Individual standings IDs:', individualStandings.map(s => s.player.id));
-    
+
     // 🛡️ DEDUPLICAZIONE SICURA - Pulisci i box da eventuali duplicati
     const cleanedBoxes = boxes.map(box => ({
         ...box,
         players: Array.from(new Map(box.players.map(p => [p.id, p])).values())
     }));
-    
-    console.log('✅ Boxes dopo deduplicazione:', cleanedBoxes.map(b => ({ 
-        boxNum: b.boxNumber, 
-        players: b.players.length 
+
+    console.log('✅ Boxes dopo deduplicazione:', cleanedBoxes.map(b => ({
+        boxNum: b.boxNumber,
+        players: b.players.length
     })));
-    
+
     const generateMatchRow = (match: Match) => {
         const t1p1 = getPlayerById(match.team1[0]);
         const t1p2 = getPlayerById(match.team1[1]);
         const t2p1 = getPlayerById(match.team2[0]);
         const t2p2 = getPlayerById(match.team2[1]);
-        
+
         if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-        
+
         const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
         const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
         const scoreHtml = formatScoreBoxes(match.sets, false);
-        
+
         return `
             <tr style="height: 24px;">
                 <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
@@ -6201,10 +6425,10 @@ export const printBeatTheBoxComplete = (
             </tr>
         `;
     };
-    
+
     const boxesContent = cleanedBoxes.map((box, boxIdx) => {
         const matchesHtml = box.matches.map(match => generateMatchRow(match)).join('');
-        
+
         const boxStanding = boxStandings.find(bs => bs.boxNumber === box.boxNumber);
         const standingsHtml = boxStanding ? boxStanding.standings.map((entry: any, idx: number) => `
             <tr style="height: 24px;">
@@ -6214,7 +6438,7 @@ export const printBeatTheBoxComplete = (
                 <td style="text-align: center; width: 20%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
             </tr>
         `).join('') : '';
-        
+
         return `
             <div class="section-block box-card" style="margin-bottom: 24px;">
                 <h3 style="font-size: 12px; font-weight: bold; margin: 20px 0 6px 0; padding: 4px 6px; background: #eff6ff; border-left: 4px solid #2196f3;">
@@ -6242,7 +6466,7 @@ export const printBeatTheBoxComplete = (
             </div>
         `;
     }).join('');
-    
+
     let semifinalsContent = '';
     if (semifinalMatches.length > 0) {
         semifinalsContent = `
@@ -6261,11 +6485,11 @@ export const printBeatTheBoxComplete = (
             </div>
         `;
     }
-    
+
     const finalsContent = finalMatches.map((match, idx) => {
         let matchTitle = '';
         let bgColor = '#fff9c4';
-        
+
         if (idx === 0) {
             matchTitle = 'FINALE 1° - 2° POSTO';
             bgColor = '#ffd54f';
@@ -6276,7 +6500,7 @@ export const printBeatTheBoxComplete = (
             matchTitle = 'PARTITA CONSOLAZIONE';
             bgColor = '#f5f5f5';
         }
-        
+
         return {
             order: idx === 0 ? 3 : (idx === 1 ? 2 : 1),
             html: `
@@ -6287,7 +6511,7 @@ export const printBeatTheBoxComplete = (
         `
         };
     }).sort((a, b) => a.order - b.order).map(x => x.html).join('');
-    
+
     const finalsHtml = finalMatches.length > 0 ? `
         <div class="section-block">
         <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #fff9c4; border-left: 4px solid #fbc02d;">FINALI</h3>
@@ -6298,23 +6522,23 @@ export const printBeatTheBoxComplete = (
         </table>
         </div>
     ` : '';
-    
+
     // Calcola classifica di squadra finale basata sui risultati delle finali
     let teamStandingsHtml = '';
     if (finalMatches.length > 0 && tournament.status === 'completed') {
         const teamStandings: Array<{ position: number; team: string; medal: string; bgColor: string }> = [];
-        
+
         // Finale 1°-2° (primo match)
         const finale1_2 = finalMatches[0];
         if (finale1_2 && finale1_2.winner) {
             const winner1_2Team = finale1_2.winner === 'team1' ? finale1_2.team1 : finale1_2.team2;
             const loser1_2Team = finale1_2.winner === 'team1' ? finale1_2.team2 : finale1_2.team1;
-            
+
             const w1p1 = getPlayerById(winner1_2Team[0]);
             const w1p2 = getPlayerById(winner1_2Team[1]);
             const l1p1 = getPlayerById(loser1_2Team[0]);
             const l1p2 = getPlayerById(loser1_2Team[1]);
-            
+
             if (w1p1 && w1p2) {
                 teamStandings.push({
                     position: 1,
@@ -6332,19 +6556,19 @@ export const printBeatTheBoxComplete = (
                 });
             }
         }
-        
+
         // Finalina 3°-4° (secondo match se presente)
         if (finalMatches.length > 1) {
             const finalina3_4 = finalMatches[1];
             if (finalina3_4 && finalina3_4.winner) {
                 const winner3_4Team = finalina3_4.winner === 'team1' ? finalina3_4.team1 : finalina3_4.team2;
                 const loser3_4Team = finalina3_4.winner === 'team1' ? finalina3_4.team2 : finalina3_4.team1;
-                
+
                 const w3p1 = getPlayerById(winner3_4Team[0]);
                 const w3p2 = getPlayerById(winner3_4Team[1]);
                 const l3p1 = getPlayerById(loser3_4Team[0]);
                 const l3p2 = getPlayerById(loser3_4Team[1]);
-                
+
                 if (w3p1 && w3p2) {
                     teamStandings.push({
                         position: 3,
@@ -6363,7 +6587,7 @@ export const printBeatTheBoxComplete = (
                 }
             }
         }
-        
+
         if (teamStandings.length > 0) {
             teamStandingsHtml = `
                 <div class="section-block">
@@ -6392,29 +6616,29 @@ export const printBeatTheBoxComplete = (
             `;
         }
     }
-    
+
     // 🛡️ DEDUPLICAZIONE INDIVIDUAL STANDINGS - Rimuovi eventuali duplicati per ID
     const cleanedIndividualStandings = Array.from(
         new Map(individualStandings.map(entry => [entry.player.id, entry])).values()
     ).sort((a, b) => b.eloChange - a.eloChange)
      .map((e, idx) => ({ ...e, rank: idx + 1 })); // Ricalcola rank dopo dedup
-    
+
     console.log('✅ Individual standings dopo deduplicazione:', cleanedIndividualStandings.length);
-    
+
     // 🔍 CONTROLLO DI CONSISTENZA - Verifica numero giocatori
     const expectedPlayers = cleanedBoxes.reduce((sum, box) => sum + box.players.length, 0);
     const actualIndividualStandings = cleanedIndividualStandings.length;
-    
+
     console.log('🔍 Controllo consistenza:');
     console.log(`   - Giocatori attesi (da boxes): ${expectedPlayers}`);
     console.log(`   - Giocatori in classifica individuale: ${actualIndividualStandings}`);
-    
+
     if (expectedPlayers !== actualIndividualStandings) {
         console.error(`❌ INCONSISTENZA! Attesi ${expectedPlayers} giocatori, trovati ${actualIndividualStandings} in classifica`);
     } else {
         console.log('✅ Consistenza verificata: numeri corretti!');
     }
-    
+
     const individualStandingsHtml = cleanedIndividualStandings.map(entry => {
         return `
             <tr style="height: 20px;">
@@ -6426,7 +6650,7 @@ export const printBeatTheBoxComplete = (
             </tr>
         `;
     }).join('');
-    
+
     const content = `
         <style>
             @page { size: A4; margin: 12mm 10mm; }
@@ -6453,13 +6677,13 @@ export const printBeatTheBoxComplete = (
         <div style="border-bottom: 2px solid #2196f3; margin: 10px 0 20px 0;"></div>
 
         ${boxesContent}
-        
+
         ${semifinalsContent}
-        
+
         ${finalsHtml}
-        
+
         ${teamStandingsHtml}
-        
+
         <div class="section-block">
             <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #e8f5e9; border-left: 4px solid #4caf50;">📊 CLASSIFICA INDIVIDUALE</h3>
             <table style="margin-bottom: 6px;">
@@ -6487,7 +6711,7 @@ export const printBeatTheBoxComplete = (
             </div>
         </div>
     `;
-    
+
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Beat the Box, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
@@ -6501,7 +6725,7 @@ export const printTorneoLiberoBlank = (
 ) => {
     // Genera urls partite vuote
     let partiteContent = '';
-    
+
     for (let i = 1; i <= numeroPartite; i++) {
         partiteContent += `
             <div style="page-break-inside: avoid; margin: 20px 0; border: 1px solid #e0e0e0; padding: 12px; border-radius: 4px;">
@@ -6536,13 +6760,13 @@ export const printTorneoLiberoBlank = (
             </div>
         `;
     }
-    
+
     const content = `
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
+            body {
                 font-family: 'Manrope', sans-serif;
-                font-feature-settings: 'cv11', 'tnum', 'lnum'; 
+                font-feature-settings: 'cv11', 'tnum', 'lnum';
                 padding: 20px;
                 font-size: 10px;
             }
@@ -6579,7 +6803,7 @@ export const printTorneoLiberoBlank = (
             </div>
         </div>
     `;
-    
+
     return openPrintWindow(`${tournamentDetails.name.replace(' - ', ', ')}, Torneo Libero, ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
@@ -6607,7 +6831,7 @@ export const printTorneoLiberoComplete = (
                 <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
             </div>
         `).join('');
-        
+
         coppieSection = `
             <div class="section-block">
             <h3 style="margin-top: 12px;">COPPIE SORTEGGIATE</h3>
@@ -6617,7 +6841,7 @@ export const printTorneoLiberoComplete = (
             </div>
         `;
     }
-    
+
     // Sezione partite giocate - Tabella strutturata
     let partiteContent = '';
     matches.forEach((match, idx) => {
@@ -6625,18 +6849,18 @@ export const printTorneoLiberoComplete = (
         const p1b = getPlayerById(match.team1[1]);
         const p2a = getPlayerById(match.team2[0]);
         const p2b = getPlayerById(match.team2[1]);
-        
+
         if (!p1a || !p1b || !p2a || !p2b) return;
-        
-        const team1Name = mode === 'fixed' 
+
+        const team1Name = mode === 'fixed'
             ? `Coppia ${pairs.findIndex(p => p[0].id === p1a.id && p[1].id === p1b.id) + 1}`
             : `${p1a.name} ${p1a.surname} / ${p1b.name} ${p1b.surname}`;
         const team2Name = mode === 'fixed'
             ? `Coppia ${pairs.findIndex(p => p[0].id === p2a.id && p[1].id === p2b.id) + 1}`
             : `${p2a.name} ${p2a.surname} / ${p2b.name} ${p2b.surname}`;
-        
+
         const scoreHtml = formatScoreBoxes(match.sets, false);
-        
+
         partiteContent += `
             <tr style="height: 20px;">
                 <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${idx + 1}</td>
@@ -6648,13 +6872,13 @@ export const printTorneoLiberoComplete = (
             </tr>
         `;
     });
-    
+
     // Calcola classifica condizionale (coppie vs individuale)
     let classificaContent: string = '';
-    
+
     if (mode === 'fixed') {
         // CLASSIFICA COPPIE per coppie fisse
-        
+
         // Mappa pair key → stats
         const pairStats = new Map<string, {
             pair: [Player, Player];
@@ -6663,7 +6887,7 @@ export const printTorneoLiberoComplete = (
             gamesWon: number;
             gamesLost: number;
         }>();
-        
+
         // Inizializza per ogni coppia
         pairs.forEach(pair => {
             const key = [pair[0].id, pair[1].id].sort().join('-');
@@ -6675,27 +6899,27 @@ export const printTorneoLiberoComplete = (
                 gamesLost: 0
             });
         });
-        
+
         // Conta da matches
         matches.forEach(match => {
             if (!match.winner || match.winner === 'draw') return;
-            
+
             const team1Key = [match.team1[0], match.team1[1]].sort().join('-');
             const team2Key = [match.team2[0], match.team2[1]].sort().join('-');
-            
+
             const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
             const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-            
+
             const stats1 = pairStats.get(team1Key);
             const stats2 = pairStats.get(team2Key);
-            
+
             if (stats1) {
                 stats1.gamesWon += team1Games;
                 stats1.gamesLost += team2Games;
                 if (match.winner === 'team1') stats1.wins++;
                 else stats1.losses++;
             }
-            
+
             if (stats2) {
                 stats2.gamesWon += team2Games;
                 stats2.gamesLost += team1Games;
@@ -6703,7 +6927,7 @@ export const printTorneoLiberoComplete = (
                 else stats2.losses++;
             }
         });
-        
+
         // Ordina
         const sortedPairs = Array.from(pairStats.values())
             .sort((a, b) => {
@@ -6712,7 +6936,7 @@ export const printTorneoLiberoComplete = (
                 const bPercent = (b.gamesWon + b.gamesLost) > 0 ? b.gamesWon / (b.gamesWon + b.gamesLost) : 0;
                 return bPercent - aPercent;
             });
-        
+
         // HTML classifica coppie
         classificaContent = `
             <div class="section-block">
@@ -6730,14 +6954,14 @@ export const printTorneoLiberoComplete = (
                     </thead>
                     <tbody>
         `;
-        
+
         sortedPairs.forEach((stats, idx) => {
             const [p1, p2] = stats.pair;
             const totalMatches = stats.wins + stats.losses;
             const winPercent = totalMatches > 0 ? ((stats.wins / totalMatches) * 100).toFixed(1) : '0.0';
             const gameDiff = stats.gamesWon - stats.gamesLost;
             const diffColor = gameDiff > 0 ? '#2e7d32' : gameDiff < 0 ? '#d32f2f' : '#666';
-            
+
             classificaContent += `
                 <tr style="height: 20px;">
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${idx + 1}</td>
@@ -6749,25 +6973,25 @@ export const printTorneoLiberoComplete = (
                 </tr>
             `;
         });
-        
+
         classificaContent += `
                     </tbody>
                 </table>
             </div>
         `;
-        
+
     } else {
         // CLASSIFICA INDIVIDUALE per coppie a girare
-        
+
         const playerStats = new Map<string, { player: Player; wins: number; losses: number; gamesWon: number; gamesLost: number }>();
-        
+
         // Estrai tutti i giocatori unici
         const allPlayerIds = new Set<string>();
         matches.forEach(m => {
             m.team1.forEach(id => allPlayerIds.add(id));
             m.team2.forEach(id => allPlayerIds.add(id));
         });
-        
+
         // Inizializza statistiche
         allPlayerIds.forEach(id => {
             const player = getPlayerById(id);
@@ -6775,14 +6999,14 @@ export const printTorneoLiberoComplete = (
                 playerStats.set(id, { player, wins: 0, losses: 0, gamesWon: 0, gamesLost: 0 });
             }
         });
-        
+
         // Calcola statistiche da ogni match
         matches.forEach(match => {
             if (!match.winner || match.winner === 'draw') return;
-            
+
             const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
             const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-            
+
             match.team1.forEach(pid => {
                 const stats = playerStats.get(pid);
                 if (stats) {
@@ -6792,7 +7016,7 @@ export const printTorneoLiberoComplete = (
                     else stats.losses++;
                 }
             });
-            
+
             match.team2.forEach(pid => {
                 const stats = playerStats.get(pid);
                 if (stats) {
@@ -6803,7 +7027,7 @@ export const printTorneoLiberoComplete = (
                 }
             });
         });
-        
+
         // Ordina per vittorie, poi per % vittorie giochi
         const sortedPlayers = Array.from(playerStats.values())
             .sort((a, b) => {
@@ -6812,7 +7036,7 @@ export const printTorneoLiberoComplete = (
                 const bPercent = (b.gamesWon + b.gamesLost) > 0 ? b.gamesWon / (b.gamesWon + b.gamesLost) : 0;
                 return bPercent - aPercent;
             });
-        
+
         // HTML classifica individuale
         classificaContent = `
             <div class="section-block">
@@ -6830,13 +7054,13 @@ export const printTorneoLiberoComplete = (
                     </thead>
                     <tbody>
         `;
-        
+
         sortedPlayers.forEach((stats, idx) => {
             const totalMatches = stats.wins + stats.losses;
             const winPercent = totalMatches > 0 ? ((stats.wins / totalMatches) * 100).toFixed(1) : '0.0';
             const gameDiff = stats.gamesWon - stats.gamesLost;
             const diffColor = gameDiff > 0 ? '#2e7d32' : gameDiff < 0 ? '#d32f2f' : '#666';
-            
+
             classificaContent += `
                 <tr style="height: 20px;">
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${idx + 1}</td>
@@ -6848,14 +7072,14 @@ export const printTorneoLiberoComplete = (
                 </tr>
             `;
         });
-        
+
         classificaContent += `
                     </tbody>
                 </table>
             </div>
         `;
     }
-    
+
     const content = `
         <style>
             @page {
@@ -6934,24 +7158,24 @@ export const printTorneoLiberoComplete = (
                 justify-content: center;
                 min-height: 24px;
             }
-            table { 
-                width: 100%; 
-                border-collapse: collapse; 
+            table {
+                width: 100%;
+                border-collapse: collapse;
                 margin: 3px 0 6px 0;
                 font-size: 11px;
             }
-            th { 
+            th {
                 background-color: #1e3a6e;
-                color: white; 
-                padding: 5px 6px; 
-                text-align: left; 
+                color: white;
+                padding: 5px 6px;
+                text-align: left;
                 font-weight: bold;
                 font-size: 11px;
                 height: 24px;
             }
-            td { 
-                padding: 5px 6px; 
-                border-bottom: 1px solid #e5e7eb; 
+            td {
+                padding: 5px 6px;
+                border-bottom: 1px solid #e5e7eb;
                 vertical-align: middle;
                 font-size: 11px;
                 line-height: 1.3;
@@ -7025,7 +7249,7 @@ export const printTorneoLiberoComplete = (
             </div>
         </div>
     `;
-    
+
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Torneo Libero, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
@@ -7098,7 +7322,7 @@ export const printPlayerProfiles = (
             xLabels.push(`<text x="${xScale(last).toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="6" fill="#666">${chartPoints[last].label}</text>`);
         }
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background:white;border:1px solid #e2e8f0;border-radius:4px;">
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display:block;background:white;border:1px solid #e2e8f0;border-radius:4px;box-sizing:border-box;">
             ${gridLines.join('')}
             ${gridLabels.join('')}
             <path d="${pathD}" fill="none" stroke="#1e3a6e" stroke-width="2" />
@@ -7164,7 +7388,7 @@ export const printPlayerProfiles = (
         const chronologicalTimeline = [...timeline].reverse();
 
         const lastDelta = timeline.length > 0 ? timeline[0].delta : 0;
-        
+
         let currentElo = player.initialElo || 1500;
         let peakElo = currentElo;
         const chartPoints: { elo: number; label: string }[] = [{ elo: currentElo, label: 'Start' }];
@@ -7317,7 +7541,7 @@ export const printPlayerProfiles = (
             </tr>`;
         }).join('');
 
-        const eloSvg = generateEloSvg(data.chartPoints, 540, 140);
+        const eloSvg = generateEloSvg(data.chartPoints, 700, 140);
 
         return `
             <div class="player-page">
@@ -7374,7 +7598,7 @@ export const printPlayerProfiles = (
                 ${eloSvg ? `
                 <div style="margin-top:8px;">
                     <div class="section-title">Andamento ELO</div>
-                    <div style="text-align:center;margin-top:4px;">
+                    <div style="width:100%;margin-top:4px;">
                         ${eloSvg}
                     </div>
                 </div>` : ''}

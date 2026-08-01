@@ -93,6 +93,10 @@ describe('eloEventsService Tests', () => {
         expect(timeline[0].delta).toBe(50);
         expect(timeline[0].parentTournamentName).toBe('TorneOtto Inverno 2025');
         expect(timeline[0].dayLabel).toBe('Beat the Box');
+        expect(timeline[0].sourceEvents).toEqual(Array.from({ length: 5 }, (_, i) => ({
+            id: `match-${i}`,
+            type: 'match',
+        })));
     });
 
     it('mother tournament with 3 giornate: general view has 3 events, filtered view matches parent name', () => {
@@ -129,6 +133,7 @@ describe('eloEventsService Tests', () => {
         const timeline = buildPlayerEloTimeline(playerId, eloHistory, [], mockTournaments, mockTeamMatchdays);
         expect(timeline).toHaveLength(1);
         expect(timeline[0].isTeamTournament).toBe(true);
+        expect(timeline[0].sourceEvents).toEqual([{ id: 'matchday-1', type: 'team_tournament_matchday' }]);
 
         const label = formatLabel(timeline[0], true);
         expect(label).toBe('Giornata Torneo a Squadre Inverno 2026 del 10/06/2026');

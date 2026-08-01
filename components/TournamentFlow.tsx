@@ -17,6 +17,7 @@ import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { buildQuarterfinalPairings, GironiPlayoffType, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -27,9 +28,9 @@ interface TournamentFlowProps {
  initialFormat?: TournamentFormat;
 }
 
-type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
+type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-quarterfinals' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
 
-type TournamentFormat = 
+type TournamentFormat =
  | 'match-singolo'
  | 'torneotto-30'
  | 'round-robin-finali'
@@ -42,28 +43,28 @@ type TournamentFormat =
 // Helper function for Beat the Box
 const groupMatchesIntoBoxes = (matches: Match[]) => {
  const boxGroups = new Map<number, Match[]>();
- 
+
  matches.forEach(match => {
  const allPlayerIds = [...match.team1, ...match.team2];
- 
+
  for (let i = 1; i <= 10; i++) {
  const existingMatches = boxGroups.get(i) || [];
  if (existingMatches.length === 0) {
  boxGroups.set(i, [match]);
  return;
  }
- 
+
  const existingPlayerIds = new Set(
  existingMatches.flatMap(m => [...m.team1, ...m.team2])
  );
- 
+
  if (allPlayerIds.every(id => existingPlayerIds.has(id))) {
  existingMatches.push(match);
  return;
  }
  }
  });
- 
+
  return Array.from(boxGroups.entries()).map(([boxNumber, boxMatches]) => ({
  boxNumber,
  players: [], // Will be populated from matches
@@ -131,22 +132,22 @@ const generateRoundRobinMatches = (
 // Helper function to optimize match order and minimize consecutive appearances
 const optimizeMatchOrder = (matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[]): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
  if (matches.length <= 3) return matches;
- 
+
  const optimized: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
  const remaining = [...matches];
- 
+
  // Start with the first match
  optimized.push(remaining.shift()!);
- 
+
  // Greedily select matches that don't have players from the previous match
  while (remaining.length > 0) {
  let bestMatchIndex = 0;
  let bestScore = -1;
- 
+
  for (let i = 0; i < remaining.length; i++) {
  const currentMatch = remaining[i];
  const lastMatch = optimized[optimized.length - 1];
- 
+
  // Calculate score: higher is better (less overlap)
  let score = 0;
  if (!hasPlayerOverlap(currentMatch, lastMatch)) {
@@ -156,16 +157,16 @@ const optimizeMatchOrder = (matches: Omit<Match, 'id' | 'date' | 'winner' | 'set
  const overlapCount = countPlayerOverlap(currentMatch, lastMatch);
  score = 100 - (overlapCount * 25); // Penalize overlap
  }
- 
+
  if (score > bestScore) {
  bestScore = score;
  bestMatchIndex = i;
  }
  }
- 
+
  optimized.push(remaining.splice(bestMatchIndex, 1)[0]);
  }
- 
+
  return optimized;
 };
 
@@ -173,7 +174,7 @@ const optimizeMatchOrder = (matches: Omit<Match, 'id' | 'date' | 'winner' | 'set
 const hasPlayerOverlap = (match1: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>, match2: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>): boolean => {
  const players1 = [...match1.team1, ...match1.team2];
  const players2 = [...match2.team1, ...match2.team2];
- 
+
  return players1.some(p1 => players2.includes(p1));
 };
 
@@ -181,7 +182,7 @@ const hasPlayerOverlap = (match1: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>
 const countPlayerOverlap = (match1: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>, match2: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>): number => {
  const players1 = [...match1.team1, ...match1.team2];
  const players2 = [...match2.team1, ...match2.team2];
- 
+
  return players1.filter(p1 => players2.includes(p1)).length;
 };
 
@@ -206,23 +207,23 @@ const generateFinalsMatches = (
  },
  ];
  }
- 
+
  const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
- 
+
  // Finale 1°-2° posto
  matches.push({
  team1: [top4Standings[0].team[0].id, top4Standings[0].team[1].id],
  team2: [top4Standings[1].team[0].id, top4Standings[1].team[1].id],
  phase: 'final_1_2',
  });
- 
+
  // Finale 3°-4° posto
  matches.push({
  team1: [top4Standings[2].team[0].id, top4Standings[2].team[1].id],
  team2: [top4Standings[3].team[0].id, top4Standings[3].team[1].id],
  phase: 'final_3_4',
  });
- 
+
  return matches;
 };
 
@@ -230,14 +231,14 @@ const generateFinalsMatches = (
 // CORRECT algorithm: each player partners with ALL others exactly once
 // Opponents also rotate to maximize variety
 const generateAmericanoMatches = (
-  pairs: [Player, Player][], 
-  fields: number, 
+  pairs: [Player, Player][],
+  fields: number,
   rounds: number
 ): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
   const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
   const players = pairs.flat(); // All individual players
   const n = players.length;
-  
+
   if (n % 2 !== 0) {
     throw new Error('Americano requires an even number of players');
   }
@@ -250,7 +251,7 @@ const generateAmericanoMatches = (
   // Track total benched count and played count for fair distribution
   const benchedCounts = new Map<string, number>();
   const partnerHistory = new Map<string, Set<string>>();
-  
+
   players.forEach(p => {
     benchedCounts.set(p.id, 0);
     partnerHistory.set(p.id, new Set());
@@ -295,7 +296,7 @@ const generateAmericanoMatches = (
       const p1 = activePlayers[i];
       const p2 = activePlayers[numActive - 1 - i];
       roundPairs.push([p1, p2]);
-      
+
       partnerHistory.get(p1.id)?.add(p2.id);
       partnerHistory.get(p2.id)?.add(p1.id);
     }
@@ -333,7 +334,7 @@ const generateAmericanoMatches = (
 const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false, initialFormat }) => {
   const { tournaments, addMultipleMatches, getPlayerById } = usePadelStore();
   const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
-  
+
   const getInitialStep = (): Step => {
     // If an initial format was explicitly passed (e.g. from Torneo Singolo format-first flow)
     if (initialFormat) {
@@ -357,7 +358,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [tournamentName, setTournamentName] = useState('');
  const [selectedTournamentName, setSelectedTournamentName] = useState('');
  const [isCreatingNew, setIsCreatingNew] = useState(initialFormat ? true : !forceExistingTournament);
- 
+
  // Log whenever isCreatingNew changes
  React.useEffect(() => {
  console.log('🔄 isCreatingNew changed to:', isCreatingNew);
@@ -394,10 +395,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [isSavingCalendar, setIsSavingCalendar] = useState(false);
  const [isCalendarSavedModalOpen, setIsCalendarSavedModalOpen] = useState(false);
- 
+
  // Americano specific states
  const [americanoFields, setAmericanoFields] = useState(2);
- 
+
  // Round Robin + Finali specific states
  const [roundRobinMatches, setRoundRobinMatches] = useState<Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[]>([]);
  const [roundRobinScores, setRoundRobinScores] = useState<Record<number, SetScore[]>>({});
@@ -408,7 +409,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [roundRobinHomeAway, setRoundRobinHomeAway] = useState<boolean>(false);
  const [roundRobinPlayoffType, setRoundRobinPlayoffType] = useState<'no_finals' | 'finals_only' | 'semifinals'>('semifinals');
  const [resultValidationError, setResultValidationError] = useState<string | null>(null);
- 
+
  // Torneo Libero specific states
  const [numeroPartite, setNumeroPartite] = useState<number>(1);
  const [nomeTorneoLibero, setNomeTorneoLibero] = useState<string>('');
@@ -425,7 +426,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [finalsScores, setFinalsScores] = useState<Record<number, SetScore[]>>({});
  const [showFinalsModal, setShowFinalsModal] = useState(false);
  const [showFinalsConfirmModal, setShowFinalsConfirmModal] = useState(false);
- 
+
  // Gironi states
  const [numGironi, setNumGironi] = useState<number>(2);
  const [useSeeds, setUseSeeds] = useState<boolean>(false);
@@ -433,6 +434,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [gironi, setGironi] = useState<[Player, Player][][]>([]);
  const [gironiMatches, setGironiMatches] = useState<Match[][]>([]);
  const [gironiStandings, setGironiStandings] = useState<any[]>([]);
+ const [gironiPlayoffType, setGironiPlayoffType] = useState<GironiPlayoffType>('semifinals');
+ const [gironiQuarterfinalsMatches, setGironiQuarterfinalsMatches] = useState<Match[]>([]);
  const [gironiSemifinalsMatches, setGironiSemifinalsMatches] = useState<Match[]>([]);
  const [gironiFinalsMatches, setGironiFinalsMatches] = useState<Match[]>([]);
  const [isTournamentSaved, setIsTournamentSaved] = useState(false);
@@ -446,7 +449,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const tournamentSeries = tournaments.filter(t => !t.giornataName && t.type !== TournamentType.TorneoASquadre);
  return Array.from(new Set(tournamentSeries.map(t => t.name)));
  }, [tournaments]);
- 
+
  // Helper function to determine if current tournament is Round Robin + Finali
  const isRoundRobinFinali = useMemo(() => {
  // Check selected format first (for new tournaments)
@@ -483,12 +486,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     // Determine available tournament formats based on number of pairs
     const getAvailableFormats = (): TournamentFormat[] => {
  const numPairs = pairs.length;
- 
+
  if (numPairs === 2) {
  // Se ci sono solo 2 coppie, possono solo fare un match singolo "amichevole" (Torneo Libero)
  return ['torneo-libero'];
  }
- 
+
  if (numPairs === 3) {
  return []; // No buttons for 3 pairs
  } else if (numPairs === 4) {
@@ -500,7 +503,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } else if (numPairs >= 6) {
  return ['round-robin-finali', 'americano', 'torneo-libero', 'gironi-fase-finale', 'eliminazione-diretta'];
  }
- 
+
  return [];
  };
 
@@ -519,17 +522,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleFormatSelection = (format: TournamentFormat) => {
     console.log('🎨 handleFormatSelection called with:', format);
-    
+
     // Set the selected format
     setSelectedFormat(format);
-    
+
     // Reset tournament state but keep the format
     setSavedTournamentType('');
     setSelectedTournamentName('');
     setClubName('');
     setTournamentName('');
     setIsCreatingNew(true);
-    
+
     // Route to format-specific info/setup screen if required:
     if (format === 'americano') {
       setStep('americano-info');
@@ -570,49 +573,49 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  const handleTorneoLiberoTeamChange = (matchIndex: number, team: 'team1' | 'team2', teamId: string | null) => {
- setTorneoLiberoMatches(prev => prev.map((match, index) => 
+ setTorneoLiberoMatches(prev => prev.map((match, index) =>
  index === matchIndex ? { ...match, [team]: teamId } : match
  ));
  };
 
  const handleTorneoLiberoPlayerChange = (
- matchIndex: number, 
- field: 'team1Player1' | 'team1Player2' | 'team2Player1' | 'team2Player2', 
+ matchIndex: number,
+ field: 'team1Player1' | 'team1Player2' | 'team2Player1' | 'team2Player2',
  playerId: string | null
  ) => {
- setTorneoLiberoMatches(prev => prev.map((match, index) => 
+ setTorneoLiberoMatches(prev => prev.map((match, index) =>
  index === matchIndex ? { ...match, [field]: playerId } : match
  ));
  };
 
  const handleTorneoLiberoScoresChange = (matchIndex: number, scores: SetScore[]) => {
- setTorneoLiberoMatches(prev => prev.map((match, index) => 
+ setTorneoLiberoMatches(prev => prev.map((match, index) =>
  index === matchIndex ? { ...match, scores } : match
  ));
  };
 
  const handleGenerateGironi = () => {
  console.log(`🎯 Generating ${numGironi} gironi for ${pairs.length} pairs, useSeeds: ${useSeeds}`);
- 
+
  if (useSeeds && selectedSeeds.length !== numGironi) {
  showHIGAlert(`Per favore seleziona esattamente ${numGironi} coppie teste di serie`);
  return;
  }
- 
+
  let pairsToDistribute = [...pairs];
  const newGironi: [Player, Player][][] = Array.from({ length: numGironi }, () => []);
- 
+
  if (useSeeds) {
  // Prima distribuisci le teste di serie (una per girone)
  selectedSeeds.forEach((seed, idx) => {
  newGironi[idx].push(seed);
  });
- 
+
  // Poi distribuisci le altre coppie casualmente
- const nonSeeds = pairs.filter(p => 
+ const nonSeeds = pairs.filter(p =>
  !selectedSeeds.some(s => `${s[0].id}-${s[1].id}` === `${p[0].id}-${p[1].id}`)
  ).sort(() => Math.random() - 0.5);
- 
+
  nonSeeds.forEach((pair, idx) => {
  const gironeIndex = idx % numGironi;
  newGironi[gironeIndex].push(pair);
@@ -625,31 +628,33 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  newGironi[gironeIndex].push(pair);
  });
  }
- 
+
  setGironi(newGironi);
- 
+
  // Genera partite round robin per ogni girone
- const allGironiMatches: Match[][] = newGironi.map(gironePairs => 
+ const allGironiMatches: Match[][] = newGironi.map((gironePairs, groupIndex) =>
  generateRoundRobinMatches(gironePairs).map(match => ({
  ...match,
  sets: [{ team1: 0, team2: 0 }],
  winner: null as 'team1' | 'team2' | null,
- date: tournamentDate
+ date: tournamentDate,
+ phase: 'group',
+ groupNumber: groupIndex + 1,
  })) as Match[]
  );
- 
+
  setGironiMatches(allGironiMatches);
  setStep('setup');
  };
 
  const handleGironiComplete = () => {
  console.log('🎯 Gironi completati, calcolo classifiche');
- 
+
  // Calcola classifica per ogni girone
  const standings: any[] = gironi.map((gironePairs, gironeIdx) => {
  const gironeMatches = gironiMatches[gironeIdx];
- const pairStats = new Map<string, { pair: [Player, Player]; punti: number; gamesWon: number; gamesLost: number }>();
- 
+ const pairStats = new Map<string, { pair: [Player, Player]; punti: number; gamesWon: number; gamesLost: number; matchesPlayed: number }>();
+
  // Inizializza statistiche
  gironePairs.forEach(pair => {
  const pairKey = `${pair[0].id}-${pair[1].id}`;
@@ -657,55 +662,71 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  pair,
  punti: 0,
  gamesWon: 0,
- gamesLost: 0
+ gamesLost: 0,
+ matchesPlayed: 0
  });
  });
- 
+
  // Calcola statistiche dalle partite
  gironeMatches.forEach(match => {
  const team1Key = `${match.team1[0]}-${match.team1[1]}`;
  const team2Key = `${match.team2[0]}-${match.team2[1]}`;
- 
+
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
- 
+
  const team1Stat = pairStats.get(team1Key);
  const team2Stat = pairStats.get(team2Key);
- 
+
  if (team1Stat) {
+ team1Stat.matchesPlayed += 1;
  team1Stat.gamesWon += team1Games;
  team1Stat.gamesLost += team2Games;
  if (team1Games > team2Games) team1Stat.punti += 3;
  }
- 
+
  if (team2Stat) {
+ team2Stat.matchesPlayed += 1;
  team2Stat.gamesWon += team2Games;
  team2Stat.gamesLost += team1Games;
  if (team2Games > team1Games) team2Stat.punti += 3;
  }
  });
- 
+
  // Ordina per punti e differenza games
  return Array.from(pairStats.values()).sort((a, b) => {
  if (b.punti !== a.punti) return b.punti - a.punti;
  return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
  });
  });
- 
+
  setGironiStandings(standings);
- 
- // Qualifica alle semifinali: primi di ogni girone + migliori seconde
- const primi = standings.map(s => s[0]);
- const seconde = standings.map(s => s[1]).filter(Boolean);
- 
- const numSecondeNeeded = 4 - primi.length;
- const miglioriSeconde = seconde.sort((a, b) => {
- if (b.punti !== a.punti) return b.punti - a.punti;
- return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
- }).slice(0, numSecondeNeeded);
- 
- const semifinalisti = [...primi, ...miglioriSeconde];
- 
+
+ const qualifiers: any[] = selectGironiQualifiers<any>(standings, gironiPlayoffType);
+ if (qualifiers.length !== (gironiPlayoffType === 'quarterfinals' ? 8 : 4)) {
+ setResultValidationError('Non ci sono abbastanza coppie qualificate per la fase conclusiva selezionata.');
+ return;
+ }
+
+ if (gironiPlayoffType === 'quarterfinals') {
+ const quarterfinals = buildQuarterfinalPairings(qualifiers).map(([first, second], index) => ({
+ id: `temp-gironi-quarterfinal-${index + 1}`,
+ team1: [first.entry.pair[0].id, first.entry.pair[1].id] as [string, string],
+ team2: [second.entry.pair[0].id, second.entry.pair[1].id] as [string, string],
+ sets: [{ team1: 0, team2: 0 }],
+ winner: null,
+ phase: 'quarterfinal' as const,
+ roundNumber: 1,
+ date: tournamentDate,
+ }));
+ setGironiQuarterfinalsMatches(quarterfinals);
+ setGironiSemifinalsMatches([]);
+ setStep('gironi-standings-intro');
+ return;
+ }
+
+ const semifinalisti = qualifiers.map(qualifier => qualifier.entry);
+
  // Crea le semifinali
  // Semi 1: 1°A vs migliore 2ª (o 2ª seconda)
  // Semi 2: 1°B vs 1°C (o 1°D se 4 gironi)
@@ -716,7 +737,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  winner: null as 'team1' | 'team2' | null,
  date: tournamentDate
  };
- 
+
  const semi2 = {
  team1: [semifinalisti[1].pair[0].id, semifinalisti[1].pair[1].id] as [string, string],
  team2: [semifinalisti[2].pair[0].id, semifinalisti[2].pair[1].id] as [string, string],
@@ -724,9 +745,29 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  winner: null as 'team1' | 'team2' | null,
  date: tournamentDate
  };
- 
+
  setGironiSemifinalsMatches([semi1, semi2]);
  setStep('gironi-standings-intro');
+ };
+
+ const handleQuarterfinalsComplete = () => {
+ const outcomes = gironiQuarterfinalsMatches.map(match => validateMatchOutcome({
+ sets: match.sets,
+ tournamentType: TournamentType.GironiFaseFinale,
+ phase: 'quarterfinal',
+ }));
+ const invalidOutcome = outcomes.find(outcome => outcome.status !== MATCH_OUTCOME.VALID_WIN);
+ if (invalidOutcome) {
+ setResultValidationError(outcomeErrorMessage(invalidOutcome.status) || 'I quarti devono avere un vincitore');
+ return;
+ }
+ const winners = gironiQuarterfinalsMatches.map((match, index) => outcomes[index].winner === 'team1' ? match.team1 : match.team2);
+ setGironiSemifinalsMatches([
+ { id: 'temp-gironi-semifinal-1', team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, phase: 'semifinal', roundNumber: 2, date: tournamentDate },
+ { id: 'temp-gironi-semifinal-2', team1: winners[2], team2: winners[3], sets: [{ team1: 0, team2: 0 }], winner: null, phase: 'semifinal', roundNumber: 2, date: tournamentDate },
+ ]);
+ setResultValidationError(null);
+ setStep('gironi-semifinals');
  };
 
  const handleSemifinalsComplete = () => {
@@ -743,17 +784,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  setResultValidationError(null);
- 
+
  // Calcola vincitori e perdenti delle semifinali
  const semi1 = gironiSemifinalsMatches[0];
  const semi2 = gironiSemifinalsMatches[1];
- 
+
  const semi1Winner = outcomes[0].winner as 'team1' | 'team2';
  const semi1Loser = semi1Winner === 'team1' ? 'team2' : 'team1';
- 
+
  const semi2Winner = outcomes[1].winner as 'team1' | 'team2';
  const semi2Loser = semi2Winner === 'team1' ? 'team2' : 'team1';
- 
+
  // Crea finale 1°-2°
  const finale12 = {
  team1: semi1Winner === 'team1' ? semi1.team1 : semi1.team2,
@@ -762,7 +803,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  winner: null as 'team1' | 'team2' | null,
  date: tournamentDate
  };
- 
+
  // Crea finalina 3°-4°
  const finale34 = {
  team1: semi1Loser === 'team1' ? semi1.team1 : semi1.team2,
@@ -771,7 +812,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  winner: null as 'team1' | 'team2' | null,
  date: tournamentDate
  };
- 
+
  setGironiFinalsMatches([finale34, finale12]); // Prima finalina, poi finale
  setStep('gironi-finals');
  };
@@ -783,7 +824,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
 
  setIsSubmitting(true);
- 
+
  try {
  const finalOutcomes = gironiFinalsMatches.map((match, index) => validateMatchOutcome({
  sets: match.sets,
@@ -798,20 +839,36 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setResultValidationError(null);
  // Combina tutte le partite: gironi + semifinali + finali
  const allMatches: Omit<Match, 'id'>[] = [];
- 
+
  // Aggiungi partite dei gironi
- gironiMatches.flat().forEach((match, index) => {
+ gironiMatches.forEach((groupMatches, groupIndex) => groupMatches.forEach((match, matchIndex) => {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
  phase: 'group',
- roundNumber: match.roundNumber || index + 1,
+ groupNumber: groupIndex + 1,
+ roundNumber: match.roundNumber || matchIndex + 1,
  date: tournamentDate
  });
+ }));
+
+ // Aggiungi quarti quando previsti
+ gironiQuarterfinalsMatches.forEach(match => {
+ const quarterOutcome = validateMatchOutcome({
+ sets: match.sets,
+ tournamentType: TournamentType.GironiFaseFinale,
+ phase: 'quarterfinal',
  });
- 
+ allMatches.push({
+ ...match,
+ winner: quarterOutcome.winner,
+ phase: 'quarterfinal',
+ date: tournamentDate,
+ });
+ });
+
  // Aggiungi semifinali
  gironiSemifinalsMatches.forEach((match, index) => {
  const semifinalOutcome = validateMatchOutcome({
@@ -826,7 +883,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  date: tournamentDate
  });
  });
- 
+
  // Aggiungi finali
  gironiFinalsMatches.forEach((match, index) => {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
@@ -838,7 +895,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  date: tournamentDate
  });
  });
- 
+
  const finalTournamentName = isCreatingNew ? tournamentName : selectedTournamentName;
  const tournamentData = {
  name: finalTournamentName,
@@ -847,7 +904,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  club: clubName,
  matchIds: [],
  status: 'completed' as const,
- numGironi: gironi.length
+ numGironi: gironi.length,
+ gironiPlayoffType,
  };
 
  await addMultipleMatches(allMatches, tournamentData);
@@ -864,7 +922,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setCreatedTournament(tempCreatedTournament);
  setCompletedMatches(completedGironiMatches);
  setFinalStandings(calculateTournamentStandings(completedGironiMatches, getPlayerById));
- 
+
  setStep('results');
  setIsSuccessModalOpen(true);
  } catch (error) {
@@ -882,7 +940,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
 
  setIsSubmitting(true);
- 
+
  try {
  // Convert torneo libero matches to standard match format
  const matchesToCreate = torneoLiberoMatches
@@ -890,13 +948,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (torneoLiberoMode === 'fixed') {
  return match.team1 && match.team2;
  } else {
- return match.team1Player1 && match.team1Player2 && 
+ return match.team1Player1 && match.team1Player2 &&
  match.team2Player1 && match.team2Player2;
  }
  })
  .map(match => {
  let team1Ids: [string, string], team2Ids: [string, string];
- 
+
  if (torneoLiberoMode === 'fixed') {
  const team1PairIndex = parseInt(match.team1!.replace('pair-', ''));
  const team2PairIndex = parseInt(match.team2!.replace('pair-', ''));
@@ -906,7 +964,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  team1Ids = [match.team1Player1!, match.team1Player2!];
  team2Ids = [match.team2Player1!, match.team2Player2!];
  }
- 
+
  return {
  team1: team1Ids,
  team2: team2Ids,
@@ -933,7 +991,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  await addMultipleMatches(matchesToCreate, tournamentData);
- 
+
  setStep('results');
  setIsSuccessModalOpen(true);
  } catch (error) {
@@ -951,7 +1009,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
 
  setIsSubmitting(true);
- 
+
  try {
  // Convert torneo libero matches to standard match format
  const matchesToCreate = torneoLiberoMatches
@@ -959,13 +1017,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (torneoLiberoMode === 'fixed') {
  return match.team1 && match.team2;
  } else {
- return match.team1Player1 && match.team1Player2 && 
+ return match.team1Player1 && match.team1Player2 &&
  match.team2Player1 && match.team2Player2;
  }
  })
  .map(match => {
  let team1Ids: [string, string], team2Ids: [string, string];
- 
+
  if (torneoLiberoMode === 'fixed') {
  const team1PairIndex = parseInt(match.team1!.replace('pair-', ''));
  const team2PairIndex = parseInt(match.team2!.replace('pair-', ''));
@@ -975,12 +1033,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  team1Ids = [match.team1Player1!, match.team1Player2!];
  team2Ids = [match.team2Player1!, match.team2Player2!];
  }
- 
+
  // Calculate winner from sets
  const team1Wins = match.scores.filter(set => set.team1 > set.team2).length;
  const team2Wins = match.scores.filter(set => set.team2 > set.team1).length;
  const winner = team1Wins > team2Wins ? 'team1' as const : 'team2' as const;
- 
+
  return {
  team1: team1Ids,
  team2: team2Ids,
@@ -1007,7 +1065,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  await addMultipleMatches(matchesToCreate, tournamentData);
- 
+
  setStep('results');
  setIsSuccessModalOpen(true);
  } catch (error) {
@@ -1031,7 +1089,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  // Initialize all players
  const allPlayers = pairs.flat();
  console.log(`🎯 Americano: Initializing ${allPlayers.length} players from ${pairs.length} pairs`);
- 
+
  allPlayers.forEach(player => {
  playerStats.set(player.id, {
  player,
@@ -1046,17 +1104,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  matches.forEach(match => {
  const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
  const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
- 
+
  if (team1Players.length === 2 && team2Players.length === 2 && match.sets) {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
- 
+
  // Update stats for each player
  [...team1Players, ...team2Players].forEach(player => {
  const stats = playerStats.get(player.id);
  if (stats) {
  stats.matchesPlayed++;
- 
+
  if (team1Players.includes(player)) {
  // Player is on team1
  stats.totalPoints += team1Games;
@@ -1076,7 +1134,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  // Convert to standings array
  const standings: TournamentStandingEntry[] = Array.from(playerStats.values()).map(stats => {
  const gameDifference = stats.totalGamesWon - stats.totalGamesLost;
- 
+
  return {
  teamId: stats.player.id,
  team: [stats.player],
@@ -1089,7 +1147,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  });
 
  console.log(`🎯 Americano: Created ${standings.length} standings entries`);
- 
+
  // Sort by points (descending)
  return standings.sort((a, b) => b.points - a.points);
  };
@@ -1108,15 +1166,15 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleProceedToFinals = () => {
  setShowFinalsModal(false);
- 
+
  // Get top 4 teams from Round Robin standings
  const top4Standings = roundRobinStandings.slice(0, 4);
- 
+
  // Generate finals matches
  const finals = generateFinalsMatches(top4Standings, roundRobinPlayoffType === 'semifinals' ? 'semifinals' : 'finals_only');
  setFinalsMatches(finals);
  setFinalsScores({});
- 
+
  setStep('finals');
  };
 
@@ -1138,13 +1196,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  setResultValidationError(null);
- 
+
  // Check if tournament was already saved
  if (isTournamentSaved) {
  showHIGAlert('Il torneo è già stato salvato! I risultati non possono essere inseriti di nuovo.');
  return;
  }
- 
+
  // Show confirmation modal
  setShowFinalsConfirmModal(true);
  };
@@ -1155,7 +1213,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('⚠️ Tournament already saved, preventing duplicate submission');
  return;
  }
- 
+
  setShowFinalsConfirmModal(false);
 
  if (roundRobinPlayoffType === 'semifinals' && roundRobinSemifinalMatches.length === 0 && finalsMatches.every(match => match.phase === 'semifinal')) {
@@ -1181,13 +1239,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
  setIsSubmitting(true);
  setIsTournamentSaved(true);
- 
+
  try {
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
 
  // Combine Round Robin and Finals matches
  const allMatches = [...roundRobinMatches, ...roundRobinSemifinalMatches, ...finalsMatches];
- 
+
  // Reindex finals scores to avoid overwriting round robin scores
  const reindexedFinalsScores: Record<number, SetScore[]> = {};
  Object.keys(finalsScores).forEach(key => {
@@ -1196,7 +1254,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  });
  const semifinalScores = Object.fromEntries(roundRobinSemifinalMatches.map((match, index) => [roundRobinMatches.length + index, match.sets]));
  const allScores = { ...roundRobinScores, ...semifinalScores, ...reindexedFinalsScores };
- 
+
  console.log('🎯 Round Robin matches:', roundRobinMatches.length);
  console.log('🎯 Finals matches:', finalsMatches.length);
  console.log('🎯 Total matches:', allMatches.length);
@@ -1214,7 +1272,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  roundRobinFields,
  roundRobinHomeAway: roundRobinHomeAway,
  };
- 
+
  const finalMatches: Omit<Match, 'id'>[] = allMatches.map((match, index) => {
  const sets = allScores[index] || [{ team1: 0, team2: 0 }];
  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
@@ -1234,24 +1292,24 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  // This single call to the store now handles creating the tournament, matches, and recalculating all ELOs on the backend.
  await addMultipleMatches(finalMatches, newTournamentData);
- 
+
  // Mark tournament as saved to prevent duplicate submissions
  setIsTournamentSaved(true);
- 
+
  // For display purposes, we can calculate standings on the client with the data we have.
  const tempCompletedMatches = finalMatches.map((m, i) => ({
  ...m,
  id: `temp_${i}`,
  })) as Match[];
- 
+
  // Calculate final standings based on finals results, not points!
  const standings = calculateFinalStandingsForRoundRobinFinali(
- tempCompletedMatches, 
- roundRobinMatches.length, 
+ tempCompletedMatches,
+ roundRobinMatches.length,
  getPlayerById
  );
  setFinalStandings(standings);
- 
+
  const createdTournament: Tournament = {
  id: 'temp',
  name: finalName,
@@ -1261,14 +1319,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  matchIds: [],
  status: 'completed'
  };
- 
+
  setCreatedTournament(createdTournament);
  setCompletedMatches(tempCompletedMatches);
- 
+
  // Redirect to results step and show success modal
  setStep('results');
  setIsSuccessModalOpen(true);
- 
+
  } catch (error) {
  console.error('Error creating tournament:', error);
  showHIGAlert('Errore nella creazione del torneo. Riprova.');
@@ -1283,7 +1341,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎯 selectedFormat:', selectedFormat);
  console.log('🎯 isRoundRobinFinali:', isRoundRobinFinali);
  console.log('🎯 savedTournamentType:', savedTournamentType);
- 
+
   const finalName = (isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || '';
   const finalClub = clubName.trim();
   if (finalName.trim() === '' || finalClub === '') {
@@ -1312,7 +1370,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
         setStep('tpra-flow');
         return;
     }
- 
+
  // For Beat the Box, render dedicated flow
  if (selectedFormat === 'beat-the-box') {
  // Verifica validità numero coppie
@@ -1329,11 +1387,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     setStep('gironi-phase');
     return;
   }
- 
+
  setStep('scoring'); // Usa 'scoring' come trigger
  return;
  }
- 
+
  // For Round Robin + Finali, generate Round Robin matches
  if (isRoundRobinFinali) {
  console.log('🎯 Generating Round Robin matches for', pairs.length, 'pairs');
@@ -1345,21 +1403,21 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } else {
  console.log('🎯 NOT generating Round Robin matches (isRoundRobinFinali is false)');
  }
- 
+
  setStep('scoring');
  };
- 
+
  const handleFinishScoring = async () => {
  // Prevent multiple simultaneous calls
  if (isSubmitting) {
  console.log('⚠️ Already submitting, ignoring duplicate call');
  return;
  }
- 
+
  console.log('🎯 handleFinishScoring - isRoundRobinFinali:', isRoundRobinFinali);
  console.log('🎯 selectedFormat:', selectedFormat);
  console.log('🎯 savedTournamentType:', savedTournamentType);
- 
+
  // For Round Robin + Finali, handle Round Robin completion
  if (isRoundRobinFinali) {
  setIsSubmitting(true); // Lock to prevent re-entry
@@ -1367,15 +1425,15 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('🎯 roundRobinScores:', roundRobinScores);
  console.log('🎯 roundRobinMatches.length:', roundRobinMatches.length);
  console.log('🎯 roundRobinScores keys length:', Object.keys(roundRobinScores).length);
- 
+
  if (Object.keys(roundRobinScores).length !== roundRobinMatches.length) {
  console.log('⚠️ Not all scores entered!');
  showHIGAlert('Inserisci i risultati di tutte le partite del Round Robin.');
  return;
  }
- 
+
  console.log('✅ All scores entered, calculating standings...');
- 
+
  try {
  // Calculate Round Robin standings
  const roundRobinCompletedMatches = roundRobinMatches.map((match, index) => {
@@ -1390,12 +1448,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
  };
  }) as Match[];
- 
+
  console.log('🎯 Round Robin completed matches:', roundRobinCompletedMatches);
- 
+
  const standings = calculateTournamentStandings(roundRobinCompletedMatches, getPlayerById);
  console.log('🎯 Standings calculated:', standings);
- 
+
  setRoundRobinStandings(standings);
  if (roundRobinPlayoffType === 'no_finals') {
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
@@ -1422,7 +1480,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  console.log('🎯 Standings set, showing finals modal...');
- 
+
  // Show modal to proceed to finals
  setShowFinalsModal(true);
  console.log('🎯 showFinalsModal set to true');
@@ -1435,7 +1493,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
  }
- 
+
  // For other formats, continue with existing logic
  if (Object.keys(matchScores).length !== tournamentMatches.length) {
  showHIGAlert('Inserisci i risultati di tutte le partite.');
@@ -1444,15 +1502,15 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  console.log('🎯 Non-RoundRobin tournament - completing tournament');
  console.log('🎯 selectedFormat:', selectedFormat);
- 
+
  setIsSubmitting(true);
  try {
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
- 
- const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano : 
- selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali : 
+
+ const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano :
+ selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali :
  TournamentType.TorneOtto;
- 
+
  console.log('🎯 Tournament type being saved:', tournamentType);
 
  const newTournamentData: Omit<Tournament, 'id'> = {
@@ -1463,7 +1521,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  matchIds: [],
  status: 'completed'
  };
- 
+
  const finalMatches: Omit<Match, 'id'>[] = tournamentMatches.map((match, index) => {
  const sets = matchScores[index] || [{ team1: 0, team2: 0 }];
  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
@@ -1478,7 +1536,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  // This single call to the store now handles creating the tournament, matches, and recalculating all ELOs on the backend.
  await addMultipleMatches(finalMatches, newTournamentData);
- 
+
  // For display purposes, we can calculate standings on the client with the data we have.
  // In a real-world scenario, you might get the final standings back from the API response.
  const tempCompletedMatches = finalMatches.map((m, i) => ({
@@ -1491,7 +1549,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } as Tournament;
 
 
- const standings = selectedFormat === 'americano' 
+ const standings = selectedFormat === 'americano'
  ? calculateAmericanoStandings(tempCompletedMatches)
  : calculateTournamentStandings(tempCompletedMatches, getPlayerById);
  setFinalStandings(standings);
@@ -1529,14 +1587,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log("🎯 selectedFormat:", selectedFormat);
  console.log("🎯 isRoundRobinFinali:", isRoundRobinFinali);
  setIsSavingCalendar(true);
- 
+
  try {
- const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano : 
- selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali : 
+ const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano :
+ selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali :
  TournamentType.TorneOtto;
- 
+
  console.log("🎯 Calculated tournament type:", tournamentType);
- 
+
  const newTournamentData: Omit<Tournament, 'id'> = {
  name: finalName,
  type: tournamentType,
@@ -1547,10 +1605,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  americanoFields: selectedFormat === 'americano' ? americanoFields : undefined,
  americanoScoringType: selectedFormat === 'americano' ? americanoScoringType : undefined
  };
- 
+
  const matchesToSave = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
  const scoresToSave = isRoundRobinFinali ? roundRobinScores : matchScores;
-  
+
  const scheduledMatches: Omit<Match, 'id'>[] = matchesToSave.map((match, index) => {
     const scores = scoresToSave[index] || [{ team1: 0, team2: 0 }];
     const team1Games = scores.reduce((sum, s) => sum + (s.team1 || 0), 0);
@@ -1577,11 +1635,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   });
 
  console.log(`📝 Saving tournament: ${finalName} with ${scheduledMatches.length} matches`);
- 
+
  // Save tournament and matches with status 'scheduled'
  const result = await addMultipleMatches(scheduledMatches, newTournamentData);
  console.log("📝 addMultipleMatches result:", result);
- 
+
  console.log("✅ Tournament saved successfully, showing confirmation modal");
  console.log("🔔 Setting isCalendarSavedModalOpen to true");
  setIsCalendarSavedModalOpen(true);
@@ -1596,15 +1654,15 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const handleSaveCalendarGironi = async () => {
  if (isSavingCalendar) return;
- 
+
  const finalName = isCreatingNew ? tournamentName : selectedTournamentName;
  if (finalName.trim() === '' || clubName.trim() === '') {
  showHIGAlert('Inserisci nome torneo e circolo.');
  return;
  }
- 
+
  setIsSavingCalendar(true);
- 
+
  try {
  const newTournamentData: Omit<Tournament, 'id'> = {
  name: finalName,
@@ -1613,9 +1671,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  club: clubName,
  matchIds: [],
  status: 'scheduled',
- numGironi: gironi.length
+ numGironi: gironi.length,
+ gironiPlayoffType,
  };
- 
+
   // Create matches - preserving scores if user typed any
   const scheduledMatches: Omit<Match, 'id'>[] = [];
   gironiMatches.forEach((groupMatches, gIndex) => {
@@ -1640,11 +1699,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
         ...match,
         date: new Date(tournamentDate).toISOString(),
         sets: scores,
-        winner: winner
+        winner: winner,
+        phase: 'group',
+        groupNumber: gIndex + 1,
+        roundNumber: match.roundNumber || mIndex + 1
       });
     });
   });
- 
+
  await addMultipleMatches(scheduledMatches, newTournamentData);
  setIsCalendarSavedModalOpen(true);
  } catch (error) {
@@ -1664,9 +1726,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  date: tournamentDate,
  club: clubName,
  matchIds: [],
- status: 'scheduled'
+ status: 'scheduled',
+ numGironi: gironi.length,
+ gironiPlayoffType,
  };
- 
+
  printGironiTournament(
  emptyTournament,
  gironiMatches.flat(),
@@ -1684,13 +1748,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       name: finalName || 'Nuovo Torneo',
       club: clubName || 'Circolo Padel',
       date: tournamentDate || new Date().toISOString().split('T')[0],
-      type: selectedFormat === 'americano' ? TournamentType.Americano : 
-            selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali : 
+      type: selectedFormat === 'americano' ? TournamentType.Americano :
+            selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali :
             TournamentType.TorneOtto,
       matchIds: [],
       status: 'scheduled'
     };
-    
+
     // Create a local getPlayerById that works with both pairs and database
     const localGetPlayerById = (id: string): Player | undefined => {
       const allPlayers = pairs.flat();
@@ -1698,10 +1762,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       if (playerFromPairs) return playerFromPairs;
       return getPlayerById(id);
     };
-    
+
     // For Round Robin + Finali, use Round Robin matches for printing
     const matchesToPrint = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
-    
+
     printTournamentReport(
       tournamentDetails,
       [], // empty standings for blank tabellone
@@ -1722,7 +1786,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  club: clubName,
  date: tournamentDate,
  };
- 
+
  printTorneoLiberoBlank(tournamentDetails, numeroPartite);
  };
 
@@ -1730,13 +1794,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  console.log('📋 handleSelectExistingTournament called with:', name);
  console.log('📋 isCreatingNew:', isCreatingNew);
  console.log('📋 Current selectedFormat:', selectedFormat);
- 
+
  // CRITICAL: Ignore ALL calls if we're in"New" mode
  if (isCreatingNew) {
  console.log('⚠️ BLOCKED: Ignoring tournament selection because isCreatingNew is true');
  return;
  }
- 
+
  setSelectedTournamentName(name);
  if (name) {
  const existingTournament = tournaments.find(t => t.name === name && t.type !== TournamentType.TorneoASquadre);
@@ -1744,13 +1808,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (existingTournament) {
  // Set club name from existing tournament
  setClubName(existingTournament.club);
- 
+
  // Check if this is a scheduled (unfinished) tournament
  // If so, we need to restore the original format to continue where we left off
  if (existingTournament.status === 'scheduled') {
  console.log('📋 Scheduled tournament detected - restoring original format:', existingTournament.type);
  setSavedTournamentType(existingTournament.type);
- 
+
  // Also set selectedFormat to match the tournament type
  if (existingTournament.type === TournamentType.RoundRobinFinali) {
  setSelectedFormat('round-robin-finali');
@@ -1782,10 +1846,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (p1 && p2) return [p1, p2];
  return null;
  };
- 
+
  if (step === 'tournament-selection') {
  const availableFormats = getAvailableFormats();
- 
+
  // If no formats available (3 pairs), show message and return to draw
  if (availableFormats.length === 0) {
  return (
@@ -1797,12 +1861,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <p className="text-gray-500 dark:text-gray-500">
  Con {pairs.length} coppie non sono disponibili formati di torneo automatici.
  </p>
- <Button onClick={onFinish} variant="secondary">Torna al Sorteggio</Button>
+ <Button onClick={onFinish} variant="outline">Torna al Sorteggio</Button>
  </div>
  </Card>
  );
  }
- 
+
  return (
  <Card title="Seleziona Formato Torneo">
  <div className="space-y-4 px-4">
@@ -1905,7 +1969,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
 
  <div className="flex gap-3 mt-6">
-  <Button 
+  <Button
   onClick={() => {
     if (initialFormat) {
       onFinish();
@@ -1918,7 +1982,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   >
   Indietro
   </Button>
- <Button 
+ <Button
  onClick={handleAmericanoInfoContinue}
  className="flex-1"
  >
@@ -1930,7 +1994,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
   if (step === 'round-robin-info') {
     return (
       <Card title="Info Round Robin + Finali">
@@ -2037,7 +2101,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
           <div className="pt-4 flex gap-3">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => setStep('tournament-selection')}
               className="flex-1"
             >
@@ -2064,7 +2128,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (pairs.length >= 6) gironiOptions.push(2);
  if (pairs.length >= 9) gironiOptions.push(3);
  if (pairs.length >= 12) gironiOptions.push(4);
- 
+
  return (
  <Card title="Setup Gironi + Fase Finale">
  <div className="space-y-6 px-4">
@@ -2090,7 +2154,35 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  ))}
  </div>
  </div>
- 
+
+ {pairs.length >= 8 && (
+ <div>
+ <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+ Scelta Fase Conclusiva
+ </label>
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+ <button
+ type="button"
+ className={`border-2 rounded-xl p-4 cursor-pointer text-left ${gironiPlayoffType === 'semifinals' ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+ onClick={() => setGironiPlayoffType('semifinals')}
+ aria-pressed={gironiPlayoffType === 'semifinals'}
+ >
+ <h4 className="font-bold text-base mb-1">Semifinali e Finali</h4>
+ <p className="text-xs text-gray-500 dark:text-gray-400">Quattro coppie accedono direttamente alle semifinali.</p>
+ </button>
+ <button
+ type="button"
+ className={`border-2 rounded-xl p-4 cursor-pointer text-left ${gironiPlayoffType === 'quarterfinals' ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+ onClick={() => setGironiPlayoffType('quarterfinals')}
+ aria-pressed={gironiPlayoffType === 'quarterfinals'}
+ >
+ <h4 className="font-bold text-base mb-1">Quarti, Semifinali e Finali</h4>
+ <p className="text-xs text-gray-500 dark:text-gray-400">Otto coppie accedono al tabellone a eliminazione.</p>
+ </button>
+ </div>
+ </div>
+ )}
+
  <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg space-y-4">
  <label className="flex items-center gap-2 cursor-pointer">
  <input
@@ -2106,7 +2198,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  Coppie Teste di Serie (le coppie più forti non giocano nello stesso girone)
  </span>
  </label>
- 
+
  {useSeeds && (
  <div className="pl-6 space-y-2 px-4">
  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
@@ -2116,7 +2208,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const pairKey = `${pair[0].id}-${pair[1].id}`;
  const isSelected = selectedSeeds.some(s => `${s[0].id}-${s[1].id}` === pairKey);
  const avgElo = (pair[0].currentElo + pair[1].currentElo) / 2;
- 
+
  return (
  <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded">
  <input
@@ -2144,7 +2236,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  )}
  </div>
- 
+
  <div className="flex gap-3 mt-6">
  <Button
  onClick={() => setStep('setup')}
@@ -2169,7 +2261,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
  if (step === 'gironi-phase') {
  return (
  <>
@@ -2185,11 +2277,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {gironi.map((gironePairs, gironeIdx) => {
  const gironeName = String.fromCharCode(65 + gironeIdx); // A, B, C, D
  const gironeMatches = gironiMatches[gironeIdx] || [];
- 
+
  return (
  <div key={gironeIdx} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
  <h3 className="font-semibold text-lg mb-4">Girone {gironeName}</h3>
- 
+
  <div className="mb-4 space-y-2 px-4">
  <p className="text-sm text-gray-600 dark:text-gray-400">Coppie:</p>
  {gironePairs.map((pair, idx) => (
@@ -2198,20 +2290,20 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  ))}
  </div>
- 
+
  <div className="space-y-3 px-4">
  {gironeMatches.map((match, matchIdx) => {
- const team1Pair = pairs.find(p => 
+ const team1Pair = pairs.find(p =>
  (p[0].id === match.team1[0] && p[1].id === match.team1[1]) ||
  (p[0].id === match.team1[1] && p[1].id === match.team1[0])
  );
- const team2Pair = pairs.find(p => 
+ const team2Pair = pairs.find(p =>
  (p[0].id === match.team2[0] && p[1].id === match.team2[1]) ||
  (p[0].id === match.team2[1] && p[1].id === match.team2[0])
  );
- 
+
  if (!team1Pair || !team2Pair) return null;
- 
+
  return (
  <div key={matchIdx} className="bg-white dark:bg-gray-800 p-3 rounded">
  <div className="grid grid-cols-3 items-center gap-4">
@@ -2219,7 +2311,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {team1Pair[0].name} {team1Pair[0].surname}<br/>
  {team1Pair[1].name} {team1Pair[1].surname}
  </div>
- 
+
  <div>
  <MatchScoreInput
  sets={match.sets}
@@ -2233,7 +2325,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }}
  />
  </div>
- 
+
  <div className="text-sm text-right">
  {team2Pair[0].name} {team2Pair[0].surname}<br/>
  {team2Pair[1].name} {team2Pair[1].surname}
@@ -2246,7 +2338,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  );
  })}
- 
+
  <div className="flex gap-3 mt-6">
  <Button
  onClick={() => setStep('gironi-setup')}
@@ -2255,11 +2347,11 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  >
  Indietro
  </Button>
- <Button 
+ <Button
  onClick={handleSaveCalendarGironi}
  disabled={isSavingCalendar}
- variant="secondary"
- className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 border-green-400 dark:border-green-300"
+ variant="success"
+ className="flex-1"
  >
  {isSavingCalendar ?"Salvataggio..." :"Salva Calendario"}
  </Button>
@@ -2270,12 +2362,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }}
  className="flex-1"
  >
- Procedi alle Semifinali
+ Procedi {gironiPlayoffType === 'quarterfinals' ? 'ai Quarti' : 'alle Semifinali'}
  </Button>
  </div>
  </div>
  </Card>
- 
+
  {/* Calendar Saved Modal */}
  {isCalendarSavedModalOpen && (
  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -2295,7 +2387,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </p>
  </div>
  <div className="items-center px-4 py-3">
- <Button 
+ <Button
  onClick={() => {
  setIsCalendarSavedModalOpen(false);
  onFinish();
@@ -2312,21 +2404,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </>
  );
  }
- 
- 
+
+
  if (step === 'gironi-standings-intro') {
  const gironiEntryKey = (entry: any) =>
  entry?.pair ? [entry.pair[0].id, entry.pair[1].id].sort().join('-') : '';
- const sortGironiEntries = (entries: any[]) =>
- entries.sort((a, b) => {
- if (b.punti !== a.punti) return b.punti - a.punti;
- return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
- });
- const firstQualified = gironiStandings.map((standing: any[]) => standing[0]).filter(Boolean);
- const secondQualifiedCount = Math.max(0, 4 - firstQualified.length);
- const secondQualified = sortGironiEntries(gironiStandings.map((standing: any[]) => standing[1]).filter(Boolean))
- .slice(0, secondQualifiedCount);
- const qualifiedEntries = [...firstQualified, ...secondQualified];
+ const qualifiers: any[] = selectGironiQualifiers<any>(gironiStandings, gironiPlayoffType);
+ const qualifiedEntries = qualifiers.map(qualifier => qualifier.entry);
  const qualifiedKeys = new Set(qualifiedEntries.map(gironiEntryKey));
 
  return (
@@ -2335,17 +2419,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-ios-blue">
  <h3 className="font-semibold text-ios-blue dark:text-ios-blue mb-2">Fase Gironi Completata!</h3>
  <p className="text-sm text-ios-blue dark:text-ios-blue">
- Ecco le classifiche finali dei gironi. Le squadre qualificate per le semifinali sono evidenziate in verde.
+ Ecco le classifiche finali dei gironi. Le squadre qualificate per {gironiPlayoffType === 'quarterfinals' ? 'i quarti' : 'le semifinali'} sono evidenziate in verde.
  </p>
  </div>
 
  {gironiStandings.map((standing, gironeIdx) => {
  const gironeName = String.fromCharCode(65 + gironeIdx); // A, B, C, D
- 
+
  return (
  <div key={gironeIdx} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
  <h3 className="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">Girone {gironeName}</h3>
- 
+
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
  <thead className="bg-gray-100 dark:bg-gray-800">
@@ -2361,7 +2445,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
  {standing.map((entry: any, idx: number) => {
  const isQualified = qualifiedKeys.has(gironiEntryKey(entry));
- 
+
  return (
  <tr key={idx} className={isQualified ?"bg-green-50 dark:bg-green-900/30" :""}>
  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
@@ -2391,25 +2475,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  );
  })}
- 
+
  <div className="mt-6 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
- <h4 className="font-semibold text-green-900 dark:text-green-200 mb-2">Qualificati alle Semifinali:</h4>
+ <h4 className="font-semibold text-green-900 dark:text-green-200 mb-2">Qualificati {gironiPlayoffType === 'quarterfinals' ? 'ai Quarti' : 'alle Semifinali'}:</h4>
  <ul className="text-sm text-green-800 dark:text-green-300 space-y-1 px-4">
- {gironi.slice(0, Math.min(gironi.length, 4)).map((_, idx) => {
- if (gironiStandings[idx] && gironiStandings[idx][0]) {
- const winner = gironiStandings[idx][0];
- const gironeName = String.fromCharCode(65 + idx);
- return (
- <li key={idx}>
- <strong>1° Girone {gironeName}:</strong> {winner.pair[0].name} {winner.pair[0].surname} & {winner.pair[1].name} {winner.pair[1].surname}
- </li>
- );
- }
- return null;
- })}
- {secondQualified.map((second: any) => (
- <li key={`second-${gironiEntryKey(second)}`}>
- <strong>Migliore seconda:</strong> {second.pair[0].name} {second.pair[0].surname} & {second.pair[1].name} {second.pair[1].surname}
+ {qualifiers.map((qualifier: any) => (
+ <li key={`${qualifier.groupIndex}-${gironiEntryKey(qualifier.entry)}`}>
+ <strong>{qualifier.groupRank}° Girone {String.fromCharCode(65 + qualifier.groupIndex)}:</strong> {qualifier.entry.pair[0].name} {qualifier.entry.pair[0].surname} & {qualifier.entry.pair[1].name} {qualifier.entry.pair[1].surname}
  </li>
  ))}
  </ul>
@@ -2424,11 +2496,43 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  Indietro
  </Button>
  <Button
- onClick={() => setStep('gironi-semifinals')}
+ onClick={() => setStep(gironiPlayoffType === 'quarterfinals' ? 'gironi-quarterfinals' : 'gironi-semifinals')}
  className="flex-1"
  >
- Procedi alle Semifinali →
+ Procedi {gironiPlayoffType === 'quarterfinals' ? 'ai Quarti' : 'alle Semifinali'} →
  </Button>
+ </div>
+ </div>
+ </Card>
+ );
+ }
+
+ if (step === 'gironi-quarterfinals') {
+ return (
+ <Card title="Quarti di Finale">
+ <div className="space-y-6 px-4">
+ {gironiQuarterfinalsMatches.map((match, idx) => {
+ const team1Pair = pairs.find(pair => pair.some(player => player.id === match.team1[0]));
+ const team2Pair = pairs.find(pair => pair.some(player => player.id === match.team2[0]));
+ if (!team1Pair || !team2Pair) return null;
+ return (
+ <div key={match.id || idx} className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-lg border border-sky-300 dark:border-sky-700">
+ <h4 className="font-semibold mb-3 text-sky-800 dark:text-sky-300">Quarto {idx + 1}</h4>
+ <div className="grid grid-cols-3 items-center gap-4">
+ <div className="text-sm">{team1Pair[0].name} {team1Pair[0].surname}<br/>{team1Pair[1].name} {team1Pair[1].surname}</div>
+ <MatchScoreInput
+ sets={match.sets}
+ onSetsChange={(sets) => setGironiQuarterfinalsMatches(current => current.map((item, index) => index === idx ? { ...item, sets } : item))}
+ />
+ <div className="text-sm text-right">{team2Pair[0].name} {team2Pair[0].surname}<br/>{team2Pair[1].name} {team2Pair[1].surname}</div>
+ </div>
+ </div>
+ );
+ })}
+ {resultValidationError && <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-300">{resultValidationError}</p>}
+ <div className="flex gap-3 mt-6">
+ <Button onClick={() => setStep('gironi-standings-intro')} variant="outline" className="flex-1">Indietro</Button>
+ <Button onClick={handleQuarterfinalsComplete} className="flex-1">Conferma Quarti e Passa alle Semifinali</Button>
  </div>
  </div>
  </Card>
@@ -2440,17 +2544,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <Card title="Semifinali">
  <div className="space-y-6 px-4">
  {gironiSemifinalsMatches.map((match, idx) => {
- const team1Pair = pairs.find(p => 
+ const team1Pair = pairs.find(p =>
  (p[0].id === match.team1[0] && p[1].id === match.team1[1]) ||
  (p[0].id === match.team1[1] && p[1].id === match.team1[0])
  );
- const team2Pair = pairs.find(p => 
+ const team2Pair = pairs.find(p =>
  (p[0].id === match.team2[0] && p[1].id === match.team2[1]) ||
  (p[0].id === match.team2[1] && p[1].id === match.team2[0])
  );
- 
+
  if (!team1Pair || !team2Pair) return null;
- 
+
  return (
  <div key={idx} className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-2 border-ios-blue">
  <h4 className="font-semibold mb-3 text-ios-blue dark:text-ios-blue">Semifinale {idx + 1}</h4>
@@ -2459,7 +2563,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {team1Pair[0].name} {team1Pair[0].surname}<br/>
  {team1Pair[1].name} {team1Pair[1].surname}
  </div>
- 
+
  <div>
  <MatchScoreInput
  sets={match.sets}
@@ -2470,7 +2574,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }}
  />
  </div>
- 
+
  <div className="text-sm text-right">
  {team2Pair[0].name} {team2Pair[0].surname}<br/>
  {team2Pair[1].name} {team2Pair[1].surname}
@@ -2479,10 +2583,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  );
  })}
- 
+
  <div className="flex gap-3 mt-6">
  <Button
- onClick={() => setStep('gironi-phase')}
+ onClick={() => setStep(gironiPlayoffType === 'quarterfinals' ? 'gironi-quarterfinals' : 'gironi-phase')}
  variant="outline"
  className="flex-1"
  >
@@ -2501,7 +2605,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
  if (step === 'gironi-finals') {
  return (
  <Card title="Finali">
@@ -2509,27 +2613,27 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {gironiFinalsMatches.map((match, idx) => {
  const isFinale = idx === 1; // Index 1 = finale 1°-2°
  const title = isFinale ?"Finale 1°-2° Posto" :"Finalina 3°-4° Posto";
- 
- const team1Pair = pairs.find(p => 
+
+ const team1Pair = pairs.find(p =>
  (p[0].id === match.team1[0] && p[1].id === match.team1[1]) ||
  (p[0].id === match.team1[1] && p[1].id === match.team1[0])
  );
- const team2Pair = pairs.find(p => 
+ const team2Pair = pairs.find(p =>
  (p[0].id === match.team2[0] && p[1].id === match.team2[1]) ||
  (p[0].id === match.team2[1] && p[1].id === match.team2[0])
  );
- 
+
  if (!team1Pair || !team2Pair) return null;
- 
- const bgColor = isFinale 
+
+ const bgColor = isFinale
  ?"bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
  :"bg-green-100 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-700";
  const titleColor = isFinale
  ?"text-green-900 dark:text-green-300"
  :"text-green-800 dark:text-green-400";
- 
+
  const matchKey = `final-${match.team1.join('-')}-vs-${match.team2.join('-')}`;
- 
+
  return (
  <div key={matchKey} className={`${bgColor} p-4 rounded-lg`}>
  <h4 className={`font-semibold mb-3 ${titleColor}`}>{title}</h4>
@@ -2538,7 +2642,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {team1Pair[0].name} {team1Pair[0].surname}<br/>
  {team1Pair[1].name} {team1Pair[1].surname}
  </div>
- 
+
  <div>
  <MatchScoreInput
  sets={match.sets}
@@ -2549,7 +2653,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }}
  />
  </div>
- 
+
  <div className="text-sm text-right">
  {team2Pair[0].name} {team2Pair[0].surname}<br/>
  {team2Pair[1].name} {team2Pair[1].surname}
@@ -2558,7 +2662,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  );
  })}
- 
+
  <div className="flex gap-3 mt-6">
  <Button
  onClick={() => setStep('gironi-semifinals')}
@@ -2581,7 +2685,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
  if (step === 'torneo-libero-setup') {
  return (
  <Card title="Setup Torneo Libero">
@@ -2599,7 +2703,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
  />
  </div>
- 
+
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Nome del torneo libero
@@ -2612,7 +2716,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
  />
  </div>
- 
+
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Modalità Coppie
@@ -2642,16 +2746,16 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </label>
  </div>
  </div>
- 
+
  <div className="flex gap-3 mt-6">
- <Button 
+ <Button
  onClick={() => setStep('setup')}
  variant="outline"
  className="flex-1"
  >
  Indietro
  </Button>
- <Button 
+ <Button
  onClick={handleTorneoLiberoSetup}
  className="flex-1"
  disabled={numeroPartite < 1 || !nomeTorneoLibero.trim()}
@@ -2663,7 +2767,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
  if (step === 'setup') {
  return (
  <Card title={`Nuova Giornata: ${getFormatDisplayName(selectedFormat!)}`}>
@@ -2764,7 +2868,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
- 
+
  if (step === 'torneo-libero-scoring') {
  // Create pairs list for dropdown
  const pairsList = pairs.map((pair, index) => ({
@@ -2786,7 +2890,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  {torneoLiberoMatches.map((match, index) => (
  <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
  <h3 className="font-semibold mb-4">Partita {index + 1} di {numeroPartite}</h3>
- 
+
  <div className="grid grid-cols-3 items-center gap-4">
  {torneoLiberoMode === 'fixed' ? (
  // MODALITÀ COPPIE FISSE (esistente)
@@ -2811,14 +2915,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
  </select>
  </div>
- 
+
  <div>
  <MatchScoreInput
  sets={match.scores}
  onSetsChange={(sets) => handleTorneoLiberoScoresChange(index, sets)}
  />
  </div>
- 
+
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Squadra B
@@ -2855,8 +2959,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  >
  <option value="">Giocatore 1</option>
  {pairs.flat()
- .filter(p => p.id !== match.team1Player2 && 
- p.id !== match.team2Player1 && 
+ .filter(p => p.id !== match.team1Player2 &&
+ p.id !== match.team2Player1 &&
  p.id !== match.team2Player2)
  .map(player => (
  <option key={player.id} value={player.id}>
@@ -2872,8 +2976,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  >
  <option value="">Giocatore 2</option>
  {pairs.flat()
- .filter(p => p.id !== match.team1Player1 && 
- p.id !== match.team2Player1 && 
+ .filter(p => p.id !== match.team1Player1 &&
+ p.id !== match.team2Player1 &&
  p.id !== match.team2Player2)
  .map(player => (
  <option key={player.id} value={player.id}>
@@ -2884,14 +2988,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </select>
  </div>
  </div>
- 
+
  <div>
  <MatchScoreInput
  sets={match.scores}
  onSetsChange={(sets) => handleTorneoLiberoScoresChange(index, sets)}
  />
  </div>
- 
+
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Squadra B
@@ -2904,8 +3008,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  >
  <option value="">Giocatore 1</option>
  {pairs.flat()
- .filter(p => p.id !== match.team1Player1 && 
- p.id !== match.team1Player2 && 
+ .filter(p => p.id !== match.team1Player1 &&
+ p.id !== match.team1Player2 &&
  p.id !== match.team2Player2)
  .map(player => (
  <option key={player.id} value={player.id}>
@@ -2921,8 +3025,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  >
  <option value="">Giocatore 2</option>
  {pairs.flat()
- .filter(p => p.id !== match.team1Player1 && 
- p.id !== match.team1Player2 && 
+ .filter(p => p.id !== match.team1Player1 &&
+ p.id !== match.team1Player2 &&
  p.id !== match.team2Player1)
  .map(player => (
  <option key={player.id} value={player.id}>
@@ -2939,38 +3043,38 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </div>
  ))}
  </div>
- 
+
  <div className="flex gap-3 mt-6">
- <Button 
+ <Button
  onClick={() => setStep('torneo-libero-setup')}
  variant="outline"
  className="flex-1"
  >
  Indietro
  </Button>
- <Button 
+ <Button
  onClick={handleTorneoLiberoSaveScheduled}
- variant="secondary"
+ variant="success"
  className="flex-1"
  disabled={!torneoLiberoMatches.every(match => {
  if (torneoLiberoMode === 'fixed') {
  return match.team1 && match.team2;
  } else {
- return match.team1Player1 && match.team1Player2 && 
+ return match.team1Player1 && match.team1Player2 &&
  match.team2Player1 && match.team2Player2;
  }
  }) || isSubmitting}
  >
  {isSubmitting ? 'Salvataggio...' : 'Salva Tabellone'}
  </Button>
- <Button 
+ <Button
  onClick={handleTorneoLiberoConfirm}
  className="flex-1"
  disabled={!torneoLiberoMatches.every(match => {
  if (torneoLiberoMode === 'fixed') {
  return match.team1 && match.team2;
  } else {
- return match.team1Player1 && match.team1Player2 && 
+ return match.team1Player1 && match.team1Player2 &&
  match.team2Player1 && match.team2Player2;
  }
  }) || isSubmitting}
@@ -2982,7 +3086,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </>
  );
  }
- 
+
  if (step === 'tpra-flow') {
  return (
  <TpraCreationFlow
@@ -3162,21 +3266,21 @@ tournamentName={tournamentName}
  <Button
  onClick={handleSaveCalendar}
  disabled={isSavingCalendar}
- variant="secondary"
- className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
+ variant="success"
+ className="flex-1"
  >
  {isSavingCalendar ?"Salvataggio..." :"Salva Calendario"}
  </Button>
- <Button 
- onClick={handleFinishScoring} 
- className="flex-1" 
+ <Button
+ onClick={handleFinishScoring}
+ className="flex-1"
  disabled={isSubmitting}
  >
  {isSubmitting ? 'Calcolo...' : (isRoundRobinFinali ? 'Calcola Classifica' : 'Calcola Risultati')}
  </Button>
  </div>
  </Card>
- 
+
  {isCalendarSavedModalOpen && (
  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
  <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
@@ -3195,7 +3299,7 @@ tournamentName={tournamentName}
  </p>
  </div>
  <div className="items-center px-4 py-3">
- <Button 
+ <Button
  onClick={() => {
  setIsCalendarSavedModalOpen(false);
  onFinish();
@@ -3209,7 +3313,7 @@ tournamentName={tournamentName}
  </div>
  </div>
  )}
- 
+
  {/* Finals Modal - shown when Round Robin is complete */}
  <HIGSheet isOpen={showFinalsModal} onClose={() => setShowFinalsModal(false)} title="Round Robin Completato!">
  <div className="space-y-4 px-4">
@@ -3232,15 +3336,15 @@ tournamentName={tournamentName}
  Le prime 4 squadre sono qualificate per le finali. Vuoi procedere con le partite finali?
  </p>
  <div className="flex gap-3 pt-4">
- <Button 
- onClick={() => setShowFinalsModal(false)} 
+ <Button
+ onClick={() => setShowFinalsModal(false)}
  variant="secondary"
  className="flex-1"
  >
  Annulla
  </Button>
- <Button 
- onClick={handleProceedToFinals} 
+ <Button
+ onClick={handleProceedToFinals}
  className="flex-1"
  >
  Procedi alle Finali
@@ -3260,7 +3364,7 @@ tournamentName={tournamentName}
  <h3 className="font-semibold text-emerald-800 dark:text-emerald-200">Fase Finale</h3>
  <p className="text-sm text-emerald-700 dark:text-emerald-300">Inserisci i risultati delle finali per determinare la classifica finale.</p>
  </div>
- 
+
  {/* Show Round Robin standings */}
  <div className="mb-6">
  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Classifica Round Robin</h4>
@@ -3304,7 +3408,7 @@ tournamentName={tournamentName}
  </div>
  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Le prime 4 squadre (evidenziate in verde) sono qualificate per le finali.</p>
  </div>
- 
+
  {/* Finals matches */}
  <div className="space-y-6 px-4">
  <h4 className="font-semibold text-gray-700 dark:text-gray-300">Partite Finali</h4>
@@ -3312,9 +3416,9 @@ tournamentName={tournamentName}
  const team1 = getTeamPlayers(match.team1);
  const team2 = getTeamPlayers(match.team2);
  if (!team1 || !team2) return null;
- 
+
  const isFinalePrimoSecondo = index === 0;
- 
+
  return (
  <div key={index} className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${isFinalePrimoSecondo ? 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600' : 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600'}`}>
  <div className="text-right">
@@ -3338,26 +3442,26 @@ tournamentName={tournamentName}
  );
  })}
  </div>
- 
+
  <div className="flex gap-3 mt-6">
  <Button
  onClick={() => setStep('scoring')}
- variant="secondary"
+ variant="outline"
  className="flex-1"
  disabled={isSubmitting || isTournamentSaved}
  >
  Indietro
  </Button>
- <Button 
- onClick={handleRequestFinishFinals} 
- className="flex-1" 
+ <Button
+ onClick={handleRequestFinishFinals}
+ className="flex-1"
  disabled={isSubmitting || isTournamentSaved}
  >
  {isSubmitting ? 'Finalizzando...' : isTournamentSaved ? 'Torneo Salvato' : 'Finalizza Torneo'}
  </Button>
  </div>
  </Card>
- 
+
  {/* Confirmation Modal for Finals */}
  <HIGSheet isOpen={showFinalsConfirmModal} onClose={() => setShowFinalsConfirmModal(false)} title="Conferma Finalizzazione Torneo">
  <div className="space-y-4 px-4">
@@ -3378,19 +3482,19 @@ tournamentName={tournamentName}
  I risultati non potranno essere modificati dopo il salvataggio.
  </p>
  <div className="flex gap-3 pt-4">
- <Button 
- onClick={() => setShowFinalsConfirmModal(false)} 
+ <Button
+ onClick={() => setShowFinalsConfirmModal(false)}
  variant="secondary"
  className="flex-1"
  >
  Annulla
  </Button>
- <Button 
- onClick={handleFinishFinals} 
+ <Button
+ onClick={handleFinishFinals}
  className="flex-1"
  disabled={isSubmitting}
  >
- {isSubmitting ? 'Salvando...' : 'Conferma e Salva'}
+ {isSubmitting ? 'Salvando...' : 'Completa torneo'}
  </Button>
  </div>
  </div>
@@ -3436,7 +3540,7 @@ tournamentName={tournamentName}
  ? tournaments
  : [...tournaments, createdTournament];
  const displayName = getTournamentDisplayName(createdTournament, tournamentsForLabel);
- 
+
  if (createdTournament.type === TournamentType.BeatTheBox) {
  // For Beat the Box, we need to process the data differently
  // This is a completed tournament, so print complete report
@@ -3445,14 +3549,14 @@ tournamentName={tournamentName}
  const semifinalMatches: Match[] = [];
  const finalMatches: Match[] = [];
  const individualStandings: { player: Player; eloChange: number; rank: number; gamesWon: number; gamesLost: number; winPercentage: number }[] = [];
- 
+
  printBeatTheBoxComplete(
- createdTournament, 
- boxes, 
- boxStandings, 
- semifinalMatches, 
- finalMatches, 
- individualStandings, 
+ createdTournament,
+ boxes,
+ boxStandings,
+ semifinalMatches,
+ finalMatches,
+ individualStandings,
  getPlayerById,
  displayName
  );
@@ -3475,11 +3579,11 @@ tournamentName={tournamentName}
  );
  } else {
  printTournamentReport(
- createdTournament, 
- finalStandings, 
- completedMatches, 
- getPlayerById, 
- selectedFormat === 'americano' ? americanoFields : undefined, 
+ createdTournament,
+ finalStandings,
+ completedMatches,
+ getPlayerById,
+ selectedFormat === 'americano' ? americanoFields : undefined,
  selectedFormat === 'americano' ? americanoScoringType : undefined,
  isRoundRobinFinali ? roundRobinMatchCount : undefined,
  displayName,
@@ -3490,7 +3594,7 @@ tournamentName={tournamentName}
  <Button onClick={handleFinishAndClose} className="w-full sm:w-auto">Chiudi</Button>
  </div>
  </Card>
- 
+
  <HIGSheet isOpen={isSuccessModalOpen} onClose={onFinish} title="Torneo Salvato con Successo! 🎉">
  <div className="space-y-3 px-4">
  <div className="p-3 bg-green-50 dark:bg-green-900 rounded-lg">
@@ -3506,7 +3610,7 @@ tournamentName={tournamentName}
  <Button onClick={onFinish}>Chiudi</Button>
  </div>
  </HIGSheet>
- 
+
  {/* Calendar Saved Modal */}
  {isCalendarSavedModalOpen && (
  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -3526,7 +3630,7 @@ tournamentName={tournamentName}
  </p>
  </div>
  <div className="items-center px-4 py-3">
- <Button 
+ <Button
  onClick={() => {
  setIsCalendarSavedModalOpen(false);
  onFinish();

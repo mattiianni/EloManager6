@@ -10,7 +10,7 @@ import { printTeamTournamentReport, printTeamTournamentStatistics, printTourname
 import { formatPlayerShortName } from '../utils/format.ts';
 import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 
-interface TournamentStats {
+export interface TournamentStats {
     tournament: Tournament;
     isPartial: boolean;
     giornate: string[];
@@ -20,7 +20,7 @@ interface TournamentStats {
     mediaGamesPerPartita: number;
     giocatoriPartecipanti: number;
     periodo: { inizio: string; fine: string };
-    
+
     // Top 5
     top5: {
         player: Player;
@@ -29,7 +29,7 @@ interface TournamentStats {
         gamesWon: number;
         gamesLost: number;
     }[];
-    
+
     // Statistiche avanzate
     giocatoreConPiuGamesVinti: { player: Player; games: number }[];
     giocatoreConPiuGamesPersi: { player: Player; games: number }[];
@@ -38,10 +38,10 @@ interface TournamentStats {
     upset: { count: number; details: string[] }[];
     maggiorGuadagnoElo: { player: Player; guadagno: number; data: string }[];
     peggiorPerditaElo: { player: Player; perdita: number; data: string }[];
-    
+
     // Premi simbolici
     mvp: { player: Player; vittorieGiornate: number }[];
-    
+
     // Nuove statistiche
     gameWinRate: { player: Player; percentage: number }[];
     gameRatio: { player: Player; ratio: number }[];
@@ -68,6 +68,708 @@ const classicMatchHasResult = (match: Match): boolean =>
 
 const teamSubMatchHasResult = (sets: Match['sets'] | null | undefined): boolean =>
     Array.isArray(sets) && sets.some(set => Number(set.team1 || 0) !== 0 || Number(set.team2 || 0) !== 0);
+
+export const buildTournamentStats = (
+    tournament: Tournament,
+    tournaments: Tournament[],
+    matches: Match[],
+    players: Player[],
+    getPlayerById: (id: string) => Player | undefined,
+): TournamentStats | null => {
+    // Get ALL tournament IDs with the same series key (for multi-giornata tournaments)
+    const seriesKey = (tournament.giornataName || tournament.name);
+    const seriesTournaments = tournaments.filter(t =>
+        t.type !== TournamentType.TorneoASquadre && (t.giornataName || t.name) === seriesKey
+    );
+    const tournamentIds = seriesTournaments.map(t => t.id);
+
+    // Get all matches for this tournament using ONLY tournamentId (like RankingPage)
+    const tournamentMatches = matches.filter(m =>
+        m.tournamentId && tournamentIds.includes(m.tournamentId) && classicMatchHasResult(m)
+    );
+
+    if (tournamentMatches.length === 0) {
+        console.log('⚠️ No matches found for tournament:', tournament.name);
+        return null;
+    }
+
+    const playedTournamentIds = Array.from(new Set(tournamentMatches.map(m => m.tournamentId).filter(Boolean))) as string[];
+    const isPartial = seriesTournaments.some(t => t.status !== 'completed');
+
+    console.log('✅ Found', tournamentMatches.length, 'matches for tournament:', tournament.name, 'across', tournamentIds.length, 'giornate');
+
+    // Get unique giornate (dates) - each unique date is a giornata
+    const giornate = Array.from(new Set(tournamentMatches.map(m => m.date))).sort();
+
+    // Actually count number of tournament instances (giornate) instead of unique dates
+    const numeroGiornate = playedTournamentIds.length;
+
+    console.log('📊 Giornate (unique dates):', giornate.length, '| Tournament instances:', numeroGiornate);
+
+    // Informazioni generali
+    const totalePartite = tournamentMatches.length;
+    const totaleGamesDisputati = tournamentMatches.reduce((sum, m) =>
+        sum + m.sets.reduce((s, set) => s + set.team1 + set.team2, 0), 0
+    );
+    const mediaGamesPerPartita = totalePartite > 0 ? totaleGamesDisputati / totalePartite : 0;
+
+    // Get unique players - COPY EXACT LOGIC FROM RANKINGPAGE
+    // Get only players who participated in this tournament (any giornata) - EXACT COPY FROM RANKINGPAGE
+    const playersInTournament = new Set<string>();
+    tournamentMatches.forEach(m => {
+        m.team1.forEach(id => playersInTournament.add(id));
+        m.team2.forEach(id => playersInTournament.add(id));
+    });
+    const filteredPlayers = players.filter(p => playersInTournament.has(p.id));
+
+    const giocatoriPartecipanti = filteredPlayers.length;
+
+    const periodo = {
+        inizio: new Date(giornate[0]).toLocaleDateString('it-IT'),
+        fine: new Date(giornate[giornate.length - 1]).toLocaleDateString('it-IT')
+    };
+
+    const localTournamentMatches = tournamentMatches.map(match => ({
+        ...match,
+        tournamentId: `series:${seriesKey}`,
+    }));
+    const localTournamentElo = calculateTournamentLocalElo(localTournamentMatches);
+
+    // Calcola statistiche per giocatore - use plain object instead of Map
+    const playerStatsObj: Record<string, {
+        player: Player;
+        gamesWon: number;
+        gamesLost: number;
+        partiteVinte: number;
+        partiteTotali: number;
+        vittorieConsecutive: number;
+        vittorieConsecutiveMax: number;
+        variazioneEloTotale: number;
+        eloStart: number;
+        variazioniElo: { delta: number; date: string }[];
+        giornateVinte: number;
+        eloPerGiornata: { date: string; elo: number }[];
+    }> = {};
+
+    // Initialize stats ONLY for players who actually played matches in this tournament - COPY FROM RANKINGPAGE
+    filteredPlayers.forEach(player => {
+        const eloStart = 1500; // Rankings always start from 1500 per tournament series
+        const variazioniElo = tournamentIds.map(tournamentId => {
+            const tournament = tournaments.find(item => item.id === tournamentId);
+            const delta = localTournamentMatches
+                .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
+                .reduce((sum, match) => {
+                    const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                    if (!snapshot) return sum;
+                    if (match.team1.includes(player.id)) return sum + snapshot.team1Delta;
+                    if (match.team2.includes(player.id)) return sum + snapshot.team2Delta;
+                    return sum;
+                }, 0);
+            return { delta, date: tournament?.date || '' };
+        }).filter(entry => entry.delta !== 0 && entry.date);
+        const variazioneEloTotale = localTournamentElo.totalDeltas.get(player.id) || 0;
+
+        playerStatsObj[player.id] = {
+            player: clonePlayer(player),
+            gamesWon: 0,
+            gamesLost: 0,
+            partiteVinte: 0,
+            partiteTotali: 0,
+            vittorieConsecutive: 0,
+            vittorieConsecutiveMax: 0,
+            variazioneEloTotale,
+            eloStart,
+            variazioniElo,
+            giornateVinte: 0,
+            eloPerGiornata: []
+        };
+    });
+
+    // Process each match (sorted by date)
+    const sortedMatches = [...tournamentMatches].sort((a, b) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    sortedMatches.forEach(match => {
+        const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+        const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+        if (team1Players.length === 2 && team2Players.length === 2) {
+            const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+
+            // Update games stats and win streaks - direct mutation on OUR objects
+            team1Players.forEach(p => {
+                const stats = playerStatsObj[p.id];
+                if (stats) {
+                    stats.gamesWon += team1Games;
+                    stats.gamesLost += team2Games;
+                    stats.partiteTotali++;
+                    if (match.winner === 'team1') {
+                        stats.partiteVinte++;
+                        stats.vittorieConsecutive++;
+                        stats.vittorieConsecutiveMax = Math.max(stats.vittorieConsecutiveMax, stats.vittorieConsecutive);
+                    } else {
+                        stats.vittorieConsecutive = 0;
+                    }
+                }
+            });
+
+            team2Players.forEach(p => {
+                const stats = playerStatsObj[p.id];
+                if (stats) {
+                    stats.gamesWon += team2Games;
+                    stats.gamesLost += team1Games;
+                    stats.partiteTotali++;
+                    if (match.winner === 'team2') {
+                        stats.partiteVinte++;
+                        stats.vittorieConsecutive++;
+                        stats.vittorieConsecutiveMax = Math.max(stats.vittorieConsecutiveMax, stats.vittorieConsecutive);
+                    } else {
+                        stats.vittorieConsecutive = 0;
+                    }
+                }
+            });
+        }
+    });
+
+    // Calculate MVP - giocatore che ha vinto più giornate (FIXED: iterate over tournament instances)
+    const giornateVinteMap = new Map<string, number>();
+
+    playedTournamentIds.forEach(tournamentId => {
+        // Use same filtering logic as main tournament matches (ONLY tournamentId)
+        const giornataMatches = tournamentMatches.filter(m =>
+            m.tournamentId === tournamentId
+        );
+
+        const giornataPlayerPoints = new Map<string, number>();
+
+        // Calculate points for each player in this giornata
+        giornataMatches.forEach(match => {
+            const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+
+            match.team1.forEach(id => {
+                giornataPlayerPoints.set(id, (giornataPlayerPoints.get(id) || 0) + team1Games - team2Games);
+            });
+            match.team2.forEach(id => {
+                giornataPlayerPoints.set(id, (giornataPlayerPoints.get(id) || 0) + team2Games - team1Games);
+            });
+        });
+
+        // Find winner(s) of this giornata - handle ties
+        let maxPoints = -Infinity;
+        const winnerIds: string[] = [];
+
+        // First pass: find max points
+        giornataPlayerPoints.forEach((points, id) => {
+            if (points > maxPoints) {
+                maxPoints = points;
+            }
+        });
+
+        // Second pass: collect all players with max points
+        giornataPlayerPoints.forEach((points, id) => {
+            if (points === maxPoints) {
+                winnerIds.push(id);
+            }
+        });
+
+        // Award victory to all tied winners
+        winnerIds.forEach(id => {
+            giornateVinteMap.set(id, (giornateVinteMap.get(id) || 0) + 1);
+        });
+    });
+
+    Object.keys(playerStatsObj).forEach(id => {
+        const stats = playerStatsObj[id];
+        if (stats) {
+            stats.giornateVinte = giornateVinteMap.get(id) || 0;
+        }
+    });
+
+    // Create a COMPLETE deep copy to avoid any readonly issues
+    const playerStatsArray = Object.values(playerStatsObj).map(s => ({
+        ...s,
+        player: clonePlayer(s.player),
+        variazioniElo: [...s.variazioniElo],
+        eloPerGiornata: [...s.eloPerGiornata]
+    }));
+
+    // Top 5 classifica - sort by tournament-specific final ELO
+    const top5 = playerStatsArray
+        .sort((a, b) => {
+            // Use tournament-specific final ELO, not global ELO
+            const aFinalElo = a.eloStart + a.variazioneEloTotale;
+            const bFinalElo = b.eloStart + b.variazioneEloTotale;
+            if (bFinalElo !== aFinalElo) return bFinalElo - aFinalElo;
+
+            const aGamesDiff = a.gamesWon - a.gamesLost;
+            const bGamesDiff = b.gamesWon - b.gamesLost;
+            return bGamesDiff - aGamesDiff;
+        })
+        .slice(0, 5)
+        .map(s => ({
+            player: clonePlayer(s.player),
+            eloTorneo: s.eloStart + s.variazioneEloTotale, // Tournament-specific final ELO
+            variazioneElo: s.variazioneEloTotale,
+            gamesWon: s.gamesWon,
+            gamesLost: s.gamesLost
+        }));
+
+    // Giocatore con più games vinti
+    const giocatoreConPiuGamesVinti = playerStatsArray
+        .filter(s => s.gamesWon > 0)
+        .sort((a, b) => b.gamesWon - a.gamesWon)
+        .slice(0, 3)
+        .map(s => ({ player: clonePlayer(s.player), games: s.gamesWon }));
+
+    // Giocatore con più games persi
+    const giocatoreConPiuGamesPersi = playerStatsArray
+        .filter(s => s.gamesLost > 0)
+        .sort((a, b) => b.gamesLost - a.gamesLost)
+        .slice(0, 3)
+        .map(s => ({ player: clonePlayer(s.player), games: s.gamesLost }));
+
+    // Coppia più frequente
+    const pairCounts = new Map<string, { players: [Player, Player]; count: number }>();
+    tournamentMatches.forEach(match => {
+        [match.team1, match.team2].forEach(team => {
+            const p1 = getPlayerById(team[0]);
+            const p2 = getPlayerById(team[1]);
+            if (p1 && p2) {
+                const key = [team[0], team[1]].sort().join('-');
+                const existing = pairCounts.get(key);
+                if (!existing) {
+                    pairCounts.set(key, { players: [clonePlayer(p1), clonePlayer(p2)], count: 1 });
+                } else {
+                    pairCounts.set(key, { players: existing.players, count: existing.count + 1 });
+                }
+            }
+        });
+    });
+    const coppiaFrequente = Array.from(pairCounts.values())
+        .filter(c => c.count > 1)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3)
+        .map(c => ({ players: c.players, partite: c.count }));
+
+    // Serie di vittorie consecutive
+    const serieVittorie = playerStatsArray
+        .filter(s => s.vittorieConsecutiveMax > 0)
+        .sort((a, b) => b.vittorieConsecutiveMax - a.vittorieConsecutiveMax)
+        .slice(0, 3)
+        .map(s => ({ player: clonePlayer(s.player), vittorie: s.vittorieConsecutiveMax }));
+
+    // UPSET - matches where lower ELO team won
+    const upsets: string[] = [];
+    tournamentMatches.forEach(match => {
+        const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+        const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+        if (team1Players.length === 2 && team2Players.length === 2) {
+            const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+            const team1EloAvg = snapshot?.team1Average ?? 1500;
+            const team2EloAvg = snapshot?.team2Average ?? 1500;
+
+            if ((match.winner === 'team1' && team1EloAvg < team2EloAvg - 20) ||
+                (match.winner === 'team2' && team2EloAvg < team1EloAvg - 20)) {
+                const winningTeam = match.winner === 'team1' ? team1Players : team2Players;
+                const losingTeam = match.winner === 'team1' ? team2Players : team1Players;
+                const diffElo = Math.abs(team1EloAvg - team2EloAvg).toFixed(2);
+                upsets.push(
+                    `${formatPlayerShortName(winningTeam[0])} & ${formatPlayerShortName(winningTeam[1])} vs ${formatPlayerShortName(losingTeam[0])} & ${formatPlayerShortName(losingTeam[1])} (Δ${diffElo})`
+                );
+            }
+        }
+    });
+
+    // Maggior guadagno e perdita ELO in una giornata
+    const eloPerGiornata = new Map<string, Map<string, number>>(); // playerId -> giornata -> delta
+
+    tournamentIds.forEach(tournamentId => {
+        const tournament = tournaments.find(item => item.id === tournamentId);
+        if (!tournament) return;
+        localTournamentMatches
+            .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
+            .forEach(match => {
+                const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                if (!snapshot) return;
+                [...match.team1.map(playerId => [playerId, snapshot.team1Delta] as const),
+                    ...match.team2.map(playerId => [playerId, snapshot.team2Delta] as const)]
+                    .forEach(([playerId, delta]) => {
+                        if (!eloPerGiornata.has(playerId)) eloPerGiornata.set(playerId, new Map());
+                        const currentDelta = eloPerGiornata.get(playerId)!.get(tournament.date) || 0;
+                        eloPerGiornata.get(playerId)!.set(tournament.date, currentDelta + delta);
+                    });
+        });
+    });
+
+    let maggiorGuadagnoElo: { player: Player; guadagno: number; data: string }[] = [];
+    let peggiorPerditaElo: { player: Player; perdita: number; data: string }[] = [];
+
+    eloPerGiornata.forEach((giornateMap, playerId) => {
+        const player = getPlayerById(playerId);
+        if (player) {
+            const playerCopy = clonePlayer(player);
+            giornateMap.forEach((delta, giornata) => {
+                if (delta > 0) {
+                    maggiorGuadagnoElo.push({
+                        player: playerCopy,
+                        guadagno: delta,
+                        data: new Date(giornata).toLocaleDateString('it-IT')
+                    });
+                } else if (delta < 0) {
+                    peggiorPerditaElo.push({
+                        player: playerCopy,
+                        perdita: Math.abs(delta),
+                        data: new Date(giornata).toLocaleDateString('it-IT')
+                    });
+                }
+            });
+        }
+    });
+
+    maggiorGuadagnoElo = maggiorGuadagnoElo
+        .sort((a, b) => b.guadagno - a.guadagno)
+        .slice(0, 3);
+
+    peggiorPerditaElo = peggiorPerditaElo
+        .sort((a, b) => b.perdita - a.perdita)
+        .slice(0, 3);
+
+    // MVP - giocatore che ha vinto più giornate
+    let mvp = playerStatsArray
+        .filter(s => s.giornateVinte > 0)
+        .sort((a, b) => b.giornateVinte - a.giornateVinte)
+        .slice(0, 3)
+        .map(s => ({ player: clonePlayer(s.player), vittorieGiornate: s.giornateVinte }));
+
+    // NUOVE STATISTICHE - Game Win Rate %
+    const gameWinRate = playerStatsArray
+        .filter(s => s.gamesWon + s.gamesLost > 0)
+        .map(s => ({
+            player: clonePlayer(s.player),
+            percentage: (s.gamesWon / (s.gamesWon + s.gamesLost)) * 100
+        }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 3);
+
+    // Game Ratio
+    const gameRatio = playerStatsArray
+        .filter(s => s.gamesLost > 0)
+        .map(s => ({
+            player: clonePlayer(s.player),
+            ratio: s.gamesWon / s.gamesLost
+        }))
+        .sort((a, b) => b.ratio - a.ratio)
+        .slice(0, 3);
+
+    // Partite Vinte
+    const partiteVinte = playerStatsArray
+        .filter(s => s.partiteVinte > 0)
+        .sort((a, b) => b.partiteVinte - a.partiteVinte)
+        .slice(0, 3)
+        .map(s => ({ player: clonePlayer(s.player), wins: s.partiteVinte }));
+
+    // ELO per Partita
+    const eloPerPartita = playerStatsArray
+        .filter(s => s.partiteTotali > 0)
+        .map(s => ({
+            player: clonePlayer(s.player),
+            eloPerMatch: s.variazioneEloTotale / s.partiteTotali
+        }))
+        .sort((a, b) => b.eloPerMatch - a.eloPerMatch)
+        .slice(0, 3);
+
+    // % Upset (vittorie contro ELO superiori) - ALLINEATO con logica UPSET originale
+    const upsetPercentage = playerStatsArray
+        .filter(s => s.partiteTotali > 0)
+        .map(s => {
+            let upsetWins = 0;
+            sortedMatches.forEach(match => {
+                const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+                const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+                if (team1Players.length === 2 && team2Players.length === 2) {
+                    const playerInTeam1 = team1Players.some(p => p.id === s.player.id);
+                    const playerInTeam2 = team2Players.some(p => p.id === s.player.id);
+
+                    if ((playerInTeam1 && match.winner === 'team1') || (playerInTeam2 && match.winner === 'team2')) {
+                        const snapshot = localTournamentElo.matchSnapshots.get(match.id);
+                        const team1EloAvg = snapshot?.team1Average ?? 1500;
+                        const team2EloAvg = snapshot?.team2Average ?? 1500;
+
+                        // Player's team won against stronger team (same logic as UPSET)
+                        if ((playerInTeam1 && team1EloAvg < team2EloAvg - 20) ||
+                            (playerInTeam2 && team2EloAvg < team1EloAvg - 20)) {
+                            upsetWins++;
+                        }
+                    }
+                }
+            });
+
+            return {
+                player: clonePlayer(s.player),
+                percentage: (upsetWins / s.partiteTotali) * 100
+            };
+        })
+        .filter(s => s.percentage > 0)
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 3);
+
+    // Miglior Coppia Win Rate
+    const pairWinRates = new Map<string, { players: [Player, Player]; wins: number; total: number }>();
+    tournamentMatches.forEach(match => {
+        [match.team1, match.team2].forEach(team => {
+            const p1 = getPlayerById(team[0]);
+            const p2 = getPlayerById(team[1]);
+            if (p1 && p2) {
+                const key = [team[0], team[1]].sort().join('-');
+                const existing = pairWinRates.get(key);
+                if (!existing) {
+                    pairWinRates.set(key, {
+                        players: [clonePlayer(p1), clonePlayer(p2)],
+                        wins: match.winner === (team === match.team1 ? 'team1' : 'team2') ? 1 : 0,
+                        total: 1
+                    });
+                } else {
+                    existing.total++;
+                    if (match.winner === (team === match.team1 ? 'team1' : 'team2')) {
+                        existing.wins++;
+                    }
+                }
+            }
+        });
+    });
+
+    const migliorCoppiaWinRate = Array.from(pairWinRates.values())
+        .filter(p => p.total >= 2)
+        .map(p => ({
+            players: p.players,
+            winRate: (p.wins / p.total) * 100,
+            partite: p.total
+        }))
+        .sort((a, b) => b.winRate - a.winRate)
+        .slice(0, 3);
+
+    // Serie Sconfitte Consecutive
+    const serieSconfitte = playerStatsArray
+        .filter(s => s.vittorieConsecutiveMax > 0 || s.partiteTotali > 0)
+        .map(s => {
+            // Calculate max consecutive losses
+            let maxLosses = 0;
+            let currentLosses = 0;
+
+            sortedMatches.forEach(match => {
+                const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+                const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
+
+                if (team1Players.length === 2 && team2Players.length === 2) {
+                    const playerInTeam1 = team1Players.some(p => p.id === s.player.id);
+                    const playerInTeam2 = team2Players.some(p => p.id === s.player.id);
+
+                    if (playerInTeam1 || playerInTeam2) {
+                        const won = (playerInTeam1 && match.winner === 'team1') || (playerInTeam2 && match.winner === 'team2');
+                        if (won) {
+                            currentLosses = 0;
+                        } else {
+                            currentLosses++;
+                            maxLosses = Math.max(maxLosses, currentLosses);
+                        }
+                    }
+                }
+            });
+
+            return { player: clonePlayer(s.player), sconfitte: maxLosses };
+        })
+        .filter(s => s.sconfitte > 0)
+        .sort((a, b) => b.sconfitte - a.sconfitte)
+        .slice(0, 3);
+
+
+    // Resilienza (perdita ELO media per sconfitta)
+    const resilienza = playerStatsArray
+        .filter(s => s.partiteTotali > s.partiteVinte && s.variazioneEloTotale < 0)
+        .map(s => {
+            const sconfitte = s.partiteTotali - s.partiteVinte;
+            const perditaMedia = Math.abs(s.variazioneEloTotale) / sconfitte;
+            return {
+                player: clonePlayer(s.player),
+                perditaMedia: perditaMedia
+            };
+        })
+        .sort((a, b) => a.perditaMedia - b.perditaMedia) // Lower is better
+        .slice(0, 3);
+
+    // Fallback se non ci sono dati (evita array vuoti)
+    const defaultPlayerSource = playerStatsArray[0]?.player || players[0];
+    const defaultPlayer = defaultPlayerSource ? clonePlayer(defaultPlayerSource) : null;
+
+    if (maggiorGuadagnoElo.length === 0 && defaultPlayer) {
+        maggiorGuadagnoElo = [{ player: clonePlayer(defaultPlayer), guadagno: 0, data: '(in attesa di dati ulteriori)' }];
+    }
+    if (peggiorPerditaElo.length === 0 && defaultPlayer) {
+        peggiorPerditaElo = [{ player: clonePlayer(defaultPlayer), perdita: 0, data: '(in attesa di dati ulteriori)' }];
+    }
+    if (mvp.length === 0 && defaultPlayer) {
+        mvp = [{ player: clonePlayer(defaultPlayer), vittorieGiornate: 0 }];
+    }
+    if (giocatoreConPiuGamesVinti.length === 0 && defaultPlayer) {
+        giocatoreConPiuGamesVinti.push({ player: clonePlayer(defaultPlayer), games: 0 });
+    }
+    if (giocatoreConPiuGamesPersi.length === 0 && defaultPlayer) {
+        giocatoreConPiuGamesPersi.push({ player: clonePlayer(defaultPlayer), games: 0 });
+    }
+    if (coppiaFrequente.length === 0) {
+        // Leave empty, will show "(in attesa...)" in UI
+    }
+    if (serieVittorie.length === 0 && defaultPlayer) {
+        serieVittorie.push({ player: clonePlayer(defaultPlayer), vittorie: 0 });
+    }
+
+    // ===== NUOVE STATISTICHE =====
+
+    // 1. FORM - Ultimi 5 match per giocatore (W/L pattern)
+    const form = playerStatsArray
+        .map(s => {
+            // Get matches for this player, sorted by date
+            const playerMatches = sortedMatches.filter(m =>
+                [...m.team1, ...m.team2].includes(s.player.id)
+            );
+
+            // Get last 5 matches
+            const last5 = playerMatches.slice(-5);
+            const formString = last5.map(match => {
+                const isTeam1 = match.team1.includes(s.player.id);
+                const won = (isTeam1 && match.winner === 'team1') ||
+                            (!isTeam1 && match.winner === 'team2');
+                return won ? '🟢' : '🔴';
+            }).join(' ');
+
+            return {
+                player: clonePlayer(s.player),
+                form: formString || 'N/A',
+                lastMatches: last5.length
+            };
+        })
+        .filter(f => f.lastMatches >= 3) // Show only players with at least 3 matches
+        .sort((a, b) => {
+            // Sort by number of green circles (wins) in form string
+            const aWins = (a.form.match(/🟢/g) || []).length;
+            const bWins = (b.form.match(/🟢/g) || []).length;
+            return bWins - aWins;
+        })
+        .slice(0, 5);
+
+    // 2. CLUTCH PERFORMANCE - Win rate in finals/semifinals
+    // For Round Robin + Finali, last 2 matches are finals
+    // For other formats, consider last 20% of matches as "clutch"
+    const clutchPerformance = playerStatsArray
+        .map(s => {
+            const playerMatches = sortedMatches.filter(m =>
+                [...m.team1, ...m.team2].includes(s.player.id)
+            );
+
+            // Determine clutch matches (last 20% or minimum 2)
+            const clutchCount = Math.max(2, Math.ceil(playerMatches.length * 0.2));
+            const clutchMatches = playerMatches.slice(-clutchCount);
+
+            let clutchWins = 0;
+            clutchMatches.forEach(match => {
+                const isTeam1 = match.team1.includes(s.player.id);
+                const won = (isTeam1 && match.winner === 'team1') ||
+                            (!isTeam1 && match.winner === 'team2');
+                if (won) clutchWins++;
+            });
+
+            const winRate = clutchMatches.length > 0
+                ? (clutchWins / clutchMatches.length) * 100
+                : 0;
+
+            return {
+                player: clonePlayer(s.player),
+                clutchWinRate: winRate,
+                clutchMatches: clutchMatches.length
+            };
+        })
+        .filter(c => c.clutchMatches >= 2)
+        .sort((a, b) => b.clutchWinRate - a.clutchWinRate)
+        .slice(0, 3);
+
+    // 3. DIFESA FERREA - Average game difference in won matches
+    const difesaFerrea = playerStatsArray
+        .map(s => {
+            const wonMatches = sortedMatches.filter(m => {
+                const isTeam1 = m.team1.includes(s.player.id);
+                return (isTeam1 && m.winner === 'team1') ||
+                       (!isTeam1 && m.winner === 'team2');
+            });
+
+            if (wonMatches.length === 0) {
+                return {
+                    player: clonePlayer(s.player),
+                    avgGameDifference: 0,
+                    wins: 0
+                };
+            }
+
+            // Calculate average game difference
+            let totalDifference = 0;
+            wonMatches.forEach(match => {
+                const isTeam1 = match.team1.includes(s.player.id);
+                match.sets.forEach(set => {
+                    const diff = isTeam1
+                        ? (set.team1 - set.team2)
+                        : (set.team2 - set.team1);
+                    totalDifference += diff;
+                });
+            });
+
+            const avgDiff = totalDifference / wonMatches.length;
+
+            return {
+                player: clonePlayer(s.player),
+                avgGameDifference: avgDiff,
+                wins: wonMatches.length
+            };
+        })
+        .filter(d => d.wins >= 2)
+        .sort((a, b) => b.avgGameDifference - a.avgGameDifference)
+        .slice(0, 3);
+
+    return {
+        tournament,
+        isPartial,
+        giornate,
+        numeroGiornate,
+        totalePartite,
+        totaleGamesDisputati,
+        mediaGamesPerPartita,
+        giocatoriPartecipanti,
+        periodo,
+        top5,
+        giocatoreConPiuGamesVinti,
+        giocatoreConPiuGamesPersi,
+        coppiaFrequente,
+        serieVittorie,
+        upset: [{ count: upsets.length, details: upsets.slice(0, 3) }],
+        maggiorGuadagnoElo,
+        peggiorPerditaElo,
+        mvp,
+        gameWinRate,
+        gameRatio,
+        partiteVinte,
+        eloPerPartita,
+        upsetPercentage,
+        migliorCoppiaWinRate,
+        serieSconfitte,
+        resilienza,
+        form,
+        clutchPerformance,
+        difesaFerrea
+    };
+};
 
 const StatistichePage: React.FC = () => {
     const { tournaments, matches, players, getPlayerById, eloHistory, getTeamTournamentPlayerStats, getTeamTournamentConfig, getTeamTournamentMatchdays, getTeamTournamentTeams } = usePadelStore();
@@ -284,7 +986,7 @@ const StatistichePage: React.FC = () => {
         const playedRoundRobin = rrPlayedMatchdays.length;
 
         const playerKey = (p: { name: string; surname: string }) => `${p.name}`.trim().toLowerCase() + '|' + `${p.surname}`.trim().toLowerCase();
-        
+
         // Map players to team names
         const teamNameByPlayerKey = new Map<string, string>();
         const teams = teamTournamentTeamsByRoot[selectedTeamTournamentRootId] || [];
@@ -494,7 +1196,7 @@ const StatistichePage: React.FC = () => {
             .slice(0, 3);
 
         // ====== ADVANCED STATS FOR TEAM TOURNAMENT ======
-        
+
         // UPSET - matches where lower ELO team won
         const upsets: string[] = [];
         const teamPlayerId = (player: any) => {
@@ -544,17 +1246,17 @@ const StatistichePage: React.FC = () => {
             .filter(r => r.gamesLost > 0)
             .sort((a, b) => b.gamesLost - a.gamesLost)
             .slice(0, 3);
-        
+
         chronological.forEach(md => {
             (md.subMatches || []).filter(sm => !sm.cancelled).forEach((sm, matchIndex) => {
                 if (isBlankSets(sm.sets as any)) return;
                 const t1Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team1 || 0), 0);
                 const t2Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team2 || 0), 0);
                 const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
-                
+
                 const t1Players = sm.team1Players || [];
                 const t2Players = sm.team2Players || [];
-                
+
                 if (winner && t1Players.length === 2 && t2Players.length === 2) {
                     const snapshot = teamLocalElo.matchSnapshots.get(`${md.id}:${matchIndex}`);
                     const team1EloAvg = snapshot?.team1Average ?? 1500;
@@ -587,7 +1289,7 @@ const StatistichePage: React.FC = () => {
 
         let maggiorGuadagnoElo: { player: any; guadagno: number; data: string }[] = [];
         let peggiorPerditaElo: { player: any; perdita: number; data: string }[] = [];
-        
+
         eloPerGiornata.forEach((giornateMap, playerId) => {
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -597,7 +1299,7 @@ const StatistichePage: React.FC = () => {
                 });
             }
         });
-        
+
         maggiorGuadagnoElo = maggiorGuadagnoElo.sort((a, b) => b.guadagno - a.guadagno).slice(0, 3);
         peggiorPerditaElo = peggiorPerditaElo.sort((a, b) => b.perdita - a.perdita).slice(0, 3);
 
@@ -610,11 +1312,11 @@ const StatistichePage: React.FC = () => {
                     const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (!isT1 && !isT2) return;
                     if (isBlankSets(sm.sets as any)) return;
-                    
+
                     const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
                     const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
                     const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
-                    
+
                     if (winner) {
                         playerMatches.push({ won: (isT1 && winner === 'team1') || (isT2 && winner === 'team2') });
                     }
@@ -639,12 +1341,12 @@ const StatistichePage: React.FC = () => {
                     const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (!isT1 && !isT2) return;
                     if (isBlankSets(sm.sets as any)) return;
-                    
+
                     const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
                     const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
                     const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
                     const diff = Math.abs(t1Games - t2Games);
-                    
+
                     if (winner && diff === 1) { // Clutch is 1 game difference
                         playerMatches.push({ won: (isT1 && winner === 'team1') || (isT2 && winner === 'team2'), diff });
                     }
@@ -675,7 +1377,7 @@ const StatistichePage: React.FC = () => {
             });
             return { player: s, avgGameDifference: wins > 0 ? totalDiff / wins : 0, wins };
         }).filter(d => d.wins >= 2).sort((a, b) => b.avgGameDifference - a.avgGameDifference).slice(0, 3);
-        
+
         // MVP (Most matchdays with positive game diff for the player)
         let mvp = rows.map(s => {
             let wonMatchdays = 0;
@@ -730,707 +1432,14 @@ const StatistichePage: React.FC = () => {
         };
     }, [selectedTeamTournamentRootId, teamTournamentConfigByRoot, teamTournamentMatchdaysByRoot, teamTournamentTeamsByRoot, players, eloHistory]);
 
-    const calculateTournamentStats = (tournament: Tournament): TournamentStats | null => {
-        // Get ALL tournament IDs with the same series key (for multi-giornata tournaments)
-        const seriesKey = (tournament.giornataName || tournament.name);
-        const seriesTournaments = tournaments.filter(t =>
-            t.type !== TournamentType.TorneoASquadre && (t.giornataName || t.name) === seriesKey
-        );
-        const tournamentIds = seriesTournaments.map(t => t.id);
-
-        // Get all matches for this tournament using ONLY tournamentId (like RankingPage)
-        const tournamentMatches = matches.filter(m => 
-            m.tournamentId && tournamentIds.includes(m.tournamentId) && classicMatchHasResult(m)
-        );
-        
-        if (tournamentMatches.length === 0) {
-            console.log('⚠️ No matches found for tournament:', tournament.name);
-            return null;
-        }
-
-        const playedTournamentIds = Array.from(new Set(tournamentMatches.map(m => m.tournamentId).filter(Boolean))) as string[];
-        const isPartial = seriesTournaments.some(t => t.status !== 'completed');
-        
-        console.log('✅ Found', tournamentMatches.length, 'matches for tournament:', tournament.name, 'across', tournamentIds.length, 'giornate');
-
-        // Get unique giornate (dates) - each unique date is a giornata
-        const giornate = Array.from(new Set(tournamentMatches.map(m => m.date))).sort();
-        
-        // Actually count number of tournament instances (giornate) instead of unique dates
-        const numeroGiornate = playedTournamentIds.length;
-        
-        console.log('📊 Giornate (unique dates):', giornate.length, '| Tournament instances:', numeroGiornate);
-        
-        // Informazioni generali
-        const totalePartite = tournamentMatches.length;
-        const totaleGamesDisputati = tournamentMatches.reduce((sum, m) => 
-            sum + m.sets.reduce((s, set) => s + set.team1 + set.team2, 0), 0
-        );
-        const mediaGamesPerPartita = totalePartite > 0 ? totaleGamesDisputati / totalePartite : 0;
-        
-        // Get unique players - COPY EXACT LOGIC FROM RANKINGPAGE
-        // Get only players who participated in this tournament (any giornata) - EXACT COPY FROM RANKINGPAGE
-        const playersInTournament = new Set<string>();
-        tournamentMatches.forEach(m => {
-            m.team1.forEach(id => playersInTournament.add(id));
-            m.team2.forEach(id => playersInTournament.add(id));
-        });
-        const filteredPlayers = players.filter(p => playersInTournament.has(p.id));
-        
-        const giocatoriPartecipanti = filteredPlayers.length;
-        
-        const periodo = {
-            inizio: new Date(giornate[0]).toLocaleDateString('it-IT'),
-            fine: new Date(giornate[giornate.length - 1]).toLocaleDateString('it-IT')
-        };
-
-        const localTournamentMatches = tournamentMatches.map(match => ({
-            ...match,
-            tournamentId: `series:${seriesKey}`,
-        }));
-        const localTournamentElo = calculateTournamentLocalElo(localTournamentMatches);
-
-        // Calcola statistiche per giocatore - use plain object instead of Map
-        const playerStatsObj: Record<string, {
-            player: Player;
-            gamesWon: number;
-            gamesLost: number;
-            partiteVinte: number;
-            partiteTotali: number;
-            vittorieConsecutive: number;
-            vittorieConsecutiveMax: number;
-            variazioneEloTotale: number;
-            eloStart: number;
-            variazioniElo: { delta: number; date: string }[];
-            giornateVinte: number;
-            eloPerGiornata: { date: string; elo: number }[];
-        }> = {};
-
-        // Initialize stats ONLY for players who actually played matches in this tournament - COPY FROM RANKINGPAGE
-        filteredPlayers.forEach(player => {
-            const eloStart = 1500; // Rankings always start from 1500 per tournament series
-            const variazioniElo = tournamentIds.map(tournamentId => {
-                const tournament = tournaments.find(item => item.id === tournamentId);
-                const delta = localTournamentMatches
-                    .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
-                    .reduce((sum, match) => {
-                        const snapshot = localTournamentElo.matchSnapshots.get(match.id);
-                        if (!snapshot) return sum;
-                        if (match.team1.includes(player.id)) return sum + snapshot.team1Delta;
-                        if (match.team2.includes(player.id)) return sum + snapshot.team2Delta;
-                        return sum;
-                    }, 0);
-                return { delta, date: tournament?.date || '' };
-            }).filter(entry => entry.delta !== 0 && entry.date);
-            const variazioneEloTotale = localTournamentElo.totalDeltas.get(player.id) || 0;
-
-            playerStatsObj[player.id] = {
-                player: clonePlayer(player),
-                gamesWon: 0,
-                gamesLost: 0,
-                partiteVinte: 0,
-                partiteTotali: 0,
-                vittorieConsecutive: 0,
-                vittorieConsecutiveMax: 0,
-                variazioneEloTotale,
-                eloStart,
-                variazioniElo,
-                giornateVinte: 0,
-                eloPerGiornata: []
-            };
-        });
-
-        // Process each match (sorted by date)
-        const sortedMatches = [...tournamentMatches].sort((a, b) => 
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-        
-        sortedMatches.forEach(match => {
-            const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-            const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-            
-            if (team1Players.length === 2 && team2Players.length === 2) {
-                const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-                const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
-                
-                // Update games stats and win streaks - direct mutation on OUR objects
-                team1Players.forEach(p => {
-                    const stats = playerStatsObj[p.id];
-                    if (stats) {
-                        stats.gamesWon += team1Games;
-                        stats.gamesLost += team2Games;
-                        stats.partiteTotali++;
-                        if (match.winner === 'team1') {
-                            stats.partiteVinte++;
-                            stats.vittorieConsecutive++;
-                            stats.vittorieConsecutiveMax = Math.max(stats.vittorieConsecutiveMax, stats.vittorieConsecutive);
-                        } else {
-                            stats.vittorieConsecutive = 0;
-                        }
-                    }
-                });
-                
-                team2Players.forEach(p => {
-                    const stats = playerStatsObj[p.id];
-                    if (stats) {
-                        stats.gamesWon += team2Games;
-                        stats.gamesLost += team1Games;
-                        stats.partiteTotali++;
-                        if (match.winner === 'team2') {
-                            stats.partiteVinte++;
-                            stats.vittorieConsecutive++;
-                            stats.vittorieConsecutiveMax = Math.max(stats.vittorieConsecutiveMax, stats.vittorieConsecutive);
-                        } else {
-                            stats.vittorieConsecutive = 0;
-                        }
-                    }
-                });
-            }
-        });
-
-        // Calculate MVP - giocatore che ha vinto più giornate (FIXED: iterate over tournament instances)
-        const giornateVinteMap = new Map<string, number>();
-        
-        playedTournamentIds.forEach(tournamentId => {
-            // Use same filtering logic as main tournament matches (ONLY tournamentId)
-            const giornataMatches = tournamentMatches.filter(m => 
-                m.tournamentId === tournamentId
-            );
-            
-            const giornataPlayerPoints = new Map<string, number>();
-            
-            // Calculate points for each player in this giornata
-            giornataMatches.forEach(match => {
-                const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-                const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
-                
-                match.team1.forEach(id => {
-                    giornataPlayerPoints.set(id, (giornataPlayerPoints.get(id) || 0) + team1Games - team2Games);
-                });
-                match.team2.forEach(id => {
-                    giornataPlayerPoints.set(id, (giornataPlayerPoints.get(id) || 0) + team2Games - team1Games);
-                });
-            });
-            
-            // Find winner(s) of this giornata - handle ties
-            let maxPoints = -Infinity;
-            const winnerIds: string[] = [];
-
-            // First pass: find max points
-            giornataPlayerPoints.forEach((points, id) => {
-                if (points > maxPoints) {
-                    maxPoints = points;
-                }
-            });
-
-            // Second pass: collect all players with max points
-            giornataPlayerPoints.forEach((points, id) => {
-                if (points === maxPoints) {
-                    winnerIds.push(id);
-                }
-            });
-
-            // Award victory to all tied winners
-            winnerIds.forEach(id => {
-                giornateVinteMap.set(id, (giornateVinteMap.get(id) || 0) + 1);
-            });
-        });
-        
-        Object.keys(playerStatsObj).forEach(id => {
-            const stats = playerStatsObj[id];
-            if (stats) {
-                stats.giornateVinte = giornateVinteMap.get(id) || 0;
-            }
-        });
-
-        // Create a COMPLETE deep copy to avoid any readonly issues
-        const playerStatsArray = Object.values(playerStatsObj).map(s => ({
-            ...s,
-            player: clonePlayer(s.player),
-            variazioniElo: [...s.variazioniElo],
-            eloPerGiornata: [...s.eloPerGiornata]
-        }));
-
-        // Top 5 classifica - sort by tournament-specific final ELO
-        const top5 = playerStatsArray
-            .sort((a, b) => {
-                // Use tournament-specific final ELO, not global ELO
-                const aFinalElo = a.eloStart + a.variazioneEloTotale;
-                const bFinalElo = b.eloStart + b.variazioneEloTotale;
-                if (bFinalElo !== aFinalElo) return bFinalElo - aFinalElo;
-                
-                const aGamesDiff = a.gamesWon - a.gamesLost;
-                const bGamesDiff = b.gamesWon - b.gamesLost;
-                return bGamesDiff - aGamesDiff;
-            })
-            .slice(0, 5)
-            .map(s => ({
-                player: clonePlayer(s.player),
-                eloTorneo: s.eloStart + s.variazioneEloTotale, // Tournament-specific final ELO
-                variazioneElo: s.variazioneEloTotale,
-                gamesWon: s.gamesWon,
-                gamesLost: s.gamesLost
-            }));
-
-        // Giocatore con più games vinti
-        const giocatoreConPiuGamesVinti = playerStatsArray
-            .filter(s => s.gamesWon > 0)
-            .sort((a, b) => b.gamesWon - a.gamesWon)
-            .slice(0, 3)
-            .map(s => ({ player: clonePlayer(s.player), games: s.gamesWon }));
-
-        // Giocatore con più games persi
-        const giocatoreConPiuGamesPersi = playerStatsArray
-            .filter(s => s.gamesLost > 0)
-            .sort((a, b) => b.gamesLost - a.gamesLost)
-            .slice(0, 3)
-            .map(s => ({ player: clonePlayer(s.player), games: s.gamesLost }));
-
-        // Coppia più frequente
-        const pairCounts = new Map<string, { players: [Player, Player]; count: number }>();
-        tournamentMatches.forEach(match => {
-            [match.team1, match.team2].forEach(team => {
-                const p1 = getPlayerById(team[0]);
-                const p2 = getPlayerById(team[1]);
-                if (p1 && p2) {
-                    const key = [team[0], team[1]].sort().join('-');
-                    const existing = pairCounts.get(key);
-                    if (!existing) {
-                        pairCounts.set(key, { players: [clonePlayer(p1), clonePlayer(p2)], count: 1 });
-                    } else {
-                        pairCounts.set(key, { players: existing.players, count: existing.count + 1 });
-                    }
-                }
-            });
-        });
-        const coppiaFrequente = Array.from(pairCounts.values())
-            .filter(c => c.count > 1)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 3)
-            .map(c => ({ players: c.players, partite: c.count }));
-
-        // Serie di vittorie consecutive
-        const serieVittorie = playerStatsArray
-            .filter(s => s.vittorieConsecutiveMax > 0)
-            .sort((a, b) => b.vittorieConsecutiveMax - a.vittorieConsecutiveMax)
-            .slice(0, 3)
-            .map(s => ({ player: clonePlayer(s.player), vittorie: s.vittorieConsecutiveMax }));
-
-        // UPSET - matches where lower ELO team won
-        const upsets: string[] = [];
-        tournamentMatches.forEach(match => {
-            const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-            const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-            
-            if (team1Players.length === 2 && team2Players.length === 2) {
-                const snapshot = localTournamentElo.matchSnapshots.get(match.id);
-                const team1EloAvg = snapshot?.team1Average ?? 1500;
-                const team2EloAvg = snapshot?.team2Average ?? 1500;
-                
-                if ((match.winner === 'team1' && team1EloAvg < team2EloAvg - 20) || 
-                    (match.winner === 'team2' && team2EloAvg < team1EloAvg - 20)) {
-                    const winningTeam = match.winner === 'team1' ? team1Players : team2Players;
-                    const losingTeam = match.winner === 'team1' ? team2Players : team1Players;
-                    const diffElo = Math.abs(team1EloAvg - team2EloAvg).toFixed(2);
-                    upsets.push(
-                        `${formatPlayerShortName(winningTeam[0])} & ${formatPlayerShortName(winningTeam[1])} vs ${formatPlayerShortName(losingTeam[0])} & ${formatPlayerShortName(losingTeam[1])} (Δ${diffElo})`
-                    );
-                }
-            }
-        });
-
-        // Maggior guadagno e perdita ELO in una giornata
-        const eloPerGiornata = new Map<string, Map<string, number>>(); // playerId -> giornata -> delta
-        
-        tournamentIds.forEach(tournamentId => {
-            const tournament = tournaments.find(item => item.id === tournamentId);
-            if (!tournament) return;
-            localTournamentMatches
-                .filter(match => tournamentMatches.find(source => source.id === match.id)?.tournamentId === tournamentId)
-                .forEach(match => {
-                    const snapshot = localTournamentElo.matchSnapshots.get(match.id);
-                    if (!snapshot) return;
-                    [...match.team1.map(playerId => [playerId, snapshot.team1Delta] as const),
-                        ...match.team2.map(playerId => [playerId, snapshot.team2Delta] as const)]
-                        .forEach(([playerId, delta]) => {
-                            if (!eloPerGiornata.has(playerId)) eloPerGiornata.set(playerId, new Map());
-                            const currentDelta = eloPerGiornata.get(playerId)!.get(tournament.date) || 0;
-                            eloPerGiornata.get(playerId)!.set(tournament.date, currentDelta + delta);
-                        });
-            });
-        });
-
-        let maggiorGuadagnoElo: { player: Player; guadagno: number; data: string }[] = [];
-        let peggiorPerditaElo: { player: Player; perdita: number; data: string }[] = [];
-        
-        eloPerGiornata.forEach((giornateMap, playerId) => {
-            const player = getPlayerById(playerId);
-            if (player) {
-                const playerCopy = clonePlayer(player);
-                giornateMap.forEach((delta, giornata) => {
-                    if (delta > 0) {
-                        maggiorGuadagnoElo.push({
-                            player: playerCopy,
-                            guadagno: delta,
-                            data: new Date(giornata).toLocaleDateString('it-IT')
-                        });
-                    } else if (delta < 0) {
-                        peggiorPerditaElo.push({
-                            player: playerCopy,
-                            perdita: Math.abs(delta),
-                            data: new Date(giornata).toLocaleDateString('it-IT')
-                        });
-                    }
-                });
-            }
-        });
-        
-        maggiorGuadagnoElo = maggiorGuadagnoElo
-            .sort((a, b) => b.guadagno - a.guadagno)
-            .slice(0, 3);
-        
-        peggiorPerditaElo = peggiorPerditaElo
-            .sort((a, b) => b.perdita - a.perdita)
-            .slice(0, 3);
-
-        // MVP - giocatore che ha vinto più giornate
-        let mvp = playerStatsArray
-            .filter(s => s.giornateVinte > 0)
-            .sort((a, b) => b.giornateVinte - a.giornateVinte)
-            .slice(0, 3)
-            .map(s => ({ player: clonePlayer(s.player), vittorieGiornate: s.giornateVinte }));
-
-        // NUOVE STATISTICHE - Game Win Rate %
-        const gameWinRate = playerStatsArray
-            .filter(s => s.gamesWon + s.gamesLost > 0)
-            .map(s => ({
-                player: clonePlayer(s.player),
-                percentage: (s.gamesWon / (s.gamesWon + s.gamesLost)) * 100
-            }))
-            .sort((a, b) => b.percentage - a.percentage)
-            .slice(0, 3);
-
-        // Game Ratio
-        const gameRatio = playerStatsArray
-            .filter(s => s.gamesLost > 0)
-            .map(s => ({
-                player: clonePlayer(s.player),
-                ratio: s.gamesWon / s.gamesLost
-            }))
-            .sort((a, b) => b.ratio - a.ratio)
-            .slice(0, 3);
-
-        // Partite Vinte
-        const partiteVinte = playerStatsArray
-            .filter(s => s.partiteVinte > 0)
-            .sort((a, b) => b.partiteVinte - a.partiteVinte)
-            .slice(0, 3)
-            .map(s => ({ player: clonePlayer(s.player), wins: s.partiteVinte }));
-
-        // ELO per Partita
-        const eloPerPartita = playerStatsArray
-            .filter(s => s.partiteTotali > 0)
-            .map(s => ({
-                player: clonePlayer(s.player),
-                eloPerMatch: s.variazioneEloTotale / s.partiteTotali
-            }))
-            .sort((a, b) => b.eloPerMatch - a.eloPerMatch)
-            .slice(0, 3);
-
-        // % Upset (vittorie contro ELO superiori) - ALLINEATO con logica UPSET originale
-        const upsetPercentage = playerStatsArray
-            .filter(s => s.partiteTotali > 0)
-            .map(s => {
-                let upsetWins = 0;
-                sortedMatches.forEach(match => {
-                    const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                    const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                    
-                    if (team1Players.length === 2 && team2Players.length === 2) {
-                        const playerInTeam1 = team1Players.some(p => p.id === s.player.id);
-                        const playerInTeam2 = team2Players.some(p => p.id === s.player.id);
-                        
-                        if ((playerInTeam1 && match.winner === 'team1') || (playerInTeam2 && match.winner === 'team2')) {
-                            const snapshot = localTournamentElo.matchSnapshots.get(match.id);
-                            const team1EloAvg = snapshot?.team1Average ?? 1500;
-                            const team2EloAvg = snapshot?.team2Average ?? 1500;
-                            
-                            // Player's team won against stronger team (same logic as UPSET)
-                            if ((playerInTeam1 && team1EloAvg < team2EloAvg - 20) || 
-                                (playerInTeam2 && team2EloAvg < team1EloAvg - 20)) {
-                                upsetWins++;
-                            }
-                        }
-                    }
-                });
-                
-                return {
-                    player: clonePlayer(s.player),
-                    percentage: (upsetWins / s.partiteTotali) * 100
-                };
-            })
-            .filter(s => s.percentage > 0)
-            .sort((a, b) => b.percentage - a.percentage)
-            .slice(0, 3);
-
-        // Miglior Coppia Win Rate
-        const pairWinRates = new Map<string, { players: [Player, Player]; wins: number; total: number }>();
-        tournamentMatches.forEach(match => {
-            [match.team1, match.team2].forEach(team => {
-                const p1 = getPlayerById(team[0]);
-                const p2 = getPlayerById(team[1]);
-                if (p1 && p2) {
-                    const key = [team[0], team[1]].sort().join('-');
-                    const existing = pairWinRates.get(key);
-                    if (!existing) {
-                        pairWinRates.set(key, { 
-                            players: [clonePlayer(p1), clonePlayer(p2)], 
-                            wins: match.winner === (team === match.team1 ? 'team1' : 'team2') ? 1 : 0,
-                            total: 1
-                        });
-                    } else {
-                        existing.total++;
-                        if (match.winner === (team === match.team1 ? 'team1' : 'team2')) {
-                            existing.wins++;
-                        }
-                    }
-                }
-            });
-        });
-        
-        const migliorCoppiaWinRate = Array.from(pairWinRates.values())
-            .filter(p => p.total >= 2)
-            .map(p => ({
-                players: p.players,
-                winRate: (p.wins / p.total) * 100,
-                partite: p.total
-            }))
-            .sort((a, b) => b.winRate - a.winRate)
-            .slice(0, 3);
-
-        // Serie Sconfitte Consecutive
-        const serieSconfitte = playerStatsArray
-            .filter(s => s.vittorieConsecutiveMax > 0 || s.partiteTotali > 0)
-            .map(s => {
-                // Calculate max consecutive losses
-                let maxLosses = 0;
-                let currentLosses = 0;
-                
-                sortedMatches.forEach(match => {
-                    const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                    const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                    
-                    if (team1Players.length === 2 && team2Players.length === 2) {
-                        const playerInTeam1 = team1Players.some(p => p.id === s.player.id);
-                        const playerInTeam2 = team2Players.some(p => p.id === s.player.id);
-                        
-                        if (playerInTeam1 || playerInTeam2) {
-                            const won = (playerInTeam1 && match.winner === 'team1') || (playerInTeam2 && match.winner === 'team2');
-                            if (won) {
-                                currentLosses = 0;
-                            } else {
-                                currentLosses++;
-                                maxLosses = Math.max(maxLosses, currentLosses);
-                            }
-                        }
-                    }
-                });
-                
-                return { player: clonePlayer(s.player), sconfitte: maxLosses };
-            })
-            .filter(s => s.sconfitte > 0)
-            .sort((a, b) => b.sconfitte - a.sconfitte)
-            .slice(0, 3);
-
-
-        // Resilienza (perdita ELO media per sconfitta)
-        const resilienza = playerStatsArray
-            .filter(s => s.partiteTotali > s.partiteVinte && s.variazioneEloTotale < 0)
-            .map(s => {
-                const sconfitte = s.partiteTotali - s.partiteVinte;
-                const perditaMedia = Math.abs(s.variazioneEloTotale) / sconfitte;
-                return {
-                    player: clonePlayer(s.player),
-                    perditaMedia: perditaMedia
-                };
-            })
-            .sort((a, b) => a.perditaMedia - b.perditaMedia) // Lower is better
-            .slice(0, 3);
-
-        // Fallback se non ci sono dati (evita array vuoti)
-        const defaultPlayerSource = playerStatsArray[0]?.player || players[0];
-        const defaultPlayer = defaultPlayerSource ? clonePlayer(defaultPlayerSource) : null;
-        
-        if (maggiorGuadagnoElo.length === 0 && defaultPlayer) {
-            maggiorGuadagnoElo = [{ player: clonePlayer(defaultPlayer), guadagno: 0, data: '(in attesa di dati ulteriori)' }];
-        }
-        if (peggiorPerditaElo.length === 0 && defaultPlayer) {
-            peggiorPerditaElo = [{ player: clonePlayer(defaultPlayer), perdita: 0, data: '(in attesa di dati ulteriori)' }];
-        }
-        if (mvp.length === 0 && defaultPlayer) {
-            mvp = [{ player: clonePlayer(defaultPlayer), vittorieGiornate: 0 }];
-        }
-        if (giocatoreConPiuGamesVinti.length === 0 && defaultPlayer) {
-            giocatoreConPiuGamesVinti.push({ player: clonePlayer(defaultPlayer), games: 0 });
-        }
-        if (giocatoreConPiuGamesPersi.length === 0 && defaultPlayer) {
-            giocatoreConPiuGamesPersi.push({ player: clonePlayer(defaultPlayer), games: 0 });
-        }
-        if (coppiaFrequente.length === 0) {
-            // Leave empty, will show "(in attesa...)" in UI
-        }
-        if (serieVittorie.length === 0 && defaultPlayer) {
-            serieVittorie.push({ player: clonePlayer(defaultPlayer), vittorie: 0 });
-        }
-
-        // ===== NUOVE STATISTICHE =====
-
-        // 1. FORM - Ultimi 5 match per giocatore (W/L pattern)
-        const form = playerStatsArray
-            .map(s => {
-                // Get matches for this player, sorted by date
-                const playerMatches = sortedMatches.filter(m =>
-                    [...m.team1, ...m.team2].includes(s.player.id)
-                );
-
-                // Get last 5 matches
-                const last5 = playerMatches.slice(-5);
-                const formString = last5.map(match => {
-                    const isTeam1 = match.team1.includes(s.player.id);
-                    const won = (isTeam1 && match.winner === 'team1') ||
-                                (!isTeam1 && match.winner === 'team2');
-                    return won ? '🟢' : '🔴';
-                }).join(' ');
-
-                return {
-                    player: clonePlayer(s.player),
-                    form: formString || 'N/A',
-                    lastMatches: last5.length
-                };
-            })
-            .filter(f => f.lastMatches >= 3) // Show only players with at least 3 matches
-            .sort((a, b) => {
-                // Sort by number of green circles (wins) in form string
-                const aWins = (a.form.match(/🟢/g) || []).length;
-                const bWins = (b.form.match(/🟢/g) || []).length;
-                return bWins - aWins;
-            })
-            .slice(0, 5);
-
-        // 2. CLUTCH PERFORMANCE - Win rate in finals/semifinals
-        // For Round Robin + Finali, last 2 matches are finals
-        // For other formats, consider last 20% of matches as "clutch"
-        const clutchPerformance = playerStatsArray
-            .map(s => {
-                const playerMatches = sortedMatches.filter(m =>
-                    [...m.team1, ...m.team2].includes(s.player.id)
-                );
-
-                // Determine clutch matches (last 20% or minimum 2)
-                const clutchCount = Math.max(2, Math.ceil(playerMatches.length * 0.2));
-                const clutchMatches = playerMatches.slice(-clutchCount);
-
-                let clutchWins = 0;
-                clutchMatches.forEach(match => {
-                    const isTeam1 = match.team1.includes(s.player.id);
-                    const won = (isTeam1 && match.winner === 'team1') ||
-                                (!isTeam1 && match.winner === 'team2');
-                    if (won) clutchWins++;
-                });
-
-                const winRate = clutchMatches.length > 0
-                    ? (clutchWins / clutchMatches.length) * 100
-                    : 0;
-
-                return {
-                    player: clonePlayer(s.player),
-                    clutchWinRate: winRate,
-                    clutchMatches: clutchMatches.length
-                };
-            })
-            .filter(c => c.clutchMatches >= 2)
-            .sort((a, b) => b.clutchWinRate - a.clutchWinRate)
-            .slice(0, 3);
-
-        // 3. DIFESA FERREA - Average game difference in won matches
-        const difesaFerrea = playerStatsArray
-            .map(s => {
-                const wonMatches = sortedMatches.filter(m => {
-                    const isTeam1 = m.team1.includes(s.player.id);
-                    return (isTeam1 && m.winner === 'team1') ||
-                           (!isTeam1 && m.winner === 'team2');
-                });
-
-                if (wonMatches.length === 0) {
-                    return {
-                        player: clonePlayer(s.player),
-                        avgGameDifference: 0,
-                        wins: 0
-                    };
-                }
-
-                // Calculate average game difference
-                let totalDifference = 0;
-                wonMatches.forEach(match => {
-                    const isTeam1 = match.team1.includes(s.player.id);
-                    match.sets.forEach(set => {
-                        const diff = isTeam1
-                            ? (set.team1 - set.team2)
-                            : (set.team2 - set.team1);
-                        totalDifference += diff;
-                    });
-                });
-
-                const avgDiff = totalDifference / wonMatches.length;
-
-                return {
-                    player: clonePlayer(s.player),
-                    avgGameDifference: avgDiff,
-                    wins: wonMatches.length
-                };
-            })
-            .filter(d => d.wins >= 2)
-            .sort((a, b) => b.avgGameDifference - a.avgGameDifference)
-            .slice(0, 3);
-
-        return {
-            tournament,
-            isPartial,
-            giornate,
-            numeroGiornate,
-            totalePartite,
-            totaleGamesDisputati,
-            mediaGamesPerPartita,
-            giocatoriPartecipanti,
-            periodo,
-            top5,
-            giocatoreConPiuGamesVinti,
-            giocatoreConPiuGamesPersi,
-            coppiaFrequente,
-            serieVittorie,
-            upset: [{ count: upsets.length, details: upsets.slice(0, 3) }],
-            maggiorGuadagnoElo,
-            peggiorPerditaElo,
-            mvp,
-            gameWinRate,
-            gameRatio,
-            partiteVinte,
-            eloPerPartita,
-            upsetPercentage,
-            migliorCoppiaWinRate,
-            serieSconfitte,
-            resilienza,
-            form,
-            clutchPerformance,
-            difesaFerrea
-        };
-    };
+    const calculateTournamentStats = (tournament: Tournament): TournamentStats | null =>
+        buildTournamentStats(tournament, tournaments, matches, players, getPlayerById);
 
     const tournamentStats = useMemo(() => {
         const stats = activeTournaments
             .map(t => calculateTournamentStats(t))
             .filter(Boolean) as TournamentStats[];
-        
+
         console.log('📊 Tournament stats calculated:', stats.length);
         return stats;
     }, [activeTournaments, matches, eloHistory]);
@@ -1473,7 +1482,7 @@ const StatistichePage: React.FC = () => {
                             shouldAutoExpandOnNextSelectionRef.current = true;
                             setSelectedTournamentKey(e.target.value);
                         }}
-                        className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                        className="w-full md:w-64 px-3 py-2 border-2 border-sky-300 dark:border-sky-500/70 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none transition-[border-color,box-shadow] focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15 dark:focus:border-sky-400 dark:focus:ring-sky-400/20"
                     >
                         {teamTournamentRoots.length > 0 && (
                             <optgroup label="Tornei a Squadre">
@@ -1609,45 +1618,45 @@ const StatistichePage: React.FC = () => {
                                 <h4 className="text-md font-bold text-gray-900 dark:text-white mb-3 mt-8">
                                     Statistiche Avanzate
                                 </h4>
-                                
-                                <StatCard 
-                                    title="Più Games Vinti" 
+
+                                <StatCard
+                                    title="Più Games Vinti"
                                     icon={<SFIcon name="target" size={14} />}
                                     entries={!loading && derived && derived.mostGamesWon.length > 0
                                         ? derived.mostGamesWon.map(r => `${r.name} ${r.surname} (${r.gamesWon} games)`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Più Games Persi" 
+
+                                <StatCard
+                                    title="Più Games Persi"
                                     icon={<SFIcon name="chart.bar" size={14} />}
                                     entries={!loading && derived && derived.mostGamesLost.length > 0
                                         ? derived.mostGamesLost.map(r => `${r.name} ${r.surname} (${r.gamesLost} games)`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Coppia Più Frequente" 
+
+                                <StatCard
+                                    title="Coppia Più Frequente"
                                     icon={<SFIcon name="person.2.fill" size={14} />}
                                     entries={!loading && derived && derived.pairsTop.length > 0
                                         ? derived.pairsTop.map(p => `${p.label} (${p.played} partite)`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Miglior Coppia (Win Rate)" 
+
+                                <StatCard
+                                    title="Miglior Coppia (Win Rate)"
                                     icon={<SFIcon name="star.fill" size={14} color="var(--ios-systemYellow)" />}
                                     entries={!loading && derived && derived.bestPairsByWinRate.length > 0
                                         ? derived.bestPairsByWinRate.map(p => `${p.label} (${p.winRate.toFixed(0)}% in ${p.played} match)`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Serie Vittorie Consecutive" 
+
+                                <StatCard
+                                    title="Serie Vittorie Consecutive"
                                     icon={<SFIcon name="flame.fill" size={14} color="var(--ios-systemOrange)" />}
                                     entries={!loading && derived && derived.streakTop.length > 0
                                         ? derived.streakTop.map(s => `${s.label} (${s.best} vittorie)`)
@@ -1680,18 +1689,18 @@ const StatistichePage: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
-                                
-                                <StatCard 
-                                    title="Maggior Guadagno ELO" 
+
+                                <StatCard
+                                    title="Maggior Guadagno ELO"
                                     icon={<SFIcon name="arrow.up.right.circle" size={14} color="var(--ios-systemGreen)" />}
                                     entries={!loading && derived && derived.maggiorGuadagnoElo.length > 0 && derived.maggiorGuadagnoElo[0].guadagno > 0
                                         ? derived.maggiorGuadagnoElo.map(e => `${e.player.name} ${e.player.surname} (+${e.guadagno.toFixed(1)} il ${e.data})`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Peggior Perdita ELO" 
+
+                                <StatCard
+                                    title="Peggior Perdita ELO"
                                     icon={<SFIcon name="arrow.down.right.circle" size={14} color="var(--ios-systemRed)" />}
                                     entries={!loading && derived && derived.peggiorPerditaElo.length > 0 && derived.peggiorPerditaElo[0].perdita > 0
                                         ? derived.peggiorPerditaElo.map(e => `${e.player.name} ${e.player.surname} (-${e.perdita.toFixed(1)} il ${e.data})`)
@@ -1705,27 +1714,27 @@ const StatistichePage: React.FC = () => {
                                 <h4 className="text-md font-bold text-gray-900 dark:text-white mb-3 mt-8">
                                     Statistiche di Performance
                                 </h4>
-                                
-                                <StatCard 
-                                    title="Forma (Ultime 5 partite)" 
+
+                                <StatCard
+                                    title="Forma (Ultime 5 partite)"
                                     icon={<SFIcon name="waveform.path.ecg" size={14} color="var(--ios-systemIndigo)" />}
                                     entries={!loading && derived && derived.form && derived.form.length > 0
                                         ? derived.form.map(f => `${f.player.name} ${f.player.surname}: ${f.form}`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Clutch Performance" 
+
+                                <StatCard
+                                    title="Clutch Performance"
                                     icon={<SFIcon name="bolt.fill" size={14} color="var(--ios-systemYellow)" />}
                                     entries={!loading && derived && derived.clutchPerformance && derived.clutchPerformance.length > 0
                                         ? derived.clutchPerformance.map(c => `${c.player.name} ${c.player.surname} (${c.clutchWinRate.toFixed(0)}% - ${c.clutchMatches} match tirati)`)
                                         : ['(in attesa di dati ulteriori)']
                                     }
                                 />
-                                
-                                <StatCard 
-                                    title="Difesa Ferrea" 
+
+                                <StatCard
+                                    title="Difesa Ferrea"
                                     icon={<SFIcon name="shield.fill" size={14} color="var(--ios-systemBlue)" />}
                                     entries={!loading && derived && derived.difesaFerrea && derived.difesaFerrea.length > 0
                                         ? derived.difesaFerrea.map(d => `${d.player.name} ${d.player.surname} (+${d.avgGameDifference.toFixed(1)} games per vittoria)`)
@@ -1733,8 +1742,8 @@ const StatistichePage: React.FC = () => {
                                     }
                                 />
 
-                                <StatCard 
-                                    title="MVP (Giornate Vinte)" 
+                                <StatCard
+                                    title="MVP (Giornate Vinte)"
                                     icon={<SFIcon name="crown.fill" size={14} color="var(--ios-systemYellow)" />}
                                     entries={!loading && derived && derived.mvp && derived.mvp.length > 0 && derived.mvp[0].vittorieGiornate > 0
                                         ? derived.mvp.map(m => `${m.player.name} ${m.player.surname} (${m.vittorieGiornate} giornate)`)
@@ -1798,12 +1807,12 @@ const StatistichePage: React.FC = () => {
             {/* Existing statistics for non-team tournaments (unchanged) */}
                             {!isTeamTournamentMode && tournamentStats.map(stats => {
                 const isExpanded = expandedTournament === stats.tournament.id;
-                
+
                 return (
                     <Card key={stats.tournament.id}>
                         <div className="space-y-4">
                             {/* Header collapsibile */}
-                            <div 
+                            <div
                                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-3 rounded-lg transition-colors"
                                 onClick={() => setExpandedTournament(isExpanded ? null : stats.tournament.id)}
                             >
@@ -1887,41 +1896,41 @@ const StatistichePage: React.FC = () => {
                                     {/* 3. Statistiche Avanzate */}
                                     <div>
                                         <div className="space-y-6">
-                                            <StatCard 
-                                                title="Più Games Vinti" 
+                                            <StatCard
+                                                title="Più Games Vinti"
                                                 icon={<SFIcon name="target" size={14} />}
                                                 entries={stats.giocatoreConPiuGamesVinti.length > 0 && stats.giocatoreConPiuGamesVinti[0].games > 0
-                                                    ? stats.giocatoreConPiuGamesVinti.map(e => 
+                                                    ? stats.giocatoreConPiuGamesVinti.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.games} games)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="Più Games Persi" 
+                                            <StatCard
+                                                title="Più Games Persi"
                                                 icon={<SFIcon name="chart.bar" size={14} />}
                                                 entries={stats.giocatoreConPiuGamesPersi.length > 0 && stats.giocatoreConPiuGamesPersi[0].games > 0
-                                                    ? stats.giocatoreConPiuGamesPersi.map(e => 
+                                                    ? stats.giocatoreConPiuGamesPersi.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.games} games)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="Coppia Più Frequente" 
+                                            <StatCard
+                                                title="Coppia Più Frequente"
                                                 icon={<SFIcon name="person.2.fill" size={14} />}
                                                 entries={stats.coppiaFrequente.length > 0
-                                                    ? stats.coppiaFrequente.map(c => 
+                                                    ? stats.coppiaFrequente.map(c =>
                                                         `${formatPlayerShortName(c.players[0])} & ${formatPlayerShortName(c.players[1])} (${c.partite} partite)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="Serie Vittorie Consecutive" 
+                                            <StatCard
+                                                title="Serie Vittorie Consecutive"
                                                 icon={<SFIcon name="flame.fill" size={14} color="var(--ios-systemOrange)" />}
                                                 entries={stats.serieVittorie.length > 0 && stats.serieVittorie[0].vittorie > 0
-                                                    ? stats.serieVittorie.map(s => 
+                                                    ? stats.serieVittorie.map(s =>
                                                         `${s.player.name} ${s.player.surname} (${s.vittorie} vittorie)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
@@ -1951,20 +1960,20 @@ const StatistichePage: React.FC = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                            <StatCard 
-                                                title="Maggior Guadagno ELO" 
+                                            <StatCard
+                                                title="Maggior Guadagno ELO"
                                                 icon={<SFIcon name="arrow.up.right.circle" size={14} color="var(--ios-systemGreen)" />}
-                                                entries={stats.maggiorGuadagnoElo.map(e => 
-                                                    e.guadagno > 0 
+                                                entries={stats.maggiorGuadagnoElo.map(e =>
+                                                    e.guadagno > 0
                                                         ? `${e.player.name} ${e.player.surname} (+${e.guadagno.toFixed(1)} il ${e.data})`
                                                         : '(in attesa di dati ulteriori)'
                                                 )}
                                             />
-                                            <StatCard 
-                                                title="Peggior Perdita ELO" 
+                                            <StatCard
+                                                title="Peggior Perdita ELO"
                                                 icon={<SFIcon name="arrow.down.right.circle" size={14} color="var(--ios-systemRed)" />}
-                                                entries={stats.peggiorPerditaElo.map(e => 
-                                                    e.perdita > 0 
+                                                entries={stats.peggiorPerditaElo.map(e =>
+                                                    e.perdita > 0
                                                         ? `${e.player.name} ${e.player.surname} (-${e.perdita.toFixed(1)} il ${e.data})`
                                                         : '(in attesa di dati ulteriori)'
                                                 )}
@@ -1978,51 +1987,51 @@ const StatistichePage: React.FC = () => {
                                             Statistiche di Performance
                                         </h4>
                                         <div className="space-y-6">
-                                            <StatCard 
-                                                title="Game Win Rate %" 
+                                            <StatCard
+                                                title="Game Win Rate %"
                                                 icon={<SFIcon name="target" size={14} />}
                                                 entries={stats.gameWinRate.length > 0
-                                                    ? stats.gameWinRate.map(e => 
+                                                    ? stats.gameWinRate.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.percentage.toFixed(1)}%)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="Game Ratio" 
+                                            <StatCard
+                                                title="Game Ratio"
                                                 icon={<SFIcon name="chart.pie.fill" size={14} />}
                                                 entries={stats.gameRatio.length > 0
-                                                    ? stats.gameRatio.map(e => 
+                                                    ? stats.gameRatio.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.ratio.toFixed(2)})`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="Partite Vinte" 
+                                            <StatCard
+                                                title="Partite Vinte"
                                                 icon={<SFIcon name="sportscourt" size={14} />}
                                                 entries={stats.partiteVinte.length > 0
-                                                    ? stats.partiteVinte.map(e => 
+                                                    ? stats.partiteVinte.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.wins} vittorie)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="ELO per Partita" 
+                                            <StatCard
+                                                title="ELO per Partita"
                                                 icon={<SFIcon name="chart.line.uptrend.xyaxis" size={14} />}
                                                 entries={stats.eloPerPartita.length > 0
-                                                    ? stats.eloPerPartita.map(e => 
+                                                    ? stats.eloPerPartita.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.eloPerMatch >= 0 ? '+' : ''}${e.eloPerMatch.toFixed(1)})`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
                                                 }
                                             />
-                                            <StatCard 
-                                                title="% Upset Riusciti" 
+                                            <StatCard
+                                                title="% Upset Riusciti"
                                                 icon={<SFIcon name="sparkles" size={14} />}
                                                 entries={stats.upsetPercentage.length > 0
-                                                    ? stats.upsetPercentage.map(e => 
+                                                    ? stats.upsetPercentage.map(e =>
                                                         `${e.player.name} ${e.player.surname} (${e.percentage.toFixed(1)}%)`
                                                     )
                                                     : ['(in attesa di dati ulteriori)']
@@ -2077,12 +2086,12 @@ const StatistichePage: React.FC = () => {
                                             Premi Simbolici
                                         </h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <AwardCard 
-                                                title="MVP" 
+                                            <AwardCard
+                                                title="MVP"
                                                 subtitle="Più giornate vinte"
                                                 icon={<SFIcon name="crown.fill" size={24} color="var(--ios-systemYellow)" />}
-                                                entries={stats.mvp.map(m => 
-                                                    m.vittorieGiornate > 0 
+                                                entries={stats.mvp.map(m =>
+                                                    m.vittorieGiornate > 0
                                                         ? `${m.player.name} ${m.player.surname} (${m.vittorieGiornate} giornat${m.vittorieGiornate === 1 ? 'a' : 'e'})`
                                                         : '(in attesa di dati ulteriori)'
                                                 )}
@@ -2097,8 +2106,8 @@ const StatistichePage: React.FC = () => {
                                             Premi Speciali
                                         </h4>
                                         <div className="space-y-6">
-                                            <AwardCard 
-                                                title="Cecchino" 
+                                            <AwardCard
+                                                title="Cecchino"
                                                 subtitle="Miglior Game Win Rate"
                                                 icon={<SFIcon name="target" size={24} color="var(--ios-systemBlue)" />}
                                                 entries={stats.gameWinRate.length > 0
@@ -2107,8 +2116,8 @@ const StatistichePage: React.FC = () => {
                                                 }
                                                 color="blue"
                                             />
-                                            <AwardCard 
-                                                title="Giant Killer" 
+                                            <AwardCard
+                                                title="Giant Killer"
                                                 subtitle="Più vittorie contro ELO superiori"
                                                 icon={<SFIcon name="sparkles" size={24} color="var(--ios-systemOrange)" />}
                                                 entries={stats.upsetPercentage.length > 0
@@ -2117,8 +2126,8 @@ const StatistichePage: React.FC = () => {
                                                 }
                                                 color="orange"
                                             />
-                                            <AwardCard 
-                                                title="Incassatore" 
+                                            <AwardCard
+                                                title="Incassatore"
                                                 subtitle="Resilienza (minor perdita ELO)"
                                                 icon={<SFIcon name="shield.fill" size={24} color="var(--ios-systemTeal)" />}
                                                 entries={stats.resilienza.length > 0
@@ -2161,10 +2170,10 @@ const StatCard: React.FC<{ title: string; entries: string[]; icon?: React.ReactN
     </div>
 );
 
-const AwardCard: React.FC<{ 
-    title: string; 
-    subtitle: string; 
-    entries: string[]; 
+const AwardCard: React.FC<{
+    title: string;
+    subtitle: string;
+    entries: string[];
     color: 'yellow' | 'purple' | 'green' | 'blue' | 'orange' | 'teal';
     icon?: React.ReactNode;
 }> = ({ title, subtitle, entries, color, icon }) => {

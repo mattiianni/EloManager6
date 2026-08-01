@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { calculateTeamTournamentStandings } from '../services/teamTournamentService.ts';
-import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport } from '../services/printService.ts';
+import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport, printTournamentStatistics } from '../services/printService.ts';
 import { calculateAllBoxStandings, createFinalsMatches, groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, TeamTournamentFixture, TeamTournamentTeam, TeamTournamentMatchday } from '../types.ts';
 import Card from '../components/ui/Card.tsx';
@@ -19,6 +19,7 @@ import TpraBracketView from '../components/TpraBracketView.tsx';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 import { showHIGAlert } from '../utils/higDialogService.ts';
+import { buildTournamentStats } from './StatistichePage.tsx';
 
 type Page = 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'TeamSummary';
 
@@ -240,7 +241,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     tournamentToExpand,
     clearTournamentToExpand
 }) => {
-    const { tournaments, matches, deleteTournament, deleteTournamentSeries, getPlayerById, updateTournament, updateTournamentSeriesName, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays, updateTournamentMatches, completeTournament } = usePadelStore();
+    const { tournaments, matches, players, deleteTournament, deleteTournamentSeries, getPlayerById, updateTournament, updateTournamentSeriesName, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays, updateTournamentMatches, completeTournament } = usePadelStore();
     
     // State for Single Match Edit Modal
     const [selectedSingleMatch, setSelectedSingleMatch] = useState<Match | null>(null);
@@ -280,8 +281,15 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                 { matchId: selectedSingleMatch.id, sets: singleMatchSets, winner: outcome.winner }
             ]);
 
-            // Check if all matches of this tournament are complete
-            if (parentTournament && parentTournament.status !== 'completed') {
+            // I tornei multifase non possono essere chiusi contando soltanto le
+            // partite attualmente presenti: dopo gironi/box/round robin devono
+            // ancora essere create e disputate le rispettive fasi conclusive.
+            const isMultiPhaseTournament = parentTournament && [
+                TournamentType.GironiFaseFinale,
+                TournamentType.RoundRobinFinali,
+                TournamentType.BeatTheBox,
+            ].includes(parentTournament.type);
+            if (parentTournament && parentTournament.status !== 'completed' && !isMultiPhaseTournament) {
                 const tournamentMatches = matches.filter(m => m.tournamentId === parentTournament.id);
                 const allOtherDone = tournamentMatches
                     .filter(m => m.id !== selectedSingleMatch.id)
@@ -689,38 +697,12 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     };
     const handlePrintSeries = (days: Tournament[]) => {
         if (!days || days.length === 0) return;
-        const seriesMatches = matches.filter(m => days.some(d => d.id === m.tournamentId));
-        const firstDay = days[0];
-        const seriesRoot: Tournament = {
-            ...firstDay,
-            id: firstDay.id, // using first day id as anchor
-            name: firstDay.giornataName || firstDay.name,
-        };
-        const displayName = seriesRoot.name;
-
-        if (firstDay.type === TournamentType.BeatTheBox) {
-            const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(seriesMatches, getPlayerById as any);
-            printBeatTheBoxComplete(seriesRoot, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, displayName);
+        const stats = buildTournamentStats(days[0], tournaments, matches, players, getPlayerById);
+        if (!stats) {
+            showHIGAlert('Non ci sono ancora risultati da includere nelle statistiche di questo torneo.');
             return;
         }
-        
-        let standings: TournamentStandingEntry[];
-        if (firstDay.type === TournamentType.Americano) {
-            standings = calculateAmericanoStandings(seriesMatches, firstDay.americanoScoringType);
-        } else if (firstDay.type === TournamentType.RoundRobinFinali && seriesMatches.length > 2) {
-            const roundRobinMatchCount = seriesMatches.length - 2;
-            standings = calculateFinalStandingsForRoundRobinFinali(seriesMatches, roundRobinMatchCount, getPlayerById as any);
-        } else {
-            standings = calculateTournamentStandings(seriesMatches, getPlayerById as any);
-        }
-
-        const americanoFields = firstDay.type === TournamentType.Americano ? firstDay.americanoFields : undefined;
-        
-        if (firstDay.type === TournamentType.GironiFaseFinale) {
-            printGironiTournament(seriesRoot, seriesMatches, getPlayerById, displayName);
-        } else {
-            printTournamentReport(seriesRoot, standings, seriesMatches, getPlayerById, americanoFields, firstDay.americanoScoringType, undefined, displayName);
-        }
+        printTournamentStatistics(stats);
     };
 
     const handleDelete = (tournamentId: string) => {
@@ -1066,7 +1048,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                         e.stopPropagation();
                                                         onNavigateToTeamTournamentConfiguration?.(teamTournamentRootId || tournamentDays[0].id);
                                                     }}
-                                                    className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-3 !py-1.5 !text-sm"
+                                                    className="!px-3 !py-1.5 !text-sm"
                                                 >
                                                     + Completa Configurazione
                                                 </Button>
@@ -1133,7 +1115,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             onNavigateToNewGiornata?.(displayName);
                                                         }
                                                     }}
-                                                    className={`${groupRepresentsTeamTournament && isTeamTournamentCompleted ? '!bg-sky-500 hover:!bg-sky-600 !border-sky-600 dark:!border-sky-300/35' : (groupRepresentsTeamTournament && hasActivePlayoffStage ? '!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35' : '!bg-green-600 hover:!bg-green-700 !border-green-700/50 dark:!border-green-300/35')} !text-white !px-3 !py-1.5 !text-sm`}
+                                                    className="!px-3 !py-1.5 !text-sm"
                                                 >
                                                     {groupRepresentsTeamTournament && isTeamTournamentCompleted
                                                         ? 'Riepilogo'
@@ -1257,7 +1239,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                     <Button
                                                                                         size="sm"
                                                                                         onClick={() => onNavigateToTeamTournamentMatchdayResults?.(f.tournamentDayId!)}
-                                                                                        className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs"
+                                                                                        className="!px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs"
                                                                                     >
                                                                                         Inserisci risultati
                                                                                     </Button>
@@ -1276,7 +1258,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         size="sm"
                                                                                         onClick={() => onNavigateToTeamTournamentFixture?.(teamTournamentRootId, f.id)}
                                                                                         disabled={!ready}
-                                                                                        className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs disabled:!border-slate-200/45 disabled:!bg-slate-100/80 disabled:!text-slate-400 dark:disabled:!border-white/10 dark:disabled:!bg-white/15 dark:disabled:!text-white/50"
+                                                                                        className="!px-2.5 !py-1.25 !text-[11px] sm:!px-3 sm:!py-1.5 sm:!text-xs disabled:!border-slate-200/45 disabled:!bg-slate-100/80 disabled:!text-slate-400 dark:disabled:!border-white/10 dark:disabled:!bg-white/15 dark:disabled:!text-white/50"
                                                                                     >
                                                                                         + Aggiungi partita
                                                                                     </Button>
@@ -1312,7 +1294,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                         >
                                                             <PencilIcon />
                                                         </Button>
-                                                        <Button size="sm" variant="secondary" onClick={() => handlePrintSeries(visibleTournamentDays)} aria-label="Stampa Serie" className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}><PrintIcon /></Button>
+                                                        <Button size="sm" variant="secondary" onClick={() => handlePrintSeries(visibleTournamentDays)} aria-label="Stampa statistiche torneo" className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}><PrintIcon /></Button>
                                                         <Button size="sm" variant="danger" onClick={() => setDeleteAlert({ isOpen: true, type: 'series', idOrName: displayName })} className={`${tournamentActionButtonClass} !p-1.25 sm:!p-1.5`} aria-label="Elimina Serie"><TrashIcon /></Button>
                                                     </div>
                                                 </div>
@@ -1885,7 +1867,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     </div>
                     <div className="flex justify-end pt-4">
                         <Button type="button" variant="secondary" onClick={() => setSeriesEditModalOpen(false)} className="mr-2" disabled={isSubmitting}>Annulla</Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" variant="success" disabled={isSubmitting}>
                             {isSubmitting ? 'Salvataggio...' : 'Rinomina Serie'}
                         </Button>
                     </div>
@@ -1932,7 +1914,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     </div>
                     <div className="flex justify-end pt-4">
                         <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} className="mr-2" disabled={isSubmitting}>Annulla</Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" variant="success" disabled={isSubmitting}>
                             {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
                         </Button>
                     </div>
@@ -2032,7 +2014,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                     Annulla
                                 </HIGButton>
                                 <HIGButton
-                                    variant="filled"
+                                    variant="success"
                                     size="large"
                                     fullWidth
                                     onClick={handleSaveSingleMatch}

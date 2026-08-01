@@ -1,8 +1,8 @@
-# Padel ELO Manager (v6.7.7)
+# Padel ELO Manager (v6.7.8)
 
 Applicazione full-stack PWA per la gestione avanzata di tornei di padel con algoritmo ELO dinamico in tempo reale, statistiche approfondite, reportistica PDF, design system Apple HIG e isolamento dati multi-workspace.
 
-Versione documentata: `v6.7.7` (Mese: `Lug 2026`)
+Versione documentata: `v6.7.8` (Mese: `Ago 2026`)
 
 ## Stato attuale
 
@@ -15,16 +15,18 @@ Versione documentata: `v6.7.7` (Mese: `Lug 2026`)
 
 ## Routine release
 
-- Versione corrente: `6.7.7`
+- Versione corrente: `6.7.8`
 - Routine obbligatoria: documentazione, test/build, guida PDF, backup ZIP, dump TXT, commit e push.
 
-## Aggiornamenti v6.7.7
+## Aggiornamenti v6.7.8
 
-- Tutti i 95 avvisi e le conferme native sono stati migrati al sistema Apple HIG condiviso.
-- Avvisi e conferme vengono accodati senza bloccare il browser; le azioni distruttive hanno etichette e stile coerenti.
-- I dialoghi usano portal, focus trap, ripristino del focus, contenuto sottostante inerte e identificatori ARIA univoci.
-- Uniformati in italiano i messaggi Round Robin residui.
-- Suite automatica: 33 test.
+- `Gironi + Fase Finale` supporta ora, da 8 coppie, la scelta tra semifinali oppure quarti, semifinali e finali.
+- Gironi e fasi eliminatorie sono persistiti e stampati separatamente: nessuna qualificazione viene più dedotta dalla posizione delle partite.
+- PDF coerenti con l'avanzamento reale: risultati parziali soltanto nella fase corrente, qualificati visibili dopo il completamento della fase precedente e finali nascoste finché le semifinali non sono concluse.
+- Corretto il salvataggio rapido dei risultati: i tornei multifase restano `scheduled` fino alla chiusura effettiva dell'ultima fase.
+- Classifiche dei singoli gironi disponibili appena il girone è completo, anche mentre il torneo è ancora in corso.
+- Migliorate stampe classifiche e profili, grafici ELO, leggibilità mobile, azioni di salvataggio/avanzamento e controlli Apple HIG.
+- Suite automatica: 51 test.
 
 ## Aggiornamenti v6.7.6
 

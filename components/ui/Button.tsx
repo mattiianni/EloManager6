@@ -3,7 +3,7 @@ import React from 'react';
 import HIGButton from './HIGButton';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
+    variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'outline';
     size?: 'sm' | 'md' | 'lg';
     children: React.ReactNode;
 }
@@ -15,8 +15,9 @@ const Button: React.FC<ButtonProps> = ({
     className,
     ...props
 }) => {
-    let higVariant: 'filled' | 'gray' | 'destructive' | 'plain' | 'tinted' = 'filled';
+    let higVariant: 'filled' | 'gray' | 'success' | 'destructive' | 'plain' | 'tinted' = 'filled';
     if (variant === 'secondary') higVariant = 'gray';
+    else if (variant === 'success') higVariant = 'success';
     else if (variant === 'danger') higVariant = 'destructive';
     else if (variant === 'ghost') higVariant = 'plain';
     else if (variant === 'outline') higVariant = 'tinted';

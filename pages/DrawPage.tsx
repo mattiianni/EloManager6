@@ -114,6 +114,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [seeds, setSeeds] = useState<string[]>([]);
     const [mode, setMode] = useState<DrawMode>('Normal');
     const [numPairs, setNumPairs] = useState(2);
+    const [customNumPairsInput, setCustomNumPairsInput] = useState('9');
     const [isCustomNumPairs, setIsCustomNumPairs] = useState(false);
     const [selectedFormatForNewFlow, setSelectedFormatForNewFlow] = useState<SingleTournamentFormat | null>(null);
     const [drawnPairs, setDrawnPairs] = useState<[Player, Player][] | null>(null);
@@ -1046,7 +1047,20 @@ const DrawPage: React.FC<DrawPageProps> = ({
         return (
             <TournamentFormatSelector
                 onSelectFormat={(format) => {
+                    const initialPairsByFormat: Record<SingleTournamentFormat, number> = {
+                        'torneotto-30': 4,
+                        'beat-the-box': 4,
+                        'americano': 4,
+                        'round-robin-finali': 4,
+                        'gironi-fase-finale': 6,
+                        'eliminazione-diretta': 4,
+                        'torneo-libero': 2,
+                    };
+                    const initialPairs = initialPairsByFormat[format];
                     setSelectedFormatForNewFlow(format);
+                    setIsCustomNumPairs(false);
+                    setNumPairs(initialPairs);
+                    setCustomNumPairsInput('9');
                     setActiveFlow('pairs');
                 }}
                 onBack={() => {
@@ -1138,17 +1152,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 </div>
 
                 {/* Fixed Floating Bottom Action Bar */}
-                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl p-3.5 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl z-40 flex items-center gap-3">
+                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl p-3.5 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl z-40 flex items-stretch gap-3">
                     <Button 
                         variant="secondary" 
                         onClick={() => setDrawnPairs(null)}
-                        className="flex-1 h-12 text-sm font-bold rounded-2xl"
+                        className="flex-1 min-h-12 h-auto text-center font-bold rounded-2xl"
                     >
                         {mode === 'Manual' ? 'Modifica Coppie' : 'Ripeti Sorteggio'}
                     </Button>
                     <Button 
                         onClick={() => setShowTournamentFlow(true)}
-                        className="flex-1 h-12 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-sky-500/25"
+                        className="flex-1 min-h-12 h-auto text-center font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-sky-500/25"
                     >
                         {selectedFormatForNewFlow ? 'Avanti - Impostazioni Torneo' : 'Avanti - Scelta Torneo'}
                     </Button>
@@ -1606,13 +1620,13 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         <div className="flex gap-3 pt-2">
                             <Button
                                 type="button"
-                                variant="secondary"
+                                variant="outline"
                                 onClick={() => setTeamTournamentTeamToEdit(null)}
                                 disabled={isSavingTeamTournamentTeam}
                             >
                                 Torna alle Squadre
                             </Button>
-                            <Button type="submit" disabled={isSavingTeamTournamentTeam}>
+                            <Button type="submit" variant="success" disabled={isSavingTeamTournamentTeam}>
                                 {isSavingTeamTournamentTeam ? 'Salvataggio...' : 'Conferma'}
                             </Button>
                         </div>
@@ -1716,14 +1730,14 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div className="flex gap-3 pt-2">
                                 <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={() => setTeamTournamentConfigView('config')}
                                 >
                                     Torna alla Configurazione
                                 </Button>
                                 <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={() => {
                                         clearTeamTournamentToConfigure();
                                         setActivePage('Tournaments');
@@ -1914,7 +1928,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div className="flex gap-3 pt-2">
                                 <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={() => {
                                         clearTeamTournamentToConfigure();
                                         setActivePage('Tournaments');
@@ -1934,7 +1948,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                     type="button"
                                     onClick={handleCompleteTeamTournamentConfiguration}
                                     disabled={!canCompleteTeamTournamentConfiguration || isCompletingTeamTournamentConfiguration}
-                                    className="ml-auto !border-orange-600 !bg-orange-500 hover:!bg-orange-600 !text-white dark:!border-orange-300 disabled:!border-gray-300 disabled:!bg-gray-300 disabled:!text-gray-500 dark:disabled:!border-gray-700 dark:disabled:!bg-gray-700 dark:disabled:!text-gray-400"
+                                    className="ml-auto disabled:!border-gray-300 disabled:!bg-gray-300 disabled:!text-gray-500 dark:disabled:!border-gray-700 dark:disabled:!bg-gray-700 dark:disabled:!text-gray-400"
                                 >
                                     {isCompletingTeamTournamentConfiguration ? 'Salvataggio...' : 'Completa Configurazione'}
                                 </Button>
@@ -2070,7 +2084,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             >
                                 Annulla
                             </Button>
-                            <Button type="submit" disabled={isSavingTeamTournamentConfig}>
+                            <Button type="submit" variant="success" disabled={isSavingTeamTournamentConfig}>
                                 {isSavingTeamTournamentConfig ? 'Salvataggio...' : 'Salva'}
                             </Button>
                         </div>
@@ -2155,7 +2169,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 if (selectedFormatForNewFlow === 'beat-the-box' && numPairs % 2 !== 0) {
                                                     minCustom = 10;
                                                 }
-                                                setNumPairs(Math.max(minCustom, numPairs)); // Assicura che parta dal minimo corretto
+                                                const nextNumPairs = Math.max(minCustom, numPairs);
+                                                setNumPairs(nextNumPairs); // Assicura che parta dal minimo corretto
+                                                setCustomNumPairsInput(String(nextNumPairs));
                                             }}
                                             className="!px-4 font-bold"
                                         >
@@ -2163,22 +2179,71 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         </Button>
                                     )}
 
-                                    {isCustomNumPairs && (
-                                        <div className="flex items-center gap-2 ml-2">
+                                    {isCustomNumPairs && (!selectedFormatForNewFlow || selectedFormatForNewFlow !== 'torneotto-30') && (
+                                        <div className="flex items-center gap-2 ml-0 sm:ml-2">
+                                            <button
+                                                type="button"
+                                                aria-label="Diminuisci numero di coppie"
+                                                onClick={() => {
+                                                    const step = selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1;
+                                                    const minimum = selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9;
+                                                    const nextValue = Math.max(minimum, numPairs - step);
+                                                    setNumPairs(nextValue);
+                                                    setCustomNumPairsInput(String(nextValue));
+                                                }}
+                                                disabled={numPairs <= (selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9)}
+                                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                            >
+                                                −
+                                            </button>
                                             <input
                                                 type="number"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                enterKeyHint="done"
                                                 min={9}
                                                 max={64}
                                                 step={selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1}
-                                                value={numPairs}
+                                                value={customNumPairsInput}
                                                 onChange={(e) => {
-                                                    const val = parseInt(e.target.value, 10);
-                                                    if (!isNaN(val) && val >= 9) {
+                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                    setCustomNumPairsInput(rawValue);
+                                                    const val = parseInt(rawValue, 10);
+                                                    if (!isNaN(val) && val >= 9 && val <= 64) {
                                                         setNumPairs(val);
                                                     }
                                                 }}
-                                                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                onBlur={() => {
+                                                    const minimum = selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9;
+                                                    let nextValue = parseInt(customNumPairsInput, 10);
+                                                    if (Number.isNaN(nextValue)) nextValue = minimum;
+                                                    nextValue = Math.min(64, Math.max(minimum, nextValue));
+                                                    if (selectedFormatForNewFlow === 'beat-the-box' && nextValue % 2 !== 0) {
+                                                        nextValue = Math.min(64, nextValue + 1);
+                                                    }
+                                                    setNumPairs(nextValue);
+                                                    setCustomNumPairsInput(String(nextValue));
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') e.currentTarget.blur();
+                                                }}
+                                                aria-label="Numero personalizzato di coppie"
+                                                className="h-11 w-20 rounded-md border border-gray-300 bg-white px-2 text-center text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             />
+                                            <button
+                                                type="button"
+                                                aria-label="Aumenta numero di coppie"
+                                                onClick={() => {
+                                                    const step = selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1;
+                                                    const nextValue = Math.min(64, numPairs + step);
+                                                    setNumPairs(nextValue);
+                                                    setCustomNumPairsInput(String(nextValue));
+                                                }}
+                                                disabled={numPairs >= 64}
+                                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                            >
+                                                +
+                                            </button>
                                             <span className="text-sm text-gray-500 dark:text-gray-400">coppie</span>
                                         </div>
                                     )}

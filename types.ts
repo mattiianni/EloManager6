@@ -33,6 +33,7 @@ export interface Match {
     winner: 'team1' | 'team2' | 'draw' | null;
     tournamentId?: string;
     roundNumber?: number;
+    groupNumber?: number; // Girone persistito (1=A, 2=B, ...)
     createdAt?: string;
     phase?: MatchPhase;
 }
@@ -73,6 +74,7 @@ export interface Tournament {
     giornataName?: string; // Nome della giornata per Torneo Libero
     finalStandings?: any; // Classifiche finali salvate (per Beat the Box e altri tornei)
     numGironi?: number; // Numero di gironi per Gironi + Fase Finale
+    gironiPlayoffType?: 'semifinals' | 'quarterfinals';
     teamTournamentConfigCompleted?: boolean;
     teamTournamentRootId?: string | null; // For Torneo a Squadre: root tournament id for the series (child giornate inherit this)
     teamTournamentRoundNumber?: number | null; // For Torneo a Squadre giornate: round/day number within schedule

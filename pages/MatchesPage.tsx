@@ -9,14 +9,16 @@ import { HIGSheet } from '../components/ui/HIGSheet';
 import { HIGAlert } from '../components/ui/HIGAlert';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
+import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
+import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName, formatPlayerShortName } from '../utils/format.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
-import { 
- calculateAllBoxStandings, 
+import {
+ calculateAllBoxStandings,
  createFinalsMatches as createBeatBoxFinalsMatches,
  calculateNumBoxes,
  BoxStanding,
@@ -65,7 +67,7 @@ const HistorySkeleton: React.FC = () => (
 const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => Player | undefined) => {
  // Use player-set grouping (order-independent) to separate box matches from phase matches
  const { boxes: groupedBoxes, phaseMatches: rawPhaseMatches } = groupMatchesByPlayerSets(matches);
- 
+
  // Deduplicate phase matches to fix old DBs with duplicated finals
  const seenPhaseMatches = new Set<string>();
  const remainingMatches = rawPhaseMatches.filter(m => {
@@ -75,26 +77,26 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
      seenPhaseMatches.add(signature);
      return true;
  });
- 
+
  const numBoxes = groupedBoxes.size;
  const boxMatches = Array.from(groupedBoxes.values()).flat();
- 
+
  // SE I MATCH NON HANNO WINNER (torneo vecchio o bug), calcolali dai set
  const boxMatchesWithWinner = boxMatches.map(match => {
  if (match.winner) return match; // Ha già il winner, ok
- 
+
  // Calcola winner dai set
  const sets = match.sets || [];
  if (sets.length === 0) return match; // Nessun set, lascia null
- 
+
  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- 
+
  const winner = team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2');
- 
+
  return { ...match, winner } as Match;
  });
- 
+
  // Separate semifinals and finals topologically to handle out-of-order DB rows
  let semifinalMatches: Match[] = [];
  let finalMatches: Match[] = [];
@@ -106,10 +108,10 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
              allPlayerOccurrences.set(p, (allPlayerOccurrences.get(p) || 0) + 1);
          });
      });
-     
+
      let consolazioneMatch: Match | null = null;
      const mainMatches: Match[] = [];
-     
+
      remainingMatches.forEach(m => {
          // Partita Consolazione players only appear once across all phase matches
          const isConsolazione = m.team1.concat(m.team2).every(p => allPlayerOccurrences.get(p) === 1);
@@ -126,7 +128,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
              for (let j = i + 1; j < 4; j++) {
                  const s1 = mainMatches[i];
                  const s2 = mainMatches[j];
-                 
+
                  if (!s1.winner || !s2.winner || s1.winner === 'draw' || s2.winner === 'draw') continue;
 
                  const w1 = s1.winner === 'team1' ? s1.team1 : s1.team2;
@@ -171,7 +173,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  } else {
      finalMatches = remainingMatches;
  }
- 
+
  // Create boxes from player-set grouping (already grouped correctly)
  const boxes: { boxNumber: number; players: Player[]; matches: Match[] }[] = [];
  groupedBoxes.forEach((bMatches, boxNum) => {
@@ -195,14 +197,14 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  matches: bMatchesWithWinner
  });
  });
- 
+
  // Calcola le classifiche usando calculateAllBoxStandings
  // IMPORTANTE: usa boxMatchesWithWinner che ha i winner corretti
  const boxStandings = calculateAllBoxStandings(boxMatchesWithWinner, boxes);
- 
+
  // Calculate games won/lost for each player (per fallback se non c'è elo_history)
  const playerStats = new Map<string, { gamesWon: number; gamesLost: number }>();
- 
+
  matches.forEach(m => {
  if (!m.winner || m.winner === 'draw') return;
  const sets = m.sets || [];
@@ -221,17 +223,17 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  });
  });
  });
- 
+
  // Crea classifica individuale basata su statistiche (Games W/L e % vittorie)
  const individualStandings: { player: Player; eloChange: number; gamesWon: number; gamesLost: number; winPercentage: number; rank: number }[] = [];
- 
+
  boxes.forEach(box => {
  box.players.forEach(player => {
  const stats = playerStats.get(player.id) || { gamesWon: 0, gamesLost: 0 };
  const winPercentage = (stats.gamesWon + stats.gamesLost) > 0
  ? (stats.gamesWon / (stats.gamesWon + stats.gamesLost)) * 100
  : 0;
- 
+
  individualStandings.push({
  player,
  eloChange: 0, // Non più usato, ma manteniamo per compatibilità
@@ -242,7 +244,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  });
  });
  });
- 
+
  // Ordina per % vittorie decrescente, poi per gamesWon
  individualStandings.sort((a, b) => {
  if (b.winPercentage !== a.winPercentage) {
@@ -253,7 +255,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  individualStandings.forEach((entry, idx) => {
  entry.rank = idx + 1;
  });
- 
+
  return { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings };
 };
 
@@ -273,7 +275,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [sets, setSets] = useState<SetScore[]>([{ team1: 0, team2: 0 }]);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [isMatchFormOpen, setIsMatchFormOpen] = useState<boolean>(false);
- 
+
  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
  const [editScores, setEditScores] = useState<Record<string, SetScore[]>>({});
@@ -292,14 +294,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      progressPercent?: number;
      loadingText?: string;
  }>({ isOpen: false, matchId: null, isDeleting: false, progressPercent: 0, loadingText: '' });
- 
+
  // Round Robin + Finali specific states
  const [showFinalsStandingsModal, setShowFinalsStandingsModal] = useState(false);
  const [roundRobinStandings, setRoundRobinStandings] = useState<TournamentStandingEntry[]>([]);
  const [isInFinalsPhase, setIsInFinalsPhase] = useState(false);
  const [finalsMatches, setFinalsMatches] = useState<Match[]>([]);
  const [finalsScores, setFinalsScores] = useState<Record<string, SetScore[]>>({});
- 
+
  // Beat the Box specific states
  const [showBeatBoxStandingsModal, setShowBeatBoxStandingsModal] = useState(false);
  const [beatBoxStandings, setBeatBoxStandings] = useState<any[]>([]);
@@ -312,19 +314,26 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [showBeatBoxCompleteSuccess, setShowBeatBoxCompleteSuccess] = useState(false);
  const [beatBoxFinalStandings, setBeatBoxFinalStandings] = useState<{ player: Player; eloChange: number; rank: number; gamesWon: number; gamesLost: number; winPercentage: number }[]>([]);
  const [beatBoxAllMatches, setBeatBoxAllMatches] = useState<Match[]>([]);
- 
+
  // Keep a reference to the tournament during finals flow
  const [finalsFlowTournament, setFinalsFlowTournament] = useState<Tournament | null>(null);
- 
+
  // Gironi + Fase Finale specific states
  const [showGironiStandingsModal, setShowGironiStandingsModal] = useState(false);
  const [gironiStandings, setGironiStandings] = useState<any[]>([]);
+ const [isInGironiQuarterfinalsPhase, setIsInGironiQuarterfinalsPhase] = useState(false);
+ const [gironiQuarterfinalMatches, setGironiQuarterfinalMatches] = useState<Match[]>([]);
  const [isInGironiSemifinalsPhase, setIsInGironiSemifinalsPhase] = useState(false);
  const [gironiSemifinalMatches, setGironiSemifinalMatches] = useState<Match[]>([]);
  const [isInGironiFinalsPhase, setIsInGironiFinalsPhase] = useState(false);
  const [gironiFinalMatches, setGironiFinalMatches] = useState<Match[]>([]);
  const [showGironiCompleteConfirm, setShowGironiCompleteConfirm] = useState(false);
  const [showGironiCompleteSuccess, setShowGironiCompleteSuccess] = useState(false);
+ const gironiQualifiedKeys = useMemo(() => {
+ const playoffType = (finalsFlowTournament || editingTournament)?.gironiPlayoffType || 'semifinals';
+ return new Set(selectGironiQualifiers(gironiStandings.map(group => group.standings || []), playoffType)
+ .map(qualifier => qualifier.entry.pair.map((player: Player) => player.id).sort().join('|')));
+ }, [gironiStandings, finalsFlowTournament, editingTournament]);
 
     // Nuovi stati per conferme e successi (Salvataggio Parziale e Conferma Chiusura Fasi)
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
@@ -345,7 +354,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setEditScores(initialScores);
  }
  }, [editingTournament, matches]);
- 
+
  // Auto-open tournament modal when navigating from Tournaments page
  useEffect(() => {
  if (tournamentToOpen && tournaments.length > 0) {
@@ -367,7 +376,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
          }
          }
          }, [tournamentToOpen, tournaments, setTournamentToOpen, matches, getPlayerById]);
- 
+
  // Debug effect for finals phase
  useEffect(() => {
      console.log(`🔍 isInFinalsPhase changed to:`, isInFinalsPhase);
@@ -375,7 +384,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      console.log(`🔍 finalsFlowTournament:`, finalsFlowTournament?.name);
      console.log(`🔍 Modal should be:`, isInFinalsPhase && !!(finalsFlowTournament || editingTournament) ? 'OPEN' : 'CLOSED');
  }, [isInFinalsPhase, editingTournament, finalsFlowTournament]);
- 
+
  // Auto-scroll to first incomplete match when opening modal
  useEffect(() => {
      if (editingTournament) {
@@ -396,10 +405,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
          return () => clearTimeout(timer);
      }
  }, [editingTournament, matches]);
- 
+
  const selectedPlayers = [team1Player1, team1Player2, team2Player1, team2Player2].filter(Boolean);
  const sortedPlayers = [...players].sort((a,b) => a.name.localeCompare(b.name));
- 
+
  const resetForm = () => {
  setTeam1Player1('');
  setTeam1Player2('');
@@ -424,7 +433,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  team2: [top4Standings[1].team[0].id, top4Standings[1].team[1].id] as [string, string],
  sets: [{ team1: 0, team2: 0 }],
  winner: null,
- tournamentId: t?.id
+ tournamentId: t?.id,
+ phase: 'semifinal',
+ roundNumber: 2,
  },
  // Finale 3°-4° posto
  {
@@ -434,14 +445,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  team2: [top4Standings[3].team[0].id, top4Standings[3].team[1].id] as [string, string],
  sets: [{ team1: 0, team2: 0 }],
  winner: null,
- tournamentId: t?.id
+ tournamentId: t?.id,
+ phase: 'semifinal',
+ roundNumber: 2,
  }
  ];
  };
- 
+
  const calculateAmericanoStandings = (matches: Match[], scoringType?: 'games-diff' | 'points'): TournamentStandingEntry[] => {
  console.log(`🎯 MatchesPage Americano: Starting calculation with ${matches.length} matches`);
- 
+
  const playerStats = new Map<string, {
  player: Player;
  totalPoints: number;
@@ -476,16 +489,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  matches.forEach(match => {
  const team1Players = match.team1.map(id => getPlayerById(id)).filter(Boolean) as Player[];
  const team2Players = match.team2.map(id => getPlayerById(id)).filter(Boolean) as Player[];
- 
+
  if (team1Players.length === 2 && team2Players.length === 2 && match.sets) {
  const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
- 
+
  [...team1Players, ...team2Players].forEach(player => {
  const stats = playerStats.get(player.id);
  if (stats) {
  stats.matchesPlayed++;
- 
+
  if (team1Players.includes(player)) {
  stats.totalPoints += team1Games;
  stats.totalGamesWon += team1Games;
@@ -504,7 +517,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const standings: TournamentStandingEntry[] = Array.from(playerStats.values()).map(stats => {
  const gameDifference = stats.totalGamesWon - stats.totalGamesLost;
  const points = scoringType === 'points' ? stats.totalGamesWon : gameDifference;
- 
+
  return {
  teamId: stats.player.id,
  team: [stats.player],
@@ -517,7 +530,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
 
  console.log(`🎯 MatchesPage Americano: Created ${standings.length} standings entries`);
- 
+
  return standings.sort((a, b) => {
  if (b.points !== a.points) return b.points - a.points;
  return b.gamesWon - a.gamesWon;
@@ -525,33 +538,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  };
 
  // Gironi + Fase Finale functions
- const calculateGironiStandings = (allMatches: Match[]): any[] => {
- // Union-Find per raggruppare le coppie che si sono scontrate nello stesso girone
+const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const pairKey = (team: string[]) => [...team].sort().join('||');
- const parent = new Map<string, string>();
- const find = (x: string): string => {
- if (!parent.has(x)) parent.set(x, x);
- if (parent.get(x) !== x) parent.set(x, find(parent.get(x)!));
- return parent.get(x)!;
- };
- const union = (a: string, b: string) => { parent.set(find(a), find(b)); };
-
- // Collega coppie che hanno giocato tra loro
- allMatches.forEach(m => union(pairKey(m.team1), pairKey(m.team2)));
-
- // Raggruppa match per girone (connected component)
- const gironiMap = new Map<string, Match[]>();
- allMatches.forEach(m => {
- const root = find(pairKey(m.team1));
- if (!gironiMap.has(root)) gironiMap.set(root, []);
- gironiMap.get(root)!.push(m);
- });
+ const separatedGroups = separateTournamentGroups(allMatches, Number(editingTournament?.numGironi || 0));
 
  // Calcola classifica per ogni girone
  const gironiStandings: any[] = [];
  let gironeIdx = 0;
 
- gironiMap.forEach((gironeMatches) => {
+ separatedGroups.forEach((gironeMatches) => {
  // Estrai coppie uniche
  const pairKeys = new Set<string>();
  gironeMatches.forEach(m => {
@@ -565,7 +560,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const p1 = getPlayerById(playerIds[0]);
  const p2 = getPlayerById(playerIds[1]);
  if (p1 && p2) {
- pairStats.set(key, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0 });
+ pairStats.set(key, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0, matchesPlayed: 0 });
  }
  });
 
@@ -579,11 +574,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const team2Stat = pairStats.get(key2);
 
  if (team1Stat) {
+ team1Stat.matchesPlayed += 1;
  team1Stat.gamesWon += team1Games;
  team1Stat.gamesLost += team2Games;
  if (team1Games > team2Games) team1Stat.punti += 3;
  }
  if (team2Stat) {
+ team2Stat.matchesPlayed += 1;
  team2Stat.gamesWon += team2Games;
  team2Stat.gamesLost += team1Games;
  if (team2Games > team1Games) team2Stat.punti += 3;
@@ -607,17 +604,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  const generateGironiSemifinalMatches = (gironiStandings: any[], tournamentOverride?: Tournament): Match[] => {
  const t = tournamentOverride || editingTournament;
- // Qualifica alle semifinali: primi di ogni girone + migliori seconde
- const primi = gironiStandings.map(g => g.standings[0]);
- const seconde = gironiStandings.map(g => g.standings[1]).filter(Boolean);
-
- const numSecondeNeeded = 4 - primi.length;
- const miglioriSeconde = seconde.sort((a, b) => {
- if (b.punti !== a.punti) return b.punti - a.punti;
- return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
- }).slice(0, numSecondeNeeded);
-
- const semifinalisti = [...primi, ...miglioriSeconde];
+ const semifinalisti = selectGironiQualifiers<any>(gironiStandings.map(group => group.standings), 'semifinals').map(qualifier => qualifier.entry);
 
  // Genera semifinali
  const semifinals: Match[] = [];
@@ -648,12 +635,39 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return semifinals;
  };
 
+ const generateGironiQuarterfinalMatches = (standings: any[], tournamentOverride?: Tournament): Match[] => {
+ const tournament = tournamentOverride || editingTournament;
+ const qualifiers = selectGironiQualifiers<any>(standings.map(group => group.standings), 'quarterfinals');
+ return buildQuarterfinalPairings(qualifiers).map(([first, second], index) => ({
+ id: `temp_quarterfinal_${Date.now()}_${index}`,
+ date: tournament?.date || new Date().toISOString(),
+ team1: [first.entry.pair[0].id, first.entry.pair[1].id],
+ team2: [second.entry.pair[0].id, second.entry.pair[1].id],
+ sets: [{ team1: 0, team2: 0 }],
+ winner: null,
+ tournamentId: tournament?.id,
+ phase: 'quarterfinal',
+ roundNumber: 1,
+ }));
+ };
+
+ const generateGironiFinalMatches = (semifinals: Match[], tournamentOverride?: Tournament): Match[] => {
+ const tournament = tournamentOverride || editingTournament;
+ if (semifinals.length !== 2 || semifinals.some(match => match.winner !== 'team1' && match.winner !== 'team2')) return [];
+ const winners = semifinals.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+ const losers = semifinals.map(match => match.winner === 'team1' ? match.team2 : match.team1);
+ return [
+ { id: `temp-gironi-final-3-4-${Date.now()}`, date: tournament?.date || new Date().toISOString(), team1: losers[0], team2: losers[1], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament?.id, phase: 'final_3_4', roundNumber: 3 },
+ { id: `temp-gironi-final-1-2-${Date.now()}`, date: tournament?.date || new Date().toISOString(), team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament?.id, phase: 'final_1_2', roundNumber: 3 },
+ ];
+ };
+
  const handlePrintTournament = (tournament: Tournament) => {
  try {
  console.log(`🎯 MatchesPage: Printing tournament ${tournament.name} of type ${tournament.type}`);
  const tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
  console.log(`🎯 MatchesPage: Found ${tournamentMatches.length} matches for tournament`);
- 
+
  let standings: TournamentStandingEntry[];
  if (tournament.type === TournamentType.Americano) {
  console.log(`🎯 MatchesPage: Using Americano calculation`);
@@ -666,23 +680,23 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  console.log(`🎯 MatchesPage: Using standard calculation`);
  standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
  }
- 
+
  // For Americano tournaments, we need to get the americanoFields parameter
  // Use the actual americanoFields from the tournament data
  const americanoFields = tournament.type === TournamentType.Americano ? tournament.americanoFields : undefined;
- 
+
  // For Round Robin + Finali tournaments, calculate the number of round robin matches
  // (Total matches - 2 finals matches)
  const roundRobinMatchCount = tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2
  ? tournamentMatches.length - 2
  : undefined;
- 
+
  // Handle Beat the Box tournaments
  if (tournament.type === TournamentType.BeatTheBox) {
  if (tournament.status === 'scheduled') {
  // Print blank score sheet for scheduled tournaments
  // FILTRA SOLO I BOX MATCHES (escludi semifinali e finali)
- 
+
  // Conta giocatori unici per determinare il numero di box
  const uniquePlayerIds = new Set<string>();
  // Use player-set grouping (order-independent)
@@ -700,18 +714,18 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  matches: bMatches
  });
  });
- 
+
  printBeatTheBoxBlank(tournament, boxes, getPlayerById as any);
  } else {
  // Print complete report for completed tournaments
  const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById as any);
- 
+
  // USA SEMPRE I DATI RICALCOLATI (stesso algoritmo dell'UI)
  printBeatTheBoxComplete(tournament, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, getTournamentDisplayName(tournament, tournaments));
  }
  return;
  }
- 
+
  // Handle Torneo Libero tournaments
  if (tournament.type === TournamentType.TorneoLibero) {
  const pairMap = new Map<string, [Player, Player]>();
@@ -720,7 +734,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const p1b = getPlayerById(match.team1[1]);
  const p2a = getPlayerById(match.team2[0]);
  const p2b = getPlayerById(match.team2[1]);
- 
+
  if (p1a && p1b) {
  const key = [match.team1[0], match.team1[1]].sort().join('-');
  if (!pairMap.has(key)) pairMap.set(key, [p1a, p1b]);
@@ -730,7 +744,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  if (!pairMap.has(key)) pairMap.set(key, [p2a, p2b]);
  }
  });
- 
+
  const pairs = Array.from(pairMap.values());
  const playerPairCount = new Map<string, number>();
  pairs.forEach(pair => {
@@ -738,20 +752,20 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  playerPairCount.set(player.id, (playerPairCount.get(player.id) || 0) + 1);
  });
  });
- 
+
  const isRotating = Array.from(playerPairCount.values()).some(count => count > 1);
  const mode: 'fixed' | 'rotating' = isRotating ? 'rotating' : 'fixed';
- 
+
  printTorneoLiberoComplete(tournament, tournamentMatches, pairs, mode, getPlayerById, getTournamentDisplayName(tournament, tournaments));
  return;
  }
- 
+
  // Handle Gironi + Fase Finale tournaments
  if (tournament.type === TournamentType.GironiFaseFinale) {
  printGironiTournament(tournament, tournamentMatches, getPlayerById, getTournamentDisplayName(tournament, tournaments));
  return;
  }
- 
+
  printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, getTournamentDisplayName(tournament, tournaments));
  } catch (error) {
  console.error('❌ Error in handlePrintTournament:', error);
@@ -797,10 +811,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const { phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
  phaseMatchIds = phaseMatches.map(m => m.id);
  } else if (isGironiFaseFinale) {
- // Ultime 4 partite = 2 semifinali + 2 finali (ordinate per created_at)
- if (tournamentMatches.length > 4) {
- phaseMatchIds = tournamentMatches.slice(-4).map(m => m.id);
- }
+ // Le fasi conclusive sono persistite esplicitamente: non dedurre mai la fase
+ // dalla posizione, perché le ultime righe possono essere normali partite di girone.
+ phaseMatchIds = tournamentMatches
+ .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
+ .map(match => match.id);
  } else if (isRoundRobinFinali) {
  // Ultime 2 partite = finali
  if (tournamentMatches.length > 2) {
@@ -828,7 +843,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  // Check if already in a flow
  const alreadyInFlow = showBeatBoxStandingsModal || isInBeatBoxFinalsPhase ||
  isInBeatBoxSemifinalsPhase || !!finalsFlowTournament ||
- showGironiStandingsModal || isInGironiSemifinalsPhase || isInGironiFinalsPhase ||
+ showGironiStandingsModal || isInGironiQuarterfinalsPhase || isInGironiSemifinalsPhase || isInGironiFinalsPhase ||
  showFinalsStandingsModal || isInFinalsPhase;
 
  if (alreadyInFlow) {
@@ -941,23 +956,43 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  return;
  }
- 
+
  // ===== GIRONI + FASE FINALE RESUME =====
  if (isGironiFaseFinale) {
  setFinalsFlowTournament(tournament);
  const standings = calculateGironiStandings(tournamentMatches);
  setGironiStandings(standings);
- 
- const gironiMatchCount = tournamentMatches.length > 4 ? tournamentMatches.length - 4 : tournamentMatches.length;
- const phaseMatchesInDb = tournamentMatches.slice(gironiMatchCount);
- 
+
+ const phaseMatchesInDb = tournamentMatches.filter(match =>
+ ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || ''))
+ );
+ const quarterInDb = phaseMatchesInDb.filter(match => match.phase === 'quarterfinal');
+
+ if (tournament.gironiPlayoffType === 'quarterfinals' && quarterInDb.length > 0) {
+ setGironiQuarterfinalMatches(quarterInDb);
+ const allQuartersCompleted = quarterInDb.length === 4 && quarterInDb.every(match => match.winner === 'team1' || match.winner === 'team2');
+ if (!allQuartersCompleted) {
+ setIsInGironiQuarterfinalsPhase(true);
+ return;
+ }
+ }
+
  if (phaseMatchesInDb.length >= 2) {
- const semiInDb = phaseMatchesInDb.slice(0, 2);
- const finalInDb = phaseMatchesInDb.slice(2);
+ const semiInDb = phaseMatchesInDb.filter(match => match.phase === 'semifinal');
+ const finalInDb = phaseMatchesInDb.filter(match => match.phase === 'final_1_2' || match.phase === 'final_3_4');
+ if (tournament.gironiPlayoffType === 'quarterfinals' && quarterInDb.length === 4 && semiInDb.length === 0) {
+ const winners = quarterInDb.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+ setGironiSemifinalMatches([
+ { id: `temp_gironi_sf_1_${Date.now()}`, date: tournament.date, team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+ { id: `temp_gironi_sf_2_${Date.now()}`, date: tournament.date, team1: winners[2], team2: winners[3], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+ ]);
+ setIsInGironiSemifinalsPhase(true);
+ return;
+ }
  const allSemisCompleted = semiInDb.every(m => m.winner && m.sets.length > 0);
- 
+
  setGironiSemifinalMatches(semiInDb);
- 
+
  if (allSemisCompleted) {
  if (finalInDb.length > 0) {
  setGironiFinalMatches(finalInDb);
@@ -970,23 +1005,28 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsInGironiSemifinalsPhase(true);
  }
  } else {
- const semifinals = generateGironiSemifinalMatches(standings, tournament);
- setGironiSemifinalMatches(semifinals);
+ if (tournament.gironiPlayoffType === 'quarterfinals') {
+ const quarters = generateGironiQuarterfinalMatches(standings, tournament);
+ setGironiQuarterfinalMatches(quarters);
+ setGironiSemifinalMatches([]);
+ } else {
+ setGironiSemifinalMatches(generateGironiSemifinalMatches(standings, tournament));
+ }
  setGironiFinalMatches([]);
  setShowGironiStandingsModal(true);
  }
  return;
  }
- 
+
  // ===== ROUND ROBIN + FINALI RESUME =====
  if (isRoundRobinFinali) {
  setFinalsFlowTournament(tournament);
  const standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
  setRoundRobinStandings(standings);
- 
+
  const rrMatchCount = tournamentMatches.length > 2 ? tournamentMatches.length - 2 : tournamentMatches.length;
  const finalsInDb = tournamentMatches.slice(rrMatchCount);
- 
+
  if (finalsInDb.length > 0) {
  setFinalsMatches(finalsInDb);
  setIsInFinalsPhase(true);
@@ -999,7 +1039,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  return;
  }
- 
+
  // Fallback
  setEditingTournament(tournament);
  };
@@ -1127,9 +1167,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  // Beat the Box: use player-set grouping (order-independent)
  const { phaseMatches } = groupMatchesByPlayerSets(allTournamentMatches);
  phaseMatchIds = phaseMatches.map(m => m.id);
- } else if (isGironiFaseFinale && allTournamentMatches.length > 4) {
- // Gironi: ultime 4 partite = 2 semifinali + 2 finali (ordinate per created_at)
- phaseMatchIds = allTournamentMatches.slice(-4).map(m => m.id);
+ } else if (isGironiFaseFinale) {
+ // Gironi: le fasi conclusive sono identificate dalla fase persistita, mai dalla posizione.
+ phaseMatchIds = allTournamentMatches
+ .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
+ .map(match => match.id);
  } else if (isRoundRobinFinali && allTournamentMatches.length > 2) {
  // RR+Finali: finals are last 2 matches (relies on created_at ordering from DB)
  phaseMatchIds = allTournamentMatches.slice(allTournamentMatches.length - 2).map(m => m.id);
@@ -1194,7 +1236,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  // For phase generation, use effective status (scheduled after cascade)
  const effectiveStatus = (cascadeTriggered || simpleCompletedCascade) ? 'scheduled' : editingTournament.status;
- 
+
  // BEAT THE BOX: Gestione fase box → finali
  if (effectiveStatus === 'scheduled' && isBeatTheBox && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase) {
  console.log(`📦 Beat the Box: Box phase completed, calculating standings...`);
@@ -1216,7 +1258,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
  } as Match;
  });
- 
+
  // Use player-set grouping (order-independent)
  const { boxes: groupedBoxes } = groupMatchesByPlayerSets(tournamentMatches);
  const numBoxes = groupedBoxes.size;
@@ -1242,7 +1284,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  // Calcola classifiche box
  const standings = calculateAllBoxStandings(allBoxMatches, boxesData);
  setBeatBoxStandings(standings);
- 
+
  // Genera finali/semifinali
  const { semifinals, finals } = createBeatBoxFinalsMatches(
      numBoxes,
@@ -1251,7 +1293,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      undefined, // semifinalResults
      (editingTournament.playoffType as any) || 'semifinals'
  );
- 
+
  if (semifinals && semifinals.length > 0) {
  // 8+ coppie: genera semifinali
  setBeatBoxSemifinalMatches(semifinals.map((m, i) => ({
@@ -1269,13 +1311,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  } as Match)));
  setBeatBoxSemifinalMatches([]);
  }
- 
+
  // Mostra modale classifiche
  setShowBeatBoxStandingsModal(true);
  setIsSubmitting(false);
  return;
  }
- 
+
  // If tournament is scheduled (or cascade-reset) and is Round Robin + Finali, calculate standings and prepare finals
  if (effectiveStatus === 'scheduled' && isRoundRobinFinali && !isInFinalsPhase) {
  console.log(`🎯 Round Robin phase completed, calculating standings...`);
@@ -1298,27 +1340,27 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
  } as Match;
  });
- 
+
  // Calculate standings
  const standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
  console.log(`🎯 Calculated standings:`, standings);
- 
+
  setRoundRobinStandings(standings);
- 
+
  // Generate finals matches
  const top4 = standings.slice(0, 4);
  const finals = generateFinalsMatches(top4);
  setFinalsMatches(finals);
  setFinalsScores({});
- 
+
  // Show standings modal
  setShowFinalsStandingsModal(true);
  setIsSubmitting(false);
  return;
  }
- 
+
  // GIRONI + FASE FINALE: Gestione fase gironi → semifinali → finali
- if (effectiveStatus === 'scheduled' && isGironiFaseFinale && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
+ if (effectiveStatus === 'scheduled' && isGironiFaseFinale && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
  console.log(`🏆 Gironi: Gironi phase completed, calculating standings...`);
 
  // Save tournament reference (with effective status for cascade)
@@ -1337,20 +1379,26 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
  } as Match;
  });
- 
+
  // Calcola classifiche gironi
  const standings = calculateGironiStandings(tournamentMatches);
  setGironiStandings(standings);
- 
- // Genera semifinali
- const semifinals = generateGironiSemifinalMatches(standings);
- if (semifinals.length < 2) {
- console.error('Failed to generate Gironi semifinals - not enough qualified teams');
- showHIGAlert('Errore: impossibile generare le semifinali. Verifica i risultati dei gironi.');
+
+ const phaseMatches = editingTournament.gironiPlayoffType === 'quarterfinals'
+ ? generateGironiQuarterfinalMatches(standings)
+ : generateGironiSemifinalMatches(standings);
+ if (phaseMatches.length < (editingTournament.gironiPlayoffType === 'quarterfinals' ? 4 : 2)) {
+ console.error('Failed to generate Gironi playoff phase - not enough qualified teams');
+ showHIGAlert('Errore: impossibile generare la fase conclusiva. Verifica i risultati dei gironi.');
  setIsSubmitting(false);
  return;
  }
- setGironiSemifinalMatches(semifinals);
+ if (editingTournament.gironiPlayoffType === 'quarterfinals') {
+ setGironiQuarterfinalMatches(phaseMatches);
+ setGironiSemifinalMatches([]);
+ } else {
+ setGironiSemifinalMatches(phaseMatches);
+ }
  setGironiFinalMatches([]);
 
  // Mostra modale classifiche
@@ -1358,21 +1406,21 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsSubmitting(false);
  return;
  }
- 
+
  // If tournament is scheduled (or cascade-reset to scheduled), complete it normally
  if (effectiveStatus === 'scheduled') {
  console.log(`🏁 Completing tournament ${editingTournament.id}`);
- 
+
  const response = await fetch('/api/tournaments/complete', {
  method: 'PUT',
  headers: authHeaders(),
  body: JSON.stringify({ tournamentId: editingTournament.id }),
  });
- 
+
  if (!response.ok) {
  throw new Error('Failed to complete tournament');
  }
- 
+
  console.log('✅ Tournament completed successfully');
  showHIGAlert('Torneo completato! I punteggi ELO sono stati aggiornati.');
  }
@@ -1395,23 +1443,23 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  console.log(`🎯 finalsFlowTournament:`, finalsFlowTournament);
  console.log(`🎯 finalsMatches:`, finalsMatches);
  setShowFinalsStandingsModal(false);
- 
+
  // Use setTimeout to ensure the standings modal closes before opening finals modal
  setTimeout(() => {
  setIsInFinalsPhase(true);
  console.log(`🎯 isInFinalsPhase set to true`);
  }, 100);
  };
- 
+
  const handleCompleteTournamentWithFinals = async () => {
  const tournament = finalsFlowTournament || editingTournament;
  if (!tournament) {
  console.error('❌ No tournament reference available!');
  return;
  }
- 
+
  console.log(`🏁 Completing Round Robin + Finali tournament ${tournament.id}`);
- 
+
  setIsSubmitting(true);
  try {
  // Save finals matches to database
@@ -1419,7 +1467,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const sets = finalsScores[match.id] || match.sets;
  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- 
+
  return {
  date: match.date,
  team1: match.team1,
@@ -1429,7 +1477,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  tournamentId: tournament.id
  };
  });
- 
+
  // Add finals matches
  for (const match of finalsMatchesToSave) {
  const response = await fetch('/api/matches', {
@@ -1437,26 +1485,26 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  headers: authHeaders(),
  body: JSON.stringify(match),
  });
- 
+
  if (!response.ok) {
  throw new Error('Failed to save finals match');
  }
  }
- 
+
  // Complete the tournament
  const completeResponse = await fetch('/api/tournaments/complete', {
  method: 'PUT',
  headers: authHeaders(),
  body: JSON.stringify({ tournamentId: tournament.id }),
  });
- 
+
  if (!completeResponse.ok) {
  throw new Error('Failed to complete tournament');
  }
- 
+
  console.log('✅ Round Robin + Finali tournament completed successfully');
  showHIGAlert('Torneo completato con finali! I punteggi ELO sono stati aggiornati.');
- 
+
  // Reset states
  setEditingTournament(null);
  setFinalsFlowTournament(null);
@@ -1475,7 +1523,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsSubmitting(false);
  }
  };
- 
+
  const handleCompleteBeatBoxTournament = async () => {
  console.log('🔵 handleCompleteBeatBoxTournament chiamato');
  const tournament = finalsFlowTournament;
@@ -1485,24 +1533,24 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  showHIGAlert('❌ Errore: riferimento torneo non disponibile');
  return;
  }
- 
+
  setShowBeatBoxCompleteConfirm(false);
  setIsSubmitting(true);
- 
+
  console.log('🔵 Salvando matches...', beatBoxSemifinalMatches.length + beatBoxFinalMatches.length);
- 
+
  try {
  // Salva tutte le partite (semifinali + finali) nel DB
  const allNewMatches = [
  ...beatBoxSemifinalMatches,
  ...beatBoxFinalMatches
  ];
- 
+
  const existing = allNewMatches.filter(m => !m.id.startsWith('temp-'));
  if (existing.length > 0) {
      await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
  }
- 
+
  const temp = allNewMatches.filter(m => m.id.startsWith('temp-'));
  for (const match of temp) {
  const matchResponse = await fetch('/api/matches', {
@@ -1530,63 +1578,63 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  headers: authHeaders(),
  body: JSON.stringify({ tournamentId: tournament.id }),
  });
- 
+
  if (!completeResponse.ok) {
  throw new Error('Failed to complete tournament');
  }
- 
+
  console.log('✅ Beat the Box tournament completed successfully');
- 
+
  // Calcola classifiche finali prima di mostrare il modal
  const allTournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
  const allMatchesWithNewOnes = [
  ...allTournamentMatches,
  ...allNewMatches
  ];
- 
+
  // Calcola variazioni ELO individuali
  const K = 16; // Beat the Box K-factor
  const playerEloChanges = new Map<string, number>();
  const tournamentElos = new Map<string, number>();
  const playerStats = new Map<string, { gamesWon: number; gamesLost: number }>();
- 
+
  // Inizializza ELO per tutti i giocatori coinvolti
  const allPlayerIds = new Set<string>();
  allMatchesWithNewOnes.forEach(m => {
  [...m.team1, ...m.team2].forEach(id => allPlayerIds.add(id));
  });
- 
+
  allPlayerIds.forEach(id => {
  const player = getPlayerById(id);
  if (player) {
  tournamentElos.set(id, player.currentElo);
  }
  });
- 
+
  // Processa tutti i match in ordine
  allMatchesWithNewOnes.forEach(match => {
  if (!match.winner || match.winner === 'draw') return;
- 
+
  const t1p1 = getPlayerById(match.team1[0]);
  const t1p2 = getPlayerById(match.team1[1]);
  const t2p1 = getPlayerById(match.team2[0]);
  const t2p2 = getPlayerById(match.team2[1]);
- 
+
  if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return;
- 
+
  const t1e1 = tournamentElos.get(match.team1[0]) || t1p1.currentElo;
  const t1e2 = tournamentElos.get(match.team1[1]) || t1p2.currentElo;
  const t2e1 = tournamentElos.get(match.team2[0]) || t2p1.currentElo;
  const t2e2 = tournamentElos.get(match.team2[1]) || t2p2.currentElo;
- 
+
  const team1Avg = (t1e1 + t1e2) / 2;
  const team2Avg = (t2e1 + t2e2) / 2;
- 
+
  const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
  const score1 = match.winner === 'draw' ? 0.5 : (match.winner === 'team1' ? 1 : 0);
  const delta1 = K * (score1 - expected1);
  const delta2 = -delta1;
- 
+
  [match.team1[0], match.team1[1]].forEach(id => {
  const oldElo = tournamentElos.get(id)!;
  tournamentElos.set(id, oldElo + delta1);
@@ -1597,7 +1645,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  tournamentElos.set(id, oldElo + delta2);
  playerEloChanges.set(id, (playerEloChanges.get(id) || 0) + delta2);
  });
- 
+
  // Calcola statistiche games
  const sets = match.sets || [];
  sets.forEach(set => {
@@ -1615,7 +1663,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
  });
  });
- 
+
  // Crea la classifica individuale
  const individualStandings = Array.from(playerEloChanges.entries())
  .map(([playerId, eloChange]) => {
@@ -1629,10 +1677,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  .filter((entry): entry is { player: Player; eloChange: number; gamesWon: number; gamesLost: number; winPercentage: number; rank: number } => entry !== null)
  .sort((a, b) => b.eloChange - a.eloChange)
  .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
- 
+
  setBeatBoxFinalStandings(individualStandings);
  setBeatBoxAllMatches(allMatchesWithNewOnes);
- 
+
  // Mostra success con classifiche
  setShowBeatBoxCompleteSuccess(true);
  } catch (error) {
@@ -1655,11 +1703,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
         }
         setIsSubmitting(true);
         try {
-            const existing = allToSave.filter(m => !m.id.startsWith('temp-'));
+            const existing = allToSave.filter(m => !m.id.startsWith('temp'));
             if (existing.length > 0) {
                 await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
             }
-            const temp = allToSave.filter(m => m.id.startsWith('temp-'));
+            const temp = allToSave.filter(m => m.id.startsWith('temp'));
             const newMatchesList = [...matchesList];
             for (const match of temp) {
                 const res = await fetch('/api/matches', {
@@ -1672,13 +1720,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                         sets: match.sets,
                         winner: match.winner,
                         tournamentId: tId,
+                        phase: match.phase,
+                        roundNumber: match.roundNumber,
                     }),
                 });
                 if (res.ok) {
                     const savedMatch = await res.json();
                     const index = newMatchesList.findIndex(m => m.id === match.id);
                     if (index !== -1) {
-                        newMatchesList[index] = { ...newMatchesList[index], id: savedMatch.id };
+                        newMatchesList[index] = { ...newMatchesList[index], id: savedMatch.matchId || savedMatch.id };
                     }
                 }
             }
@@ -1736,7 +1786,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
 
  Object.values(tournamentsByName).forEach(group => group.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
- 
+
  const sortedTournamentNames = Object.keys(tournamentsByName).sort((a, b) => {
  const dateA = new Date(tournamentsByName[a][0].date).getTime();
  const dateB = new Date(tournamentsByName[b][0].date).getTime();
@@ -1752,13 +1802,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <Card title={
  <div className="flex justify-between items-center w-full">
  <span>Inserisci Risultato Singolo</span>
- <Button 
- onClick={() => setIsMatchFormOpen(!isMatchFormOpen)} 
+ <Button
+ onClick={() => setIsMatchFormOpen(!isMatchFormOpen)}
  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsMatchFormOpen(!isMatchFormOpen); } }}
  role="button"
  tabIndex={0}
  aria-expanded={isMatchFormOpen}
- variant="ghost" 
+ variant="ghost"
  size="sm"
  className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
  >
@@ -1954,11 +2004,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  )}
  </div>
 
- <HIGSheet 
- isOpen={!!editingTournament && !isInFinalsPhase && !showFinalsStandingsModal && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase} 
+ <HIGSheet
+ isOpen={!!editingTournament && !isInFinalsPhase && !showFinalsStandingsModal && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase}
  onClose={() => {
  // Only reset if we're not in any flow
- if (!showFinalsStandingsModal && !isInFinalsPhase && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
+ if (!showFinalsStandingsModal && !isInFinalsPhase && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
  setEditingTournament(null);
  setIsInFinalsPhase(false);
  setShowFinalsStandingsModal(false);
@@ -1969,7 +2019,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsInGironiSemifinalsPhase(false);
  setIsInGironiFinalsPhase(false);
  }
- }} 
+ }}
  title={editingTournament?.status === 'scheduled' ?"Inserisci Risultati" :"Modifica Risultati"}
  >
  <form onSubmit={(e) => submitEditScores(e, false)} className="px-4 pb-4 pt-2">
@@ -2010,16 +2060,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  );
  }
- 
+
  // Se è Beat the Box, raggruppa per box
  if (editingTournament.type === TournamentType.BeatTheBox) {
  const boxGroups = new Map<number, Match[]>();
- 
+
  // Raggruppa i match per box (analizzando i giocatori coinvolti)
  tournamentMatches.forEach(match => {
  const allPlayerIds = [...match.team1, ...match.team2];
  let boxNumber = 1;
- 
+
  // Trova il box basandosi sui giocatori coinvolti
  // Ogni box ha 4 giocatori unici
  for (let i = 1; i <= 10; i++) {
@@ -2028,27 +2078,27 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  boxGroups.set(i, [match]);
  return;
  }
- 
+
  const existingPlayerIds = new Set(
  existingMatches.flatMap(m => [...m.team1, ...m.team2])
  );
- 
+
  // Se tutti i giocatori di questo match sono già in questo box
  if (allPlayerIds.every(id => existingPlayerIds.has(id))) {
  existingMatches.push(match);
  return;
  }
  }
- 
+
  // Se non trovato, aggiungi al primo box disponibile
- if (!Array.from(boxGroups.values()).some(matches => 
+ if (!Array.from(boxGroups.values()).some(matches =>
  matches.some(m => allPlayerIds.every(id => [...m.team1, ...m.team2].includes(id)))
  )) {
  const firstEmptyBox = Array.from(boxGroups.keys()).find(i => boxGroups.get(i)!.length < 3) || boxGroups.size + 1;
  boxGroups.set(firstEmptyBox, [...(boxGroups.get(firstEmptyBox) || []), match]);
  }
  });
- 
+
  return Array.from(boxGroups.entries()).map(([boxNum, boxMatches]) => (
  <div key={boxNum} className="mb-6">
  <div className="flex items-center gap-2 mb-3">
@@ -2085,32 +2135,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  ));
  }
- 
- // Se è Gironi + Fase Finale, raggruppa per girone (Union-Find)
- if (editingTournament.type === TournamentType.GironiFaseFinale) {
- const pairKey = (team: string[]) => [...team].sort().join('||');
- const parent = new Map<string, string>();
- const findRoot = (x: string): string => {
- if (!parent.has(x)) parent.set(x, x);
- if (parent.get(x) !== x) parent.set(x, findRoot(parent.get(x)!));
- return parent.get(x)!;
- };
- tournamentMatches.forEach(m => {
- const k1 = pairKey(m.team1), k2 = pairKey(m.team2);
- if (!parent.has(k1)) parent.set(k1, k1);
- if (!parent.has(k2)) parent.set(k2, k2);
- parent.set(findRoot(k1), findRoot(k2));
- });
- const gironiGrouped = new Map<string, Match[]>();
- tournamentMatches.forEach(m => {
- const root = findRoot(pairKey(m.team1));
- if (!gironiGrouped.has(root)) gironiGrouped.set(root, []);
- gironiGrouped.get(root)!.push(m);
- });
 
- return Array.from(gironiGrouped.values()).map((gironeMatches, gironeIdx) => {
+ // Gironi + Fase Finale: prima il girone persistito, poi turni e partite.
+ if (editingTournament.type === TournamentType.GironiFaseFinale) {
+ const separatedGroups = separateTournamentGroups(tournamentMatches, Number(editingTournament.numGironi || 0));
+
+ return separatedGroups.map((gironeMatches, gironeIdx) => {
  const gironeName = String.fromCharCode(65 + gironeIdx); // A, B, C
- 
+
  return (
  <div key={gironeIdx} className="mb-6">
  <div className="flex items-center gap-2 mb-3">
@@ -2119,8 +2151,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Girone {gironeName}
  </h4>
  </div>
+ <div className="space-y-4">
+ {normalizeTournamentRounds(gironeMatches, TournamentType.GironiFaseFinale, { fields: 2 }).map(round => (
+ <div key={`girone-${gironeIdx}-turno-${round.roundNumber}`}>
+ <h5 className="mb-2 text-sm font-bold text-sky-600 dark:text-sky-400">Turno {round.roundNumber}</h5>
  <div className="space-y-3">
- {gironeMatches.map(match => {
+ {round.matches.map(({ match }) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
@@ -2145,10 +2181,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  })}
  </div>
  </div>
+ ))}
+ </div>
+ </div>
  );
  });
  }
- 
+
  // Per altri tipi di torneo, mostra normalmente
  if (editingTournament?.type === TournamentType.Americano || editingTournament?.type === TournamentType.TorneOtto) {
      const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
@@ -2162,7 +2201,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
          round.roundNumber,
          round.matches.map(item => item.match),
      ]));
-                                                                                    
+
      const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
      const totalRoundsCount = roundsMap.size;
      const isRoundRobin = editingTournament?.type === TournamentType.RoundRobinFinali;
@@ -2185,7 +2224,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
          const playersInRound = new Set(matchesForRound.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
          const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
-         
+
          return (
              <div key={`round-${r}`} className="mb-6">
                  <div className="flex justify-between items-start mb-3">
@@ -2259,18 +2298,35 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
           setEditingTournament(null);
           setIsInFinalsPhase(false);
           setShowGironiStandingsModal(false);
+          setIsInGironiQuarterfinalsPhase(false);
           setIsInGironiSemifinalsPhase(false);
           setIsInGironiFinalsPhase(false);
       }} className="flex-1" disabled={isSubmitting}>Annulla</Button>
-      
+
       {editingTournament?.status === 'scheduled' && (
-          <Button type="button" onClick={() => submitEditScores(null, true)} disabled={isSubmitting} className="flex-1">
+          <Button type="button" variant="success" onClick={() => submitEditScores(null, true)} disabled={isSubmitting} className="flex-1">
               {isSubmitting ? 'Salvataggio...' : 'Salva'}
           </Button>
       )}
 
       <Button type="button" onClick={() => {
           if (editingTournament?.status === 'completed') {
+              if (editingTournament.type === TournamentType.GironiFaseFinale) {
+                  const tournamentMatches = matches.filter(match => match.tournamentId === editingTournament.id);
+                  const groupMatches = tournamentMatches.filter(match => !match.phase || match.phase === 'group' || match.phase === 'ordinary');
+                  const phaseMatches = tournamentMatches.filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4'].includes(String(match.phase || '')));
+                  const groupResultChanged = groupMatches.some(match => JSON.stringify(editScores[match.id] || match.sets) !== JSON.stringify(match.sets));
+                  if (groupResultChanged && phaseMatches.length > 0) {
+                      setProceedConfirmData({
+                          isOpen: true,
+                          title: 'Riscrivere la fase finale?',
+                          message: 'La modifica di un risultato dei gironi può cambiare le qualificate. Quarti, semifinali e finali esistenti saranno eliminati e rigenerati dalle nuove classifiche.',
+                          actionText: 'Modifica e rigenera',
+                          onConfirm: () => submitEditScores(null, false),
+                      });
+                      return;
+                  }
+              }
               submitEditScores(null, false);
               return;
           }
@@ -2278,7 +2334,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
           let title = "Conferma";
           let message = "Vuoi procedere?";
           let actionText = "Procedi";
-          
+
           if (editingTournament?.type === TournamentType.RoundRobinFinali) {
               title = "Procedi alle Finali";
               message = "Hai inserito i risultati dei gironi? Vuoi procedere alla fase finale?";
@@ -2288,15 +2344,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
               message = "Confermi di voler procedere ai tabelloni finali?";
               actionText = "Procedi";
           } else if (editingTournament?.type === TournamentType.GironiFaseFinale) {
-              title = "Procedi alle Semifinali";
-              message = "Hai inserito tutti i risultati dei gironi? Vuoi procedere alle semifinali?";
+              title = editingTournament.gironiPlayoffType === 'quarterfinals' ? "Procedi ai Quarti" : "Procedi alle Semifinali";
+              message = `Hai inserito tutti i risultati dei gironi? Vuoi procedere ${editingTournament.gironiPlayoffType === 'quarterfinals' ? 'ai quarti' : 'alle semifinali'}?`;
               actionText = "Procedi";
           } else {
               title = "Completa Torneo";
               message = "Confermi di voler chiudere definitivamente il torneo ed aggiornare l'ELO?";
               actionText = "Completa Torneo";
           }
-          
+
           setProceedConfirmData({
               isOpen: true,
               title,
@@ -2304,7 +2360,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
               actionText,
               onConfirm: () => submitEditScores(null, false)
           });
-      }} disabled={isSubmitting} className={editingTournament?.status === 'scheduled' ? "flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35" : "flex-1"}>
+      }} disabled={isSubmitting} variant={editingTournament?.status === 'completed' ? 'success' : 'primary'} className="flex-1">
           {isSubmitting ? 'Salvataggio...' : (
               editingTournament?.status === 'scheduled' && (
                   editingTournament?.type === TournamentType.RoundRobinFinali ||
@@ -2312,19 +2368,19 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                   editingTournament?.type === TournamentType.GironiFaseFinale
               )
                   ? 'Procedi'
-                  : editingTournament?.status === 'scheduled' 
-                      ? 'Completa Torneo' 
+                  : editingTournament?.status === 'scheduled'
+                      ? 'Completa Torneo'
                       : 'Salva'
           )}
       </Button>
   </div>
  </form>
  </HIGSheet>
- 
+
  {/* Modal for Round Robin standings and proceed to finals */}
- <HIGSheet 
- isOpen={showFinalsStandingsModal} 
- onClose={() => setShowFinalsStandingsModal(false)} 
+ <HIGSheet
+ isOpen={showFinalsStandingsModal}
+ onClose={() => setShowFinalsStandingsModal(false)}
  title="Round Robin Completato!"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2347,7 +2403,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Le prime 4 squadre sono qualificate per le finali. Vuoi procedere con le partite finali?
  </p>
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setShowFinalsStandingsModal(false);
  setEditingTournament(null);
@@ -2358,7 +2414,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Annulla
  </Button>
- <Button 
+ <Button
  onClick={handleProceedToFinalsPhase}  className="flex-1"
   >
   Procedi
@@ -2366,11 +2422,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal for Gironi standings and proceed to semifinals */}
- <HIGSheet 
- isOpen={showGironiStandingsModal} 
- onClose={() => setShowGironiStandingsModal(false)} 
+ <HIGSheet
+ isOpen={showGironiStandingsModal}
+ onClose={() => setShowGironiStandingsModal(false)}
  title="Gironi Completati!"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2382,13 +2438,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Girone {girone.gironeName}</h4>
  <div className="space-y-1">
  {girone.standings.map((standing: any, index: number) => {
- const isQualified = index < 2; // Top 2 qualify for semifinals
+ const isQualified = gironiQualifiedKeys.has(standing.pair.map((player: Player) => player.id).sort().join('|'));
  return (
- <div 
- key={index} 
+ <div
+ key={index}
  className={`flex justify-between items-center p-2 rounded ${
- isQualified 
- ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500' 
+ isQualified
+ ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500'
  : 'bg-gray-50 dark:bg-gray-700'
  }`}
  >
@@ -2408,10 +2464,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  <p className="text-gray-600 dark:text-gray-400">
- I primi 2 di ogni girone si qualificano per le semifinali. Procedi per continuare con le semifinali.
+ Le coppie evidenziate accedono alla fase conclusiva selezionata.
  </p>
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setShowGironiStandingsModal(false);
  setEditingTournament(null);
@@ -2422,31 +2478,35 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Annulla
  </Button>
- <Button 
+ <Button
  onClick={() => {
  setShowGironiStandingsModal(false);
  setTimeout(() => {
+ if ((finalsFlowTournament || editingTournament)?.gironiPlayoffType === 'quarterfinals') {
+ setIsInGironiQuarterfinalsPhase(true);
+ } else {
  setIsInGironiSemifinalsPhase(true);
+ }
  }, 100);
- }} 
+ }}
  className="flex-1"
  >
- Procedi alle Semifinali
+ Procedi {(finalsFlowTournament || editingTournament)?.gironiPlayoffType === 'quarterfinals' ? 'ai Quarti' : 'alle Semifinali'}
  </Button>
  </div>
  </div>
  </HIGSheet>
- 
- 
+
+
  {/* Modal for Finals matches */}
- <HIGSheet 
- isOpen={isInFinalsPhase && !!(finalsFlowTournament || editingTournament)} 
+ <HIGSheet
+ isOpen={isInFinalsPhase && !!(finalsFlowTournament || editingTournament)}
  onClose={() => {
  setIsInFinalsPhase(false);
  setEditingTournament(null);
  setFinalsFlowTournament(null);
  setShowFinalsStandingsModal(false);
- }} 
+ }}
  title="Finali - Round Robin + Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2456,7 +2516,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Inserisci i risultati delle finali per determinare la classifica finale.
  </p>
  </div>
- 
+
  {/* Show Round Robin standings */}
  <div className="mb-6">
  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Classifica Round Robin</h4>
@@ -2500,7 +2560,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Le prime 4 squadre (evidenziate in verde) sono qualificate per le finali.</p>
  </div>
- 
+
  {/* Finals matches input */}
  <div className="space-y-6">
  <h4 className="font-semibold text-gray-700 dark:text-gray-300">Partite Finali</h4>
@@ -2509,15 +2569,15 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
- 
+
  const isFinalePrimoSecondo = index === 0;
- 
+
  return (
- <div 
- key={match.id} 
+ <div
+ key={match.id}
  className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${
- isFinalePrimoSecondo 
- ? 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600' 
+ isFinalePrimoSecondo
+ ? 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600'
  : 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600'
  }`}
  >
@@ -2534,8 +2594,8 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  disabled={isSubmitting}
  />
  <p className={`text-xs font-medium mt-1 ${
- isFinalePrimoSecondo 
- ? 'text-emerald-700 dark:text-emerald-300' 
+ isFinalePrimoSecondo
+ ? 'text-emerald-700 dark:text-emerald-300'
  : 'text-sky-700 dark:text-sky-300'
  }`}>
  {isFinalePrimoSecondo ? 'Finale 1°-2°' : 'Finale 3°-4°'}
@@ -2553,7 +2613,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
- <Button 
+ <Button
  onClick={() => {
  setIsInFinalsPhase(false);
  setEditingTournament(null);
@@ -2567,13 +2627,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <Button
  onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id, setFinalsMatches)}
  disabled={isSubmitting}
+ variant="success"
  className="flex-1"
  >
  {isSubmitting ? 'Salvataggio...' : 'Salva'}
  </Button>
- <Button 
+ <Button
  onClick={handleCompleteTournamentWithFinals}
- className="flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35"
+ className="flex-1"
  disabled={isSubmitting || Object.keys(finalsScores).length !== finalsMatches.length}
  >
  {isSubmitting ? 'Finalizzando...' : 'Finalizza Torneo'}
@@ -2581,11 +2642,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal for Beat the Box standings and proceed to semifinals/finals */}
- <HIGSheet 
- isOpen={showBeatBoxStandingsModal} 
- onClose={() => setShowBeatBoxStandingsModal(false)} 
+ <HIGSheet
+ isOpen={showBeatBoxStandingsModal}
+ onClose={() => setShowBeatBoxStandingsModal(false)}
  title="📦 Classifiche Box Completate"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2595,8 +2656,8 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <div className="space-y-2">
  {boxStanding.standings.map((standing: any, index: number) => (
  <div key={index} className={`flex justify-between items-center p-2 rounded ${
- index < 2 
- ? 'bg-green-100 dark:bg-green-900 border-2 border-green-300 dark:border-green-700' 
+ index < 2
+ ? 'bg-green-100 dark:bg-green-900 border-2 border-green-300 dark:border-green-700'
  : 'bg-white dark:bg-gray-800'
  }`}>
  <span className="font-medium">
@@ -2614,7 +2675,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  I primi 2 classificati di ogni box (evidenziati in verde) sono qualificati. Vuoi procedere con le {beatBoxNumBoxes >= 4 ? 'semifinali' : 'finali'}?
  </p>
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setShowBeatBoxStandingsModal(false);
  setEditingTournament(null);
@@ -2633,7 +2694,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Annulla
  </Button>
- <Button 
+ <Button
  onClick={() => {
  console.log('✅ Procedi cliccato - finalsFlowTournament:', finalsFlowTournament);
  setShowBeatBoxStandingsModal(false);
@@ -2644,7 +2705,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setIsInBeatBoxFinalsPhase(true);
  }
  }, 100);
- }} 
+ }}
  className="flex-1"
  >
  Procedi {beatBoxNumBoxes >= 4 ? 'alle Semifinali' : 'alle Finali'}
@@ -2652,14 +2713,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal for Beat the Box Semifinals */}
- <HIGSheet 
- isOpen={isInBeatBoxSemifinalsPhase} 
+ <HIGSheet
+ isOpen={isInBeatBoxSemifinalsPhase}
  onClose={() => {
  setIsInBeatBoxSemifinalsPhase(false);
  setShowBeatBoxStandingsModal(true);
- }} 
+ }}
  title="📦 Beat the Box - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2669,13 +2730,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Inserisci i risultati delle semifinali.
  </p>
  </div>
- 
+
  <div className="space-y-4">
  {beatBoxSemifinalMatches.map((match, idx) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
- 
+
  return (
  <div key={idx}>
  <h4 className="font-semibold mb-2 text-center">Semifinale {idx + 1}</h4>
@@ -2706,14 +2767,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  );
  })}
  </div>
- 
+
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setIsInBeatBoxSemifinalsPhase(false);
  setShowBeatBoxStandingsModal(true);
  }}
- variant="secondary"
+ variant="outline"
  className="flex-1"
  >
  Indietro
@@ -2721,11 +2782,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <Button
  onClick={() => savePhaseMatches(beatBoxSemifinalMatches, finalsFlowTournament!.id, setBeatBoxSemifinalMatches)}
  disabled={isSubmitting}
+ variant="success"
  className="flex-1"
  >
  {isSubmitting ? 'Salvataggio...' : 'Salva'}
  </Button>
- <Button 
+ <Button
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (beatBoxSemifinalMatches.length < 2) {
@@ -2737,7 +2799,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
- 
+
  // Crea finali dai risultati delle semifinali
  const sfResults = {
      sf1Winner: beatBoxSemifinalMatches[0].winner as 'team1' | 'team2',
@@ -2755,7 +2817,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      id: `temp-final-${i}`,
      tournamentId: finalsFlowTournament!.id
  })));
- 
+
  setIsInBeatBoxSemifinalsPhase(false);
  setTimeout(() => {
  setIsInBeatBoxFinalsPhase(true);
@@ -2768,10 +2830,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal for Beat the Box Finals */}
- <HIGSheet 
- isOpen={isInBeatBoxFinalsPhase} 
+ <HIGSheet
+ isOpen={isInBeatBoxFinalsPhase}
  onClose={() => {
  setIsInBeatBoxFinalsPhase(false);
  if (beatBoxSemifinalMatches.length > 0) {
@@ -2779,7 +2841,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  } else {
  setShowBeatBoxStandingsModal(true);
  }
- }} 
+ }}
  title="📦 Beat the Box - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2789,18 +2851,18 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Inserisci i risultati delle finali per determinare la classifica finale.
  </p>
  </div>
- 
+
  <div className="space-y-4">
  {beatBoxFinalMatches.map((match, idx) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
- 
+
  let matchTitle = '';
  if (idx === 0) matchTitle = 'Finale 1° - 2° Posto';
  else if (idx === 1) matchTitle = 'Finalina 3° - 4° Posto';
  else if (idx === 2) matchTitle = 'Partita Consolazione';
- 
+
  return (
  <div key={idx}>
  <h4 className="font-semibold mb-2 text-center">{matchTitle}</h4>
@@ -2831,9 +2893,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  );
  })}
  </div>
- 
+
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setIsInBeatBoxFinalsPhase(false);
  if (beatBoxSemifinalMatches.length > 0) {
@@ -2842,20 +2904,20 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setShowBeatBoxStandingsModal(true);
  }
  }}
- variant="secondary"
+ variant="outline"
  className="flex-1"
  >
  Indietro
  </Button>
- <Button 
+ <Button
  onClick={() => savePhaseMatches(beatBoxFinalMatches, finalsFlowTournament!.id, setBeatBoxFinalMatches)}
- variant="secondary"
+ variant="success"
  className="flex-1"
  disabled={isSubmitting}
  >
  Salva
  </Button>
- <Button 
+ <Button
  onClick={() => {
  const allComplete = beatBoxFinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
@@ -2872,7 +2934,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal di CONFERMA completamento Beat the Box */}
  <HIGSheet
  isOpen={showBeatBoxCompleteConfirm}
@@ -2884,25 +2946,25 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Verranno salvate tutte le partite finali e aggiornati gli ELO.
  </p>
  <div className="flex gap-3 pt-2">
- <Button 
- variant="secondary" 
- onClick={() => setShowBeatBoxCompleteConfirm(false)} 
- disabled={isSubmitting} 
+ <Button
+ variant="secondary"
+ onClick={() => setShowBeatBoxCompleteConfirm(false)}
+ disabled={isSubmitting}
  className="flex-1"
  >
  Annulla
  </Button>
- <Button 
- onClick={handleCompleteBeatBoxTournament} 
- disabled={isSubmitting} 
+ <Button
+ onClick={handleCompleteBeatBoxTournament}
+ disabled={isSubmitting}
  className="flex-1"
  >
- {isSubmitting ? 'Salvataggio...' : 'Conferma e Salva'}
+ {isSubmitting ? 'Salvataggio...' : 'Completa torneo'}
  </Button>
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal di SUCCESS completamento Beat the Box */}
  <HIGSheet
  isOpen={showBeatBoxCompleteSuccess}
@@ -2927,7 +2989,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <h3 className="font-semibold text-green-800 dark:text-green-200">Torneo completato!</h3>
  <p className="text-sm text-green-700 dark:text-green-300">Gli ELO sono stati aggiornati. Ecco il riepilogo finale.</p>
  </div>
- 
+
  {/* Classifiche Box */}
  {beatBoxStandings.map(b => (
  <div key={b.boxNumber}>
@@ -2956,7 +3018,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  ))}
- 
+
  {/* Classifica Squadre Finale */}
  {beatBoxFinalMatches.length > 0 && (
  <div>
@@ -3001,7 +3063,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  )}
- 
+
  {/* Classifica Individuale */}
  {beatBoxFinalStandings.length > 0 && (
  <div>
@@ -3030,9 +3092,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  )}
- 
+
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setShowBeatBoxCompleteSuccess(false);
  setEditingTournament(null);
@@ -3054,14 +3116,58 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
+ {/* Modal for Gironi + Fase Finale Quarterfinals */}
+ <HIGSheet
+ isOpen={isInGironiQuarterfinalsPhase}
+ onClose={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}
+ title="🏆 Gironi + Fase Finale - Quarti"
+ >
+ <div className="space-y-4 px-4 pb-6 pt-2">
+ <p className="text-sm text-gray-700 dark:text-gray-300">Inserisci i risultati dei quarti. Ogni partita deve avere un vincitore.</p>
+ {gironiQuarterfinalMatches.map((match, idx) => {
+ const team1 = match.team1.map(id => getPlayerById(id)!);
+ const team2 = match.team2.map(id => getPlayerById(id)!);
+ if (!team1[0] || !team2[0]) return null;
+ return <div key={match.id} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+ <h4 className="font-semibold mb-3">Quarto {idx + 1}</h4>
+ <div className="grid grid-cols-3 items-center gap-4">
+ <div className="text-sm">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</div>
+ <MatchScoreInput sets={match.sets} onSetsChange={(sets) => {
+ const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+ const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+ setGironiQuarterfinalMatches(current => current.map((item, index) => index === idx ? { ...item, sets, winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null } : item));
+ }} disabled={isSubmitting}/>
+ <div className="text-sm text-right">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</div>
+ </div>
+ </div>;
+ })}
+ <div className="flex gap-3 pt-4">
+ <Button variant="outline" className="flex-1" onClick={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}>Indietro</Button>
+ <Button variant="success" className="flex-1" disabled={isSubmitting} onClick={() => savePhaseMatches(gironiQuarterfinalMatches, finalsFlowTournament!.id, setGironiQuarterfinalMatches)}>Salva</Button>
+ <Button className="flex-1" disabled={isSubmitting} onClick={() => {
+ const valid = gironiQuarterfinalMatches.length === 4 && gironiQuarterfinalMatches.every(match => match.winner === 'team1' || match.winner === 'team2');
+ if (!valid) { showHIGAlert('Inserisci un vincitore per tutti i quarti.'); return; }
+ const winners = gironiQuarterfinalMatches.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+ const tournament = finalsFlowTournament || editingTournament!;
+ setGironiSemifinalMatches([
+ { id: `temp-gironi-sf-1-${Date.now()}`, date: tournament.date, team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+ { id: `temp-gironi-sf-2-${Date.now()}`, date: tournament.date, team1: winners[2], team2: winners[3], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+ ]);
+ setIsInGironiQuarterfinalsPhase(false);
+ setIsInGironiSemifinalsPhase(true);
+ }}>Procedi alle Semifinali</Button>
+ </div>
+ </div>
+ </HIGSheet>
+
  {/* Modal for Gironi + Fase Finale Semifinals */}
- <HIGSheet 
- isOpen={isInGironiSemifinalsPhase} 
+ <HIGSheet
+ isOpen={isInGironiSemifinalsPhase}
  onClose={() => {
  setIsInGironiSemifinalsPhase(false);
  setShowGironiStandingsModal(true);
- }} 
+ }}
  title="🏆 Gironi + Fase Finale - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -3071,13 +3177,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Inserisci i risultati delle semifinali.
  </p>
  </div>
- 
+
  <div className="space-y-4">
  {gironiSemifinalMatches.map((match, idx) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
- 
+
  return (
  <div key={idx} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <h4 className="font-semibold mb-3 text-gray-900 dark:text-gray-300">Semifinale {idx + 1}</h4>
@@ -3110,27 +3216,27 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  );
  })}
  </div>
- 
+
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setIsInGironiSemifinalsPhase(false);
  setShowGironiStandingsModal(true);
  }}
- variant="secondary"
+ variant="outline"
  className="flex-1"
  >
  Indietro
  </Button>
- <Button 
+ <Button
  onClick={() => savePhaseMatches(gironiSemifinalMatches, finalsFlowTournament!.id, setGironiSemifinalMatches)}
- variant="secondary"
+ variant="success"
  className="flex-1"
  disabled={isSubmitting}
  >
  Salva
  </Button>
- <Button 
+ <Button
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (gironiSemifinalMatches.length < 2) {
@@ -3142,16 +3248,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
- 
+
  // Calcola vincitori e perdenti delle semifinali
  const semi1 = gironiSemifinalMatches[0];
  const semi2 = gironiSemifinalMatches[1];
- 
+
  const semi1Winner = semi1.winner === 'team1' ? semi1.team1 : semi1.team2;
  const semi1Loser = semi1.winner === 'team1' ? semi1.team2 : semi1.team1;
  const semi2Winner = semi2.winner === 'team1' ? semi2.team1 : semi2.team2;
  const semi2Loser = semi2.winner === 'team1' ? semi2.team2 : semi2.team1;
- 
+
  // Crea finale 1°-2°
  const finale12 = {
  id: 'temp-gironi-final-1',
@@ -3161,8 +3267,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  sets: [{ team1: 0, team2: 0 }],
  winner: null as 'team1' | 'team2' | null,
  tournamentId: finalsFlowTournament!.id,
+ phase: 'final_1_2' as const,
+ roundNumber: 3,
  };
- 
+
  // Crea finalina 3°-4°
  const finale34 = {
  id: 'temp-gironi-final-2',
@@ -3172,10 +3280,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  sets: [{ team1: 0, team2: 0 }],
  winner: null as 'team1' | 'team2' | null,
  tournamentId: finalsFlowTournament!.id,
+ phase: 'final_3_4' as const,
+ roundNumber: 3,
  };
- 
+
  setGironiFinalMatches([finale34, finale12]); // Prima finalina, poi finale
- 
+
  setIsInGironiSemifinalsPhase(false);
  setTimeout(() => {
  setIsInGironiFinalsPhase(true);
@@ -3188,14 +3298,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </div>
  </div>
  </HIGSheet>
- 
+
  {/* Modal for Gironi + Fase Finale Finals */}
- <HIGSheet 
- isOpen={isInGironiFinalsPhase} 
+ <HIGSheet
+ isOpen={isInGironiFinalsPhase}
  onClose={() => {
  setIsInGironiFinalsPhase(false);
  setTimeout(() => setIsInGironiSemifinalsPhase(true), 100);
- }} 
+ }}
  title="🏆 Gironi + Fase Finale - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -3205,22 +3315,22 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Inserisci i risultati delle finali per determinare la classifica finale.
  </p>
  </div>
- 
+
  <div className="space-y-4">
  {gironiFinalMatches.map((match, idx) => {
  const team1 = match.team1.map(p => getPlayerById(p)!);
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
- 
+
  const isFinale = idx === 1; // Index 1 = finale 1°-2°
  const title = isFinale ?"Finale 1°-2° Posto" :"Finalina 3°-4° Posto";
- const bgColor = isFinale 
+ const bgColor = isFinale
  ?"bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
  :"bg-green-100 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-700";
  const titleColor = isFinale
  ?"text-green-900 dark:text-green-300"
  :"text-green-800 dark:text-green-400";
- 
+
  return (
  <div key={idx} className={`${bgColor} p-4 rounded-lg`}>
  <h4 className={`font-semibold mb-3 ${titleColor}`}>{title}</h4>
@@ -3253,14 +3363,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  );
  })}
  </div>
- 
+
  <div className="flex gap-3 pt-4">
- <Button 
+ <Button
  onClick={() => {
  setIsInGironiFinalsPhase(false);
  setTimeout(() => setIsInGironiSemifinalsPhase(true), 100);
  }}
- variant="secondary"
+ variant="outline"
  className="flex-1"
  >
  Indietro
@@ -3268,11 +3378,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <Button
  onClick={() => savePhaseMatches(gironiFinalMatches, finalsFlowTournament!.id, setGironiFinalMatches)}
  disabled={isSubmitting}
+ variant="success"
  className="flex-1"
  >
  {isSubmitting ? 'Salvataggio...' : 'Salva'}
  </Button>
- <Button 
+ <Button
  onClick={() => {
                             const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
                             if (!allComplete) {
@@ -3289,27 +3400,33 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                                     if (!tournament) return;
                                     setIsSubmitting(true);
                                     try {
-                                        const allNewMatches = [...gironiSemifinalMatches, ...gironiFinalMatches];
-                                        for (const match of allNewMatches) {
+                                        const allNewMatches = [...gironiQuarterfinalMatches, ...gironiSemifinalMatches, ...gironiFinalMatches];
+                                        const existingMatches = allNewMatches.filter(match => !match.id.startsWith('temp'));
+                                        if (existingMatches.length > 0) {
+                                            await updateTournamentMatches(existingMatches.map(match => ({ matchId: match.id, sets: match.sets, winner: match.winner })), true);
+                                        }
+                                        for (const match of allNewMatches.filter(match => match.id.startsWith('temp'))) {
                                             const res = await fetch('/api/matches', {
                                                 method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
+                                                headers: authHeaders(),
                                                 body: JSON.stringify({ ...match, tournamentId: tournament.id })
                                             });
                                             if(!res.ok) throw new Error('Failed to save match');
                                         }
                                         const compRes = await fetch('/api/tournaments/complete', {
                                             method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
+                                            headers: authHeaders(),
                                             body: JSON.stringify({ tournamentId: tournament.id })
                                         });
                                         if(!compRes.ok) throw new Error('Failed to complete tournament');
-                                        
+
                                         setEditingTournament(null);
                                         setFinalsFlowTournament(null);
                                         setIsInGironiFinalsPhase(false);
+                                        setIsInGironiQuarterfinalsPhase(false);
                                         setIsInGironiSemifinalsPhase(false);
                                         setGironiFinalMatches([]);
+                                        setGironiQuarterfinalMatches([]);
                                         setGironiSemifinalMatches([]);
                                         setGironiStandings([]);
                                         setShowGironiStandingsModal(false);
@@ -3325,18 +3442,18 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                                 }
                             });
                         }}
-                        className="flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35"
+                        className="flex-1"
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? 'Salvataggio...' : 'Conferma e Salva'}
+                        {isSubmitting ? 'Salvataggio...' : 'Completa torneo'}
                     </Button>
  </div>
  </div>
              </HIGSheet>
                         {/* Nuovi popup per conferme e successi */}
-            <HIGSheet 
-                isOpen={proceedConfirmData.isOpen} 
-                onClose={() => setProceedConfirmData(prev => ({ ...prev, isOpen: false }))} 
+            <HIGSheet
+                isOpen={proceedConfirmData.isOpen}
+                onClose={() => setProceedConfirmData(prev => ({ ...prev, isOpen: false }))}
                 title={proceedConfirmData.title}
             >
                 <div className="p-4 space-y-4">
@@ -3345,7 +3462,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                         <Button variant="secondary" onClick={() => setProceedConfirmData(prev => ({ ...prev, isOpen: false }))}>
                             Annulla
                         </Button>
-                        <Button className="!border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35" onClick={() => {
+                        <Button onClick={() => {
                             setProceedConfirmData(prev => ({ ...prev, isOpen: false }));
                             proceedConfirmData.onConfirm();
                         }}>

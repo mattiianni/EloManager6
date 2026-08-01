@@ -523,7 +523,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <Button variant="secondary" onClick={() => setShowSaveCalendarConfirm(false)} className="flex-1">
  Annulla
  </Button>
- <Button onClick={handleSaveCalendar} disabled={isSavingCalendar} className="flex-1">
+ <Button variant="success" onClick={handleSaveCalendar} disabled={isSavingCalendar} className="flex-1">
  {isSavingCalendar ? 'Salvataggio...' : 'Conferma e Salva'}
  </Button>
  </div>
@@ -579,7 +579,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <div className="flex gap-3 pt-2">
  <Button variant="secondary" onClick={() => setShowCompleteConfirm(false)} disabled={isSubmitting} className="flex-1">Annulla</Button>
  <Button onClick={handleComplete} disabled={isSubmitting} className="flex-1">
- {isSubmitting ? 'Salvataggio...' : 'Conferma e Salva'}
+ {isSubmitting ? 'Salvataggio...' : 'Completa torneo'}
  </Button>
  </div>
  </div>
@@ -820,8 +820,8 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <Button
  onClick={handleConfirmSaveCalendar}
  disabled={isSavingCalendar}
- variant="secondary"
- className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 border-green-500/45 dark:border-green-300/30"
+ variant="success"
+ className="flex-1"
  >
  Salva Calendario
  </Button>

@@ -1,5 +1,5 @@
 ================================================================
-PADEL ELO MANAGER v6.7.7 - TESTI PROMOZIONALI
+PADEL ELO MANAGER v6.7.8 - TESTI PROMOZIONALI
 ================================================================
 
 
@@ -9,7 +9,7 @@ PADEL ELO MANAGER v6.7.7 - TESTI PROMOZIONALI
 
 Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
 
-Ho sviluppato *Padel ELO Manager v6.7.7* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
+Ho sviluppato *Padel ELO Manager v6.7.8* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
 
 Cosa fa in pratica:
 - *Flusso guidato di creazione* per Multi Giornata, Torneo a Squadre, Torneo Singolo e Nuova Giornata, con descrizioni chiare e passaggi coerenti
@@ -18,7 +18,7 @@ Cosa fa in pratica:
 - *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia con K-factor unificato K=16
 - *Integrazione Playtomic nativa* - converte rigorosamente l'ELO in livello Playtomic (e viceversa), in modo che chiunque capisca immediatamente il proprio livello reale
 - *Profilo completo* per ognuno: statistiche, compagni e avversari frequenti, grafico andamento, storico giornate
-- *Stampa PDF* di tutto: classifiche, profili, tabelloni divisi per turno e schede semifinali/finali vuote da compilare al campo
+- *Stampa PDF* coerente con l'avanzamento: risultati parziali nella fase corrente, classifiche dei gironi completati e fasi finali visibili soltanto quando qualificate
 - *Torneo a Squadre* con round robin, fase finale, riepilogo e stampe dedicate
 - *Personalizzazione per il circolo*: tornei, icona e brand possono essere adattati al vostro ambiente
 - *Interfaccia coerente e accessibile*: avvisi e conferme seguono Apple HIG, con azioni chiare e navigazione da tastiera
@@ -63,7 +63,7 @@ COSA FA PADEL ELO MANAGER
 
 L'app gestisce l'intero ciclo di una serata di padel, dalla formazione delle coppie alla stampa dei risultati:
 
-- 8 FORMATI TORNEO PRONTI ALL'USO: TorneOtto 30', Americano, Round Robin + Finali, Torneo Libero, Gironi + Fase Finale, Beat the Box, Eliminazione Diretta TPRA e Torneo a Squadre. Ogni formato ha regole, calcoli e stampe dedicate.
+- 8 FORMATI TORNEO PRONTI ALL'USO: TorneOtto 30', Americano, Round Robin + Finali, Torneo Libero, Gironi + Fase Finale con quarti opzionali, Beat the Box, Eliminazione Diretta TPRA e Torneo a Squadre. Ogni formato ha regole, calcoli e stampe dedicate.
 
 - SORTEGGIO INTELLIGENTE DELLE COPPIE: 4 modalita - casuale, bilanciato per ELO (forte+debole per partite equilibrate), teste di serie, manuale. Coppie equilibrate in un click.
 
@@ -100,7 +100,7 @@ Resto a disposizione per qualsiasi domanda.
 
 Cordiali saluti,
 Mattia Ianniello
-Padel ELO Manager v6.7.7
+Padel ELO Manager v6.7.8
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

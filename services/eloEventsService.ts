@@ -8,6 +8,7 @@ export interface EloVariationEvent {
     dayLabel: string; // Specific giornata name/label
     isTeamTournament: boolean;
     playerId: string;
+    sourceEvents: Array<{ id: string; type: EloHistoryEntry['type'] }>;
 }
 
 /** Somma la variazione ELO usando il collegamento autorevole all'evento. */
@@ -178,12 +179,16 @@ export function buildPlayerEloTimeline(
                 parentTournamentName,
                 dayLabel,
                 isTeamTournament,
-                playerId
+                playerId,
+                sourceEvents: []
             });
         }
 
         const group = groupedMap.get(key)!;
         group.delta += entry.delta;
+        if (!group.sourceEvents.some(source => source.id === entry.eventId && source.type === entry.type)) {
+            group.sourceEvents.push({ id: entry.eventId, type: entry.type });
+        }
     });
 
     // 5. Sort by date descending

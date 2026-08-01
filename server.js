@@ -294,6 +294,7 @@ async function ensureTablesExist() {
     try {
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`;
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS round_number INTEGER`;
+        await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS group_number INTEGER`;
         await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS phase VARCHAR(40)`;
         // Backfill existing rows: set created_at = date for old matches
         await sql`UPDATE matches SET created_at = date WHERE created_at IS NULL`;
@@ -305,6 +306,7 @@ async function ensureTablesExist() {
         await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_playoff_type VARCHAR(30)`;
         await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_fields INTEGER`;
         await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS round_robin_home_away BOOLEAN DEFAULT FALSE`;
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS gironi_playoff_type VARCHAR(30) DEFAULT 'semifinals'`;
         await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(100)`;
     } catch (error) {
         logger.debug('Tournament phase/idempotency migration attempt', { message: error.message });
@@ -1717,13 +1719,10 @@ const hasAnyTeamTournamentResults = async (rootTournamentId, workspaceId) => {
 const inferLegacyMatchPhase = (tournament, match, index, totalMatches) => {
     if (match?.phase) return match.phase;
     if (tournament?.type === 'Eliminazione Diretta') return 'direct_elimination_round';
-    if (tournament?.type === 'Gironi + Fase Finale' && totalMatches >= 4) {
-        const offset = totalMatches - index;
-        if (offset === 4 || offset === 3) return 'semifinal';
-        if (offset === 2) return 'final_3_4';
-        if (offset === 1) return 'final_1_2';
-        return 'group';
-    }
+    // Nei Gironi la posizione nell'array non identifica una fase: un girone più
+    // numeroso può legittimamente occupare le ultime righe. Le fasi eliminatorie
+    // nuove devono sempre essere persistite esplicitamente.
+    if (tournament?.type === 'Gironi + Fase Finale') return 'group';
     if (tournament?.type === 'Round Robin + Finali') {
         const playoffType = tournament.roundRobinPlayoffType || tournament.round_robin_playoff_type;
         const playoffCount = playoffType === 'semifinals' ? 4 : (playoffType === 'no_finals' ? 0 : 2);
@@ -1761,7 +1760,7 @@ app.get('/api/data', async (req, res) => {
             sql`SELECT * FROM players WHERE workspace_id = ${wsId} AND (is_deleted = FALSE OR is_deleted IS NULL);`,
             sql`SELECT id, name, surname FROM players WHERE workspace_id = ${wsId} AND is_deleted = TRUE;`,
             sql`
-                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number, phase, created_at
+                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, round_number, group_number, phase, created_at
                 FROM matches 
                 WHERE workspace_id = ${wsId}
                 ORDER BY round_number ASC NULLS LAST, created_at ASC, id ASC
@@ -1783,7 +1782,7 @@ app.get('/api/data', async (req, res) => {
             sql`
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
-                    t.playoff_type, t.round_robin_playoff_type, t.round_robin_fields, t.round_robin_home_away, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
+                    t.playoff_type, t.gironi_playoff_type, t.round_robin_playoff_type, t.round_robin_fields, t.round_robin_home_away, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
                     c.config_completed AS team_tournament_config_completed,
                     d.round_number AS team_tournament_round_number,
                     d.team1_number AS team_tournament_team1_number,
@@ -1834,6 +1833,7 @@ app.get('/api/data', async (req, res) => {
             dayLabel: t.day_label || null,
             numGironi: t.num_gironi || null,
             playoffType: t.playoff_type || null,
+            gironiPlayoffType: t.gironi_playoff_type || 'semifinals',
             roundRobinPlayoffType: t.round_robin_playoff_type || undefined,
             roundRobinFields: t.round_robin_fields || undefined,
             roundRobinHomeAway: !!t.round_robin_home_away,
@@ -1888,6 +1888,7 @@ app.get('/api/data', async (req, res) => {
             winner: m.winner,
             tournamentId: m.tournament_id,
             roundNumber: m.round_number || undefined,
+            groupNumber: m.group_number || undefined,
             phase: m.phase || undefined,
             createdAt: m.created_at || undefined,
         }));
@@ -2218,7 +2219,7 @@ app.delete('/api/players', async (req, res) => {
 // POST /api/matches - Add match
 app.post('/api/matches', async (req, res) => {
     try {
-        const { date, team1, team2, sets, tournamentId, roundNumber, phase: providedPhase } = req.body;
+        const { date, team1, team2, sets, tournamentId, roundNumber, groupNumber, phase: providedPhase } = req.body;
         if (!date || !team1 || !team2 || !sets) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
@@ -2236,8 +2237,8 @@ app.post('/api/matches', async (req, res) => {
         }
 
         const result = await sql`
-            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, phase)
-            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${outcome.winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null}, ${phase})
+            INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, group_number, phase)
+            VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${outcome.winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null}, ${groupNumber || null}, ${phase})
             RETURNING id
         `;
         const matchId = result[0].id;
@@ -5627,6 +5628,7 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
                 phase,
                 winner: outcome.winner,
                 roundNumber: Number(match.roundNumber) > 0 ? Number(match.roundNumber) : Math.floor(index / fields) + 1,
+                groupNumber: Number(match.groupNumber) > 0 ? Number(match.groupNumber) : null,
             });
         }
 
@@ -5670,12 +5672,12 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
 
         const queries = [
             sql`
-                INSERT INTO tournaments (id, name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, round_robin_playoff_type, round_robin_fields, round_robin_home_away, idempotency_key, workspace_id)
-                VALUES (${tournamentId}, ${String(tournament.name).trim()}, ${tournament.type}, ${tournament.date}, ${String(tournament.club).trim()}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${tournament.roundRobinPlayoffType || null}, ${tournament.roundRobinFields || null}, ${!!tournament.roundRobinHomeAway}, ${idempotencyKey}, ${req.workspaceId})
+                INSERT INTO tournaments (id, name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, gironi_playoff_type, round_robin_playoff_type, round_robin_fields, round_robin_home_away, idempotency_key, workspace_id)
+                VALUES (${tournamentId}, ${String(tournament.name).trim()}, ${tournament.type}, ${tournament.date}, ${String(tournament.club).trim()}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${tournament.gironiPlayoffType || 'semifinals'}, ${tournament.roundRobinPlayoffType || null}, ${tournament.roundRobinFields || null}, ${!!tournament.roundRobinHomeAway}, ${idempotencyKey}, ${req.workspaceId})
             `,
             ...normalizedMatches.map(match => sql`
-                INSERT INTO matches (id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, phase)
-                VALUES (${match.id}, ${match.date || tournament.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets || [])}::jsonb, ${match.winner}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber}, ${match.phase})
+                INSERT INTO matches (id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, group_number, phase)
+                VALUES (${match.id}, ${match.date || tournament.date}, ${match.team1[0]}, ${match.team1[1]}, ${match.team2[0]}, ${match.team2[1]}, ${JSON.stringify(match.sets || [])}::jsonb, ${match.winner}, ${tournamentId}, ${req.workspaceId}, ${match.roundNumber}, ${match.groupNumber}, ${match.phase})
             `),
         ];
         for (const [playerId, { globalBefore, totalDelta }] of playerEloChanges) {

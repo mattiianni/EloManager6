@@ -14,7 +14,7 @@ export interface HIGButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButt
    * - `plain`       – transparent, blue text, minimal padding
    * - `destructive` – solid red background, white text
    */
-  variant?: 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive';
+  variant?: 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive' | 'success';
   /** Size preset. Default: `regular` */
   size?: 'large' | 'regular' | 'small';
   /** Disables interaction and reduces opacity. Default: false */
@@ -76,6 +76,12 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
     case 'destructive':
       return {
         backgroundColor: 'var(--ios-systemRed)',
+        color: '#ffffff',
+        borderRadius: 12,
+      };
+    case 'success':
+      return {
+        backgroundColor: '#16a34a',
         color: '#ffffff',
         borderRadius: 12,
       };

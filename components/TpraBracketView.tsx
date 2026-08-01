@@ -323,7 +323,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
                     />
 
                     <div className="mt-8">
-                        <Button className="w-full" onClick={handleSaveScore}>
+                        <Button variant="success" className="w-full" onClick={handleSaveScore}>
                             Salva Risultato
                         </Button>
                     </div>

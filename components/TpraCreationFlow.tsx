@@ -120,7 +120,7 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
                         <p className="text-gray-500 dark:text-gray-400">
                             Il tabellone è stato generato e salvato. Potrai gestire i turni successivi dalla pagina del torneo.
                         </p>
-                        <Button className="w-full mt-6" onClick={onFinish}>
+                        <Button variant="outline" className="w-full mt-6" onClick={onFinish}>
                             Torna alla Dashboard
                         </Button>
                     </div>

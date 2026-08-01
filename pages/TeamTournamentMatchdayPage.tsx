@@ -629,7 +629,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                         </p>
                         <div className="flex justify-between gap-2">
                             <Button
-                                variant="secondary"
+                                variant="outline"
                                 type="button"
                                 onClick={() => {
                                     clearNavigationState();
@@ -854,7 +854,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
 
                     <div className="grid grid-cols-[auto_1fr_1fr] gap-2 pt-2 items-stretch">
                         <Button
-                            variant="secondary"
+                            variant="outline"
                             type="button"
                             onClick={() => {
                                 clearNavigationState();
@@ -871,6 +871,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                         <div className="contents">
                             <Button
                                 type="button"
+                                variant="success"
                                 onClick={() => handleSaveCalendar(false)}
                                 disabled={!canSaveCalendar || isSavingCalendar || loading}
                                 className="w-full min-w-0"
@@ -881,7 +882,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                 type="button"
                                 onClick={() => handleSaveCalendar(true)}
                                 disabled={!canSaveCalendar || isSavingCalendar || loading}
-                                className="w-full min-w-0 !border-orange-600 !bg-orange-500 hover:!bg-orange-600 !text-white dark:!border-orange-300"
+                                className="w-full min-w-0"
                             >
                                 Inserisci risultati
                             </Button>
@@ -970,7 +971,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                                     setEditSubMatchSelections(prev => prev.map((p, i) => i === idx ? { team1: ['', ''], team2: ['', ''] } : p));
                                                 }}
                                                 disabled={isSavingResults || loading || resultsLocked}
-                                                className="!bg-orange-500 hover:!bg-orange-600 !border-orange-600 !text-white text-xs py-1.5"
+                                                className="text-xs py-1.5"
                                             >
                                                 + Aggiungi Nuova Partita
                                             </Button>
@@ -1092,7 +1093,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
 
                         <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-stretch sm:justify-between border-t border-[var(--ios-separator)]">
                             <Button
-                                variant="secondary"
+                                variant="outline"
                                 type="button"
                                 onClick={() => {
                                     clearNavigationState();
@@ -1142,6 +1143,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                 </Button>
                                 <Button
                                     type="button"
+                                    variant="success"
                                     onClick={() => handleSaveResults(false)}
                                     disabled={isSavingResults || loading || resultsLocked}
                                     aria-label={isSavingResults ? 'Salvataggio in corso' : 'Salva'}
@@ -1153,7 +1155,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                     type="button"
                                     onClick={() => handleSaveResults(true)}
                                     disabled={isSavingResults || loading || resultsLocked}
-                                    className="w-full min-w-0 !border-emerald-700/50 !bg-emerald-600 px-3 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35"
+                                    className="w-full min-w-0 px-3"
                                 >
                                     Chiudi giornata
                                 </Button>
@@ -1171,7 +1173,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                 <Card title="Torneo a squadre">
                     <p className="text-gray-500 dark:text-gray-400">Nessun torneo selezionato.</p>
                     <div className="pt-4">
-                        <Button onClick={() => { clearNavigationState(); setActivePage('Tournaments'); }} variant="secondary">Torna a Tornei</Button>
+                        <Button onClick={() => { clearNavigationState(); setActivePage('Tournaments'); }} variant="outline">Torna a Tornei</Button>
                     </div>
                 </Card>
             </div>
@@ -1195,7 +1197,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                 <Card title="Torneo a squadre">
                     <p className="text-gray-500 dark:text-gray-400">Completa prima la configurazione del torneo a squadre.</p>
                     <div className="pt-4">
-                        <Button onClick={() => { clearNavigationState(); setActivePage('Tournaments'); }} variant="secondary">Torna a Tornei</Button>
+                        <Button onClick={() => { clearNavigationState(); setActivePage('Tournaments'); }} variant="outline">Torna a Tornei</Button>
                     </div>
                 </Card>
             </div>

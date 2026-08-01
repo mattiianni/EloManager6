@@ -1,4 +1,4 @@
-Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.7)
+Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.8)
 
 Obiettivo
 - Ricostruire da zero una web app/PWA per gestione tornei di padel con ELO, statistiche e stampa PDF.
@@ -29,6 +29,9 @@ Principi di prodotto
 - Salvataggi bulk, completamento ed ELO devono essere atomici e idempotenti.
 - 0-0 significa risultato non inserito. Il pareggio è ammesso nelle partite ordinarie, ma vietato in ogni Eliminazione Diretta e in semifinali, finali, finaline e consolazioni.
 - Ogni match persiste fase e roundNumber; non inferire playoff o qualificati dalla posizione nell'array.
+- Per Gironi + Fase Finale persistere anche groupNumber e gironiPlayoffType (semifinali oppure quarti). Separare sempre girone, turno e partita.
+- I tornei multifase restano scheduled fino all'ultima finale. Il PDF mostra risultati parziali della fase corrente, non alimenta la fase successiva prima del completamento e non stampa 0-0 come risultato.
+- Una modifica alla fase iniziale che cambia i qualificati richiede conferma, cancellazione delle fasi dipendenti e rigenerazione coerente di UI, database e PDF.
 - Avvisi e conferme passano da un gestore Apple HIG centralizzato e asincrono; non usare alert() o confirm() nativi. I dialoghi devono avere portal, focus trap, ripristino focus, ARIA e contenuto sottostante inerte.
 
 Funzionalità minime (MVP completo)
@@ -71,7 +74,7 @@ Funzionalità minime (MVP completo)
        - TorneOtto 30'
        - Americano
        - Round Robin + Finali
-       - Gironi + Fase Finale
+       - Gironi + Fase Finale (semifinali oppure quarti opzionali da 8 coppie)
        - Beat the Box
        - Torneo Libero
      - “attendi creazione tabellone”
@@ -124,7 +127,7 @@ PDF / stampa (obbligatorio)
   - tabellone vuoto prima (da portare in campo)
   - resoconto finale dopo
 - Su iOS/PWA: preview nativa, evitare flussi che bloccano l’utente senza “chiudi”.
-- Semifinali e finali vuote: grafica comune in stile Beat the Box, con qualificati attesi, campi squadra e caselle risultato.
+- Fasi finali non ancora determinate: grafica comune in stile Beat the Box senza nomi inventati e senza 0-0. I nomi compaiono soltanto quando la fase precedente ha determinato realmente i qualificati.
 - Attendere il caricamento dei font prima della stampa; righe indivisibili ma sezioni lunghe autorizzate a proseguire nella pagina successiva.
 
 Qualità e UX

@@ -141,7 +141,7 @@ export default function PlayerPrintModal({
                     >
                         Stampa Selezionati ({selectedIds.size})
                     </Button>
-                    <Button onClick={() => setPhase(1)} variant="secondary" fullWidth>
+                    <Button onClick={() => setPhase(1)} variant="outline" fullWidth>
                         Indietro
                     </Button>
                 </div>

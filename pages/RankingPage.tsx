@@ -40,12 +40,29 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
         setShowAllPlayers(false);
     }, [selectedTournamentId, presenceThreshold]);
 
-    // Fetch matchdays if the selected tournament is a team tournament
+    // Keep team matchdays available for authoritative ranking/PDF event details.
     React.useEffect(() => {
+        let cancelled = false;
+
         if (!selectedTournamentId) {
             setSelectedTeamTournamentMatchdayIds([]);
-            setTeamMatchdaysCache([]);
-            return;
+            const teamRoots = tournaments.filter(isTeamRoot);
+            Promise.all(teamRoots.map(tournament => getTeamTournamentMatchdays(tournament.id)))
+                .then(matchdayGroups => {
+                    if (cancelled) return;
+                    const uniqueMatchdays = Array.from(
+                        new Map(matchdayGroups.flat().map(matchday => [matchday.id, matchday])).values()
+                    );
+                    setTeamMatchdaysCache(uniqueMatchdays);
+                })
+                .catch(err => {
+                    if (cancelled) return;
+                    console.error("Failed to load team matchdays for general ranking", err);
+                    setTeamMatchdaysCache([]);
+                });
+            return () => {
+                cancelled = true;
+            };
         }
         
         const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && isTeamRoot(t));
@@ -53,9 +70,11 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             const rootTournament = tournaments.find(t => t.name === selectedTournamentId && isTeamRoot(t));
             if (rootTournament) {
                 getTeamTournamentMatchdays(rootTournament.id).then(matchdays => {
+                    if (cancelled) return;
                     setSelectedTeamTournamentMatchdayIds(matchdays.map(m => m.id));
                     setTeamMatchdaysCache(matchdays);
                 }).catch(err => {
+                    if (cancelled) return;
                     console.error("Failed to load matchdays for ranking", err);
                     setSelectedTeamTournamentMatchdayIds([]);
                     setTeamMatchdaysCache([]);
@@ -65,6 +84,10 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             setSelectedTeamTournamentMatchdayIds([]);
             setTeamMatchdaysCache([]);
         }
+
+        return () => {
+            cancelled = true;
+        };
     }, [selectedTournamentId, tournaments, getTeamTournamentMatchdays]);
 
     // Calculate giornate for selected tournament SERIES (by seriesKey = giornataName || name)

@@ -418,7 +418,7 @@ const PlayersPage: React.FC = () => {
                     </Card>
 
                     <div className="px-4">
-                        <HIGButton type="submit" variant="filled" fullWidth disabled={isSubmitting}>
+                        <HIGButton type="submit" variant="success" fullWidth disabled={isSubmitting}>
                             {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
                         </HIGButton>
                     </div>
