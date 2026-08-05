@@ -1,3 +1,12 @@
+## v6.7.9 — 2026-08-05
+
+### Stabilizzazione Footer PWA (iOS Nav Bar)
+
+- Riconfigurata la barra di navigazione inferiore per mobile (`<nav>`): isolata l'altezza attiva dei tab a `52px` separandola dalla gestione dinamica di `env(safe-area-inset-bottom)`.
+- Eliminati sobbalzi visivi, ridimensionamenti anomali e necessitá di trascinare il footer all'apertura della PWA su iOS.
+- Applicata la direttiva `overscroll-behavior-y: none` per prevenire il rimbalzo della viewport WebKit durante lo scorrimento.
+- Implementata la pulizia automatica delle cache del Service Worker al cambio di versione `APP_VERSION` per garantire l'aggiornamento immediato PWA.
+
 ## v6.7.8 — 2026-08-01
 
 ### Gironi e fasi conclusive

@@ -154,6 +154,7 @@
     font-family: 'Manrope', sans-serif;
     background-color: var(--app-bg);
     min-height: 100%;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -169,6 +170,7 @@
     min-height: 100dvh;
     padding-right: env(safe-area-inset-right);
     padding-left: env(safe-area-inset-left);
+    overscroll-behavior-y: none;
   }
 
   #root {
@@ -177,6 +179,7 @@
     height: 100dvh;
     min-height: 100dvh;
     overflow: hidden;
+    overscroll-behavior-y: none;
   }
 
   ::selection {
