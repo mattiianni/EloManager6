@@ -1,6 +1,6 @@
-# Guida Uso
+# Istruzioni d'Uso (v6.7.9)
 
-Guida pratica allineata all'interfaccia attuale.
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.7.9` — `Ago 2026`).
 
 ## Accesso
 
