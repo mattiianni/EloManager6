@@ -1,3 +1,12 @@
+## v6.7.19 — 2026-08-05
+
+### Ripristino e allineamento perfetto della funzione di stampa Gironi + Fase Finale
+
+- **Ripristino Stampa Gironi + Fase Finale (`printGironiTournament`)**: Ripristinato il blocco di ritorno del template HTML di ciascun girone che era stato interrotto durante la precedente sostituzione.
+- **Verifica Funzionalità Stampa**: Verificato ed accertato che il pulsante "Stampa" genera ed apre correttamente la finestra di stampa per i tornei di tipo Gironi + Fase Finale (es. "Test Quarti - 11 Coppie e 3 Gironi"), mantenendo lo stile pulito e moderno coordinato con Beat the Box.
+
+---
+
 ## v6.7.18 — 2026-08-05
 
 ### Allineamento Stampa PDF Gironi + Fase Finale allo Stile Beat the Box
