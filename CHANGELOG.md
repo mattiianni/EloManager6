@@ -1,3 +1,15 @@
+## v6.7.11 — 2026-08-05
+
+### Fix definitivo footer PWA iOS (safe-area-inset-bottom)
+
+- Rimosso `paddingBottom: env(safe-area-inset-bottom)` dal `<nav>` stesso (causava l'ingrandimento visivo della barra).
+- Introdotto un `<div>` spacer separato, completamente trasparente, posto sotto i tab buttons: si occupa esclusivamente di riservare lo spazio per l'Home Indicator iOS senza far crescere la barra visiva.
+- Tab bar fissa a `49px` di altezza utile in ogni condizione (standard nativo iOS).
+- Rimossi `paddingTop/paddingBottom` dai singoli pulsanti che interferivano con l'altezza effettiva.
+- La barra ora è sempre compatta e stabile — non cresce né fluttua dopo lo scroll.
+
+---
+
 ## v6.7.10 — 2026-08-05
 
 ### Ottimizzazione e riduzione altezza footer mobile

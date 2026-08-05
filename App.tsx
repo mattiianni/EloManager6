@@ -262,15 +262,14 @@ const App: React.FC = () => {
                         theme={theme}
                         toggleTheme={toggleTheme}
                     />
-                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-4 pb-[calc(49px+env(safe-area-inset-bottom,0px)+12px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
+                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-4 pb-[calc(49px+env(safe-area-inset-bottom,0px)+8px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
                         <div className="fade-in mx-auto w-full max-w-[1600px]">
                             {renderPage()}
                         </div>
                     </main>
                     <nav 
-                        className="fixed inset-x-0 bottom-0 z-20 mx-auto flex flex-col justify-end select-none md:hidden"
+                        className="fixed inset-x-0 bottom-0 z-20 select-none md:hidden"
                         style={{
-                            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                             background: 'var(--ios-thickMaterial)',
                             backdropFilter: 'blur(30px)',
                             WebkitBackdropFilter: 'blur(30px)',
@@ -289,8 +288,6 @@ const App: React.FC = () => {
                                         className="flex flex-1 flex-col items-center justify-center h-full"
                                         style={{
                                             color: active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)',
-                                            paddingTop: '4px',
-                                            paddingBottom: '4px',
                                         }}
                                     >
                                         <div className="flex items-center justify-center h-[26px]">
@@ -305,6 +302,8 @@ const App: React.FC = () => {
                                 );
                             })}
                         </div>
+                        {/* Safe area spacer: visually transparent, just reserves the home indicator space */}
+                        <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} aria-hidden="true" />
                     </nav>
                 </div>
             </div>
