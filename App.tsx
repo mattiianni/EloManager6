@@ -274,6 +274,8 @@ const App: React.FC = () => {
                             backdropFilter: 'blur(30px)',
                             WebkitBackdropFilter: 'blur(30px)',
                             borderTop: '0.5px solid var(--ios-separator)',
+                            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                            height: 'calc(49px + env(safe-area-inset-bottom, 0px))',
                         }}
                     >
                         <div className="flex h-[49px] w-full items-center justify-around px-2">
@@ -302,8 +304,6 @@ const App: React.FC = () => {
                                 );
                             })}
                         </div>
-                        {/* Safe area spacer: explicit background to prevent WebKit backdrop-filter glitches */}
-                        <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: 'var(--ios-thickMaterial)' }} aria-hidden="true" />
                     </nav>
                 </div>
             </div>

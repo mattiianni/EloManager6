@@ -1,3 +1,12 @@
+## v6.7.13 — 2026-08-05
+
+### Risanamento e unificazione layout footer iOS
+
+- **Risoluzione glitch cromati (3 colori)**: Rimosso lo spacer `div` figlio per la safe-area. Spostata la gestione del padding bottom (`env(safe-area-inset-bottom)`) e dell'altezza complessiva direttamente sul tag genitore `<nav>`. In questo modo la sfocatura `backdrop-filter` e il background coprono l'intera area come un blocco unico e omogeneo.
+- **Predeterminazione altezza**: Impostata l'altezza del `<nav>` mobile in modo nativo su `calc(49px + env(safe-area-inset-bottom, 0px))`, assicurando dimensioni compatte e stabili sotto ogni viewport iOS.
+
+---
+
 ## v6.7.12 — 2026-08-05
 
 ### Fix definitivo manifest PWA e safe area spacer iOS
