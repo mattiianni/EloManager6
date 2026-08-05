@@ -1,3 +1,10 @@
+## v6.7.10 — 2026-08-05
+
+### Ottimizzazione e riduzione altezza footer mobile
+
+- Ridotta l'altezza utile dei bottoni della Tab Bar mobile da `52px` a `49px` (standard nativo iOS) rendendola molto più compatta.
+- Ridimensionati i testi dei tab a `10px` con spaziatura e box model più compatti per evitare distorsioni e sfruttare meglio l'area visibile sul display del dispositivo.
+
 ## v6.7.9 — 2026-08-05
 
 ### Stabilizzazione Footer PWA (iOS Nav Bar)

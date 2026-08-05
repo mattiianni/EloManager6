@@ -262,7 +262,7 @@ const App: React.FC = () => {
                         theme={theme}
                         toggleTheme={toggleTheme}
                     />
-                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-4 pb-[calc(56px+env(safe-area-inset-bottom,0px)+8px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
+                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-4 pb-[calc(49px+env(safe-area-inset-bottom,0px)+12px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
                         <div className="fade-in mx-auto w-full max-w-[1600px]">
                             {renderPage()}
                         </div>
@@ -272,12 +272,12 @@ const App: React.FC = () => {
                         style={{
                             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                             background: 'var(--ios-thickMaterial)',
-                            backdropFilter: 'blur(40px)',
-                            WebkitBackdropFilter: 'blur(40px)',
+                            backdropFilter: 'blur(30px)',
+                            WebkitBackdropFilter: 'blur(30px)',
                             borderTop: '0.5px solid var(--ios-separator)',
                         }}
                     >
-                        <div className="flex h-[52px] w-full items-center justify-around">
+                        <div className="flex h-[49px] w-full items-center justify-around px-2">
                             {mobileNavPages.map((item) => {
                                 const active = activePage === item.id;
                                 return (
@@ -286,17 +286,21 @@ const App: React.FC = () => {
                                         type="button"
                                         onClick={() => setActivePage(item.id)}
                                         aria-current={active ? 'page' : undefined}
-                                        className="flex flex-1 flex-col items-center justify-center gap-0.5 h-full"
+                                        className="flex flex-1 flex-col items-center justify-center h-full"
                                         style={{
                                             color: active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)',
+                                            paddingTop: '4px',
+                                            paddingBottom: '4px',
                                         }}
                                     >
-                                        <SFIcon 
-                                            name={active ? `${item.icon}.fill` : item.icon} 
-                                            size={22} 
-                                            color={active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)'} 
-                                        />
-                                        <span className="sf-caption2">{item.label}</span>
+                                        <div className="flex items-center justify-center h-[26px]">
+                                            <SFIcon 
+                                                name={active ? `${item.icon}.fill` : item.icon} 
+                                                size={22} 
+                                                color={active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)'} 
+                                            />
+                                        </div>
+                                        <span className="text-[10px] tracking-tight leading-none mt-0.5">{item.label}</span>
                                     </button>
                                 );
                             })}
