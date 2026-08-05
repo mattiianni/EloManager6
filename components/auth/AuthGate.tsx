@@ -10,7 +10,7 @@ const AuthGate: React.FC = () => {
     // Show loading screen while verifying token
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
                 <div className="flex flex-col items-center space-y-4">
                     <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center">
                         <svg className="animate-spin h-8 w-8 text-white" viewBox="0 0 24 24">

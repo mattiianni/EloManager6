@@ -82,7 +82,7 @@ const SplashScreen: React.FC = () => {
     const isComplete = code.length === 6;
 
     return (
-        <div className="relative flex h-full items-center justify-center overflow-hidden bg-[var(--ios-systemGroupedBackground)] p-4 text-[var(--ios-label)]">
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--ios-systemGroupedBackground)] p-4 text-[var(--ios-label)]">
             <div className="relative z-10 w-full max-w-[400px]">
                 <div className="fade-in rounded-3xl bg-[var(--ios-secondarySystemGroupedBackground)] p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
                     <div className="mb-8 flex flex-col items-center text-center">
