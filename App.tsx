@@ -302,8 +302,8 @@ const App: React.FC = () => {
                                 );
                             })}
                         </div>
-                        {/* Safe area spacer: visually transparent, just reserves the home indicator space */}
-                        <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} aria-hidden="true" />
+                        {/* Safe area spacer: explicit background to prevent WebKit backdrop-filter glitches */}
+                        <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: 'var(--ios-thickMaterial)' }} aria-hidden="true" />
                     </nav>
                 </div>
             </div>

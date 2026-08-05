@@ -1,3 +1,13 @@
+## v6.7.12 — 2026-08-05
+
+### Fix definitivo manifest PWA e safe area spacer iOS
+
+- **Colore Manifest PWA**: Corretti `theme_color` e `background_color` in `vite.config.ts` impostandoli a `#0b1326` (colore scuro coerente con la UI) rimuovendo il vecchio `#0f4c75` (blu celestino).
+- **Rimozione Manifest Duplicato**: Eliminata la riga `<link rel="manifest" href="/manifest.json" />` in `index.html` che creava un conflitto tra il manifest statico non esistente e quello generato dinamicamente da `vite-plugin-pwa` (`manifest.webmanifest`).
+- **Sfondo Esplicito Safe Area Spacer**: Applicato `background: 'var(--ios-thickMaterial)'` allo spacer in `App.tsx` per prevenire glitch di ereditarietà o rendering di `backdrop-filter` in WebKit su iOS.
+
+---
+
 ## v6.7.11 — 2026-08-05
 
 ### Fix definitivo footer PWA iOS (safe-area-inset-bottom)
