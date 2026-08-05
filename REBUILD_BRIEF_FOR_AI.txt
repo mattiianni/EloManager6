@@ -1,4 +1,4 @@
-Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.8)
+Padel ELO Manager — Brief tecnico per ricostruzione da zero (v6.7.9)
 
 Obiettivo
 - Ricostruire da zero una web app/PWA per gestione tornei di padel con ELO, statistiche e stampa PDF.

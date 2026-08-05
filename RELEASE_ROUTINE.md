@@ -2,8 +2,8 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.7.8`
-- Formato incrementale successivo: patch semantica (`6.7.9`), salvo release minor/major esplicitamente richiesta.
+- Versione attuale: `6.7.9`
+- Formato incrementale successivo: patch semantica (`6.8.0` / `6.7.10`), salvo release minor/major esplicitamente richiesta.
 - Mese corrente di riferimento: `Ago 2026`
 
 ## Checklist
@@ -13,7 +13,7 @@
 3. **Aggiornamento Documentazione (Cruciale)**: Prima di procedere, verifica se ci sono nuove funzionalità (es. Integrazione Playtomic) e assicurati che siano state spiegate in: Guida HTML, Presentazione HTML e Testi Promo.
 4. Aggiornare i file `.md` rilevanti e il `README.md`.
    - Aggiornare `CHANGELOG.md` (non usare piu' `UPDATE_SUMMARY_*.md`).
-5. Aggiornare l'HTML guida utente corrente (`Padel_ELO_Manager_Guida_V5.0.3.html`) e, se serve, esportarne il PDF aggiornato nella cartella alias/distribuzione.
+5. Aggiornare l'HTML guida utente corrente (`Padel_ELO_Manager_Guida_V6.7.9.html`) e, se serve, esportarne il PDF aggiornato nella cartella alias/distribuzione.
 6. Eseguire lo script `node scripts/generate-team-tournament-guide-pdf.mjs` per generare la guida in PDF aggiornata dei tornei a squadre, e rimuovere le vecchie versioni in `docs/`.
 7. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.

@@ -1,8 +1,8 @@
-# Padel ELO Manager (v6.7.8)
+# Padel ELO Manager (v6.7.9)
 
 Applicazione full-stack PWA per la gestione avanzata di tornei di padel con algoritmo ELO dinamico in tempo reale, statistiche approfondite, reportistica PDF, design system Apple HIG e isolamento dati multi-workspace.
 
-Versione documentata: `v6.7.8` (Mese: `Ago 2026`)
+Versione documentata: `v6.7.9` (Mese: `Ago 2026`)
 
 ## Stato attuale
 
@@ -15,8 +15,15 @@ Versione documentata: `v6.7.8` (Mese: `Ago 2026`)
 
 ## Routine release
 
-- Versione corrente: `6.7.8`
+- Versione corrente: `6.7.9`
 - Routine obbligatoria: documentazione, test/build, guida PDF, backup ZIP, dump TXT, commit e push.
+
+## Aggiornamenti v6.7.9
+
+- **Stabilizzazione Footer PWA (iOS Nav Bar):** Riconfigurata la barra di navigazione inferiore mobile (`<nav>`) isolando l'altezza utile dei tab a `52px` separandola dal padding dinamico di `env(safe-area-inset-bottom)`.
+- Eliminati sobbalzi visivi, ridimensionamenti imprevisti e necessitá di trascinare il footer all'apertura della PWA su iOS.
+- Applicata la direttiva `overscroll-behavior-y: none` per disabilitare il rimbalzo verticale della viewport WebKit durante lo scorrimento.
+- Inserita l'invalidazione automatica del Service Worker PWA tramite incremento di `APP_VERSION`.
 
 ## Aggiornamenti v6.7.8
 
