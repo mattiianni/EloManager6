@@ -270,9 +270,7 @@ const App: React.FC = () => {
                     <nav 
                         className="fixed inset-x-0 bottom-0 z-20 select-none md:hidden"
                         style={{
-                            background: 'var(--ios-thickMaterial)',
-                            backdropFilter: 'blur(30px)',
-                            WebkitBackdropFilter: 'blur(30px)',
+                            background: 'var(--ios-secondarySystemGroupedBackground)',
                             borderTop: '0.5px solid var(--ios-separator)',
                             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                             height: 'calc(49px + env(safe-area-inset-bottom, 0px))',

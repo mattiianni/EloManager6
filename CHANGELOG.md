@@ -1,3 +1,11 @@
+## v6.7.14 — 2026-08-05
+
+### Rimozione effetti traslucidi (vetro sfocato) dalla tab bar mobile
+
+- **Sfondo solido opaco al 100%**: Rimosso completamente il `backdrop-filter: blur(...)` e l'opacità dal `<nav>` mobile. Impostato uno sfondo solido tramite `var(--ios-secondarySystemGroupedBackground)` (bianco assoluto `#FFFFFF` in modalità chiara e grigio scuro `#1C1C1E` in modalità scura). Questo elimina alla radice qualsiasi glitch di rendering cromatico (effetto 3 colori) causato dal motore WebKit (Safari).
+
+---
+
 ## v6.7.13 — 2026-08-05
 
 ### Risanamento e unificazione layout footer iOS
