@@ -280,21 +280,21 @@ const App: React.FC = () => {
                             {mobileNavPages.map((item) => {
                                 const active = activePage === item.id;
                                 return (
-                                    <button
+                                     <button
                                         key={item.id}
                                         type="button"
                                         onClick={() => setActivePage(item.id)}
                                         aria-current={active ? 'page' : undefined}
                                         className="flex flex-1 flex-col items-center justify-center h-full"
                                         style={{
-                                            color: active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)',
+                                            color: active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)',
                                         }}
                                     >
                                         <div className="flex items-center justify-center h-[26px]">
                                             <SFIcon 
                                                 name={active ? `${item.icon}.fill` : item.icon} 
                                                 size={22} 
-                                                color={active ? 'var(--ios-systemBlue)' : 'var(--ios-tertiaryLabel)'} 
+                                                color={active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)'} 
                                             />
                                         </div>
                                         <span className="text-[10px] tracking-tight leading-none mt-0.5">{item.label}</span>

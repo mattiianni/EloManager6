@@ -1,3 +1,12 @@
+## v6.7.15 — 2026-08-05
+
+### Risoluzione banda bianca in basso e scurimento icone footer
+
+- **Risoluzione definitiva banda bianca su iOS PWA**: Modificata l'altezza di `html`, `body` e `#root` in `index.css` per utilizzare rigidamente `height: 100%` al posto di `100vh` / `100svh` / `100dvh`. Questo evita i calcoli errati del browser Safari in modalità standalone (che sottraeva l'altezza delle barre di navigazione non esistenti) forzando la PWA a riempire l'intero schermo fisico ed eliminando la banda bianca inferiore.
+- **Icone e testi del footer più scuri**: Cambiato il colore per le icone e le scritte non attive nel footer mobile da `var(--ios-tertiaryLabel)` (grigio molto chiaro) a `var(--ios-secondaryLabel)` (grigio più scuro e nitido), migliorando notevolmente il contrasto e la leggibilità.
+
+---
+
 ## v6.7.14 — 2026-08-05
 
 ### Rimozione effetti traslucidi (vetro sfocato) dalla tab bar mobile
