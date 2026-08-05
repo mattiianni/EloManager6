@@ -1,3 +1,12 @@
+## v6.7.16 — 2026-08-05
+
+### Fix definitivo altezza viewport con -webkit-fill-available per iOS PWA
+
+- **Risoluzione viewport standalone su iOS**: Applicata la proprietà proprietaria `-webkit-fill-available` all'altezza di `html`, `body` e `#root` in `index.css`. Questo costringe WebKit ad estendere la viewport reale dell'applicazione fino al bordo fisico del display, eliminando la banda bianca di sistema in basso nella PWA standalone.
+- **Aggiornamento layout SplashScreen e AuthGate**: Sostituita la classe Tailwind `min-h-screen` (basata su `100vh` buggato su iOS) con `h-full` per la schermata di login e di caricamento iniziale, allineandole rigidamente al 100% dell'altezza del display reale.
+
+---
+
 ## v6.7.15 — 2026-08-05
 
 ### Risoluzione banda bianca in basso e scurimento icone footer
