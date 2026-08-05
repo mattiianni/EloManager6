@@ -25,7 +25,7 @@ Cosa fa in pratica:
 
 Il progetto e' *Value for Value*, senza scopo di lucro: ogni spesa serve solo a sostenere server e infrastruttura.
 
-L'applicazione e' una soluzione innovativa in continua evoluzione tecnologica: desideriamo coinvolgere organizzatori e circoli in un programma di *Beta Testing e Prova sul Campo*. Richiedendo un **codice di accesso a 6 cifre dedicato**, potrai accedere gratuitamente alla piattaforma per i tuoi tornei e contribuire attivamente al perfezionamento delle sue funzionalita attraverso il tuo feedback diretto.
+L'applicazione e' una soluzione innovativa in continua evoluzione tecnologica: desideriamo coinvolgere organizzatori e circoli in un programma di *Beta Testing e Prova sul Campo*. Richiedendo un **codice di accesso a 6 cifre dedicato** direttamente via email a *matteeo@icloud.com*, potrai accedere gratuitamente alla piattaforma per i tuoi tornei e contribuire attivamente al perfezionamento delle sue funzionalita attraverso il tuo feedback diretto.
 
 Funziona direttamente nel browser, senza installare nulla: apri un link e sei dentro. Qualsiasi dispositivo, i dati sono in cloud (niente fogli Excel da perdere).
 
@@ -90,7 +90,7 @@ ASPETTI TECNICI
 PROGRAMMA BETA TESTING & PROVA ESCLUSIVA IN ANTEPRIMA
 
 Trattandosi di una piattaforma di nuova concezione in costante evoluzione tecnologica, offriamo ai circoli partner l'opportunità di aderire al nostro *Programma di Beta Testing e Prova sul Campo*.
-Contattando la nostra amministrazione potrete ricevere un **codice di accesso riservato a 6 cifre** che vi consentirà di utilizzare gratuitamente la piattaforma per la gestione dei vostri eventi, permettendovi di sperimentare in anteprima le sue potenzialità e di plasmarne l'evoluzione futura tramite i vostri preziosi suggerimenti operativi.
+Scrivendo direttamente al nostro supporto all'indirizzo **matteeo@icloud.com** potrete richiedere un **codice di accesso riservato a 6 cifre** che vi consentirà di utilizzare gratuitamente la piattaforma per la gestione dei vostri eventi, permettendovi di sperimentare in anteprima le sue potenzialità e di plasmarne l'evoluzione futura tramite i vostri preziosi suggerimenti operativi.
 
 PERCHE POTREBBE INTERESSARVI
 
