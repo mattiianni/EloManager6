@@ -25,6 +25,8 @@ Cosa fa in pratica:
 
 Il progetto e' *Value for Value*, senza scopo di lucro: ogni spesa serve solo a sostenere server e infrastruttura.
 
+L'applicazione e' nuova e in continua fase di sviluppo ed evoluzione: se ti va di provarla e fare da *beta tester*, puoi richiedere all'amministratore un **codice di accesso gratuito a 6 cifre**. In questo modo potrai testare liberamente la piattaforma per i tuoi tornei, fornendo al contempo preziose indicazioni agli sviluppatori per migliorarla costantemente!
+
 Funziona direttamente nel browser, senza installare nulla: apri un link e sei dentro. Qualsiasi dispositivo, i dati sono in cloud (niente fogli Excel da perdere).
 
 Ti faccio vedere una demo quando vuoi - ci vogliono 5 minuti per capire il potenziale.
@@ -84,6 +86,10 @@ ASPETTI TECNICI
 - Interfaccia responsive con tema chiaro/scuro, ottimizzata per l'uso al campo da smartphone
 - Dialoghi coerenti e accessibili, senza popup nativi del browser
 - Progetto Value for Value senza scopo di lucro: ogni spesa sostiene solo server, backup e infrastruttura
+
+BETA TESTING E PROVA GRATUITA
+
+L'applicazione e in piena fase di sviluppo attivo e costante evoluzione. Per questo motivo, invitiamo circoli ed organizzatori a far parte della nostra fase di beta testing: richiedendo all'amministratore un codice di accesso gratuito a 6 cifre potrete provare liberamente e senza impegno la piattaforma per l'organizzazione dei vostri eventi, aiutandoci al contempo con preziosi feedback ed indicazioni dirette sul campo per renderla sempre piu perfetta.
 
 PERCHE POTREBBE INTERESSARVI
 
