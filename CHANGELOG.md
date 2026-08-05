@@ -1,3 +1,12 @@
+## v6.7.18 — 2026-08-05
+
+### Allineamento Stampa PDF Gironi + Fase Finale allo Stile Beat the Box
+
+- **Allineamento Stampa Gironi + Fase Finale**: Modificato il template di stampa `printGironiTournament` in `printService.ts` per uniformarlo allo stile estetico pulito e moderno di Beat the Box (`#2196f3`, divisore 2px, intestazioni con bordo sinistro colorato per gironi/semifinali/finali/classifica).
+- **Risoluzione Spezzamento Tabelle su Safari/WebKit**: Aggiunte le regole di controllo del salto pagina (`break-inside: avoid; page-break-inside: avoid;`) e avvolto ciascun girone ed ogni fase finale in contenitori `.section-block.avoid-break` per impedire a Safari di tagliare a metà le tabelle dei gironi tra i fogli.
+
+---
+
 ## v6.7.17 — 2026-08-05
 
 ### Stabilizzazione definitiva viewport e layout nav bar mobile iOS PWA

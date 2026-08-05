@@ -4956,70 +4956,47 @@ export const printGironiTournament = (
         allMatches.forEach(match => {
             match.team1.forEach(id => allPlayerIds.add(id));
             match.team2.forEach(id => allPlayerIds.add(id));
-        });
+            const team1Key = `${match.team1[0]}-${match.team1[1]}`;
+            const team2Key = `${match.team2[0]}-${match.team2[1]}`;
+            const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
 
-        const allPlayers = Array.from(allPlayerIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
-        const allPairs: [Player, Player][] = [];
-        for (let i = 0; i < allPlayers.length; i += 2) {
-            if (i + 1 < allPlayers.length) {
-                allPairs.push([allPlayers[i], allPlayers[i + 1]]);
+            const team1Stat = pairStats.get(team1Key);
+            const team2Stat = pairStats.get(team2Key);
+
+            if (team1Stat) {
+                team1Stat.gamesWon += team1Games;
+                team1Stat.gamesLost += team2Games;
+                if (team1Games > team2Games) team1Stat.punti += 3;
             }
-        }
 
-        const pairStats = new Map<string, any>();
-
-    allPairs.forEach(pair => {
-        const key = `${pair[0].id}-${pair[1].id}`;
-        pairStats.set(key, {
-            pair,
-            punti: 0,
-            gamesWon: 0,
-            gamesLost: 0
+            if (team2Stat) {
+                team2Stat.gamesWon += team2Games;
+                team2Stat.gamesLost += team1Games;
+                if (team2Games > team1Games) team2Stat.punti += 3;
+            }
         });
-    });
 
-    allMatches.forEach(match => {
-        const team1Key = `${match.team1[0]}-${match.team1[1]}`;
-        const team2Key = `${match.team2[0]}-${match.team2[1]}`;
-        const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
-        const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-
-        const team1Stat = pairStats.get(team1Key);
-        const team2Stat = pairStats.get(team2Key);
-
-        if (team1Stat) {
-            team1Stat.gamesWon += team1Games;
-            team1Stat.gamesLost += team2Games;
-            if (team1Games > team2Games) team1Stat.punti += 3;
-        }
-
-        if (team2Stat) {
-            team2Stat.gamesWon += team2Games;
-            team2Stat.gamesLost += team1Games;
-            if (team2Games > team1Games) team2Stat.punti += 3;
-        }
-    });
-
-    const standings = Array.from(pairStats.values()).sort((a, b) => {
-        if (b.punti !== a.punti) return b.punti - a.punti;
-        return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
-    });
+        const standings = Array.from(pairStats.values()).sort((a, b) => {
+            if (b.punti !== a.punti) return b.punti - a.punti;
+            return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
+        });
 
         finalStandingsHtml = standings.map((entry, index) => {
-        return `
+            return `
                 <tr style="height: 20px;">
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${index + 1}</td>
-                    <td style="font-size: 11px; padding: 3px 4px;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.punti}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.gamesWon}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.gamesLost}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.gamesWon - entry.gamesLost >= 0 ? '+' : ''}${entry.gamesWon - entry.gamesLost}</td>
-            </tr>
-        `;
-    }).join('');
+                    <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${index + 1}°</td>
+                    <td style="font-size: 11px; padding: 5px 6px; height: 24px;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
+                    <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.punti}</td>
+                    <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
+                    <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
+                    <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon - entry.gamesLost >= 0 ? '+' : ''}${entry.gamesWon - entry.gamesLost}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    // 7. HTML FINALE
+    // 7. HTML FINALE - ALLINEATO AL FORMATO PULITO E MODERNO BEAT THE BOX
     const content = `
         <style>
             @page {
@@ -5028,7 +5005,6 @@ export const printGironiTournament = (
             }
             body {
                 font-family: 'Manrope', sans-serif;
-                font-feature-settings: 'cv11', 'tnum', 'lnum';
                 font-size: 11px;
                 line-height: 1.3;
                 margin: 0;
@@ -5039,46 +5015,47 @@ export const printGironiTournament = (
             }
             h1 {
                 font-size: 22px;
-                margin: 0 0 3px 0;
-                color: #111827;
+                margin: 0 0 4px 0;
+                color: #2196f3;
                 font-weight: bold;
             }
             h2 {
                 font-size: 14px;
-                margin: 0 0 2px 0;
+                margin: 0 0 3px 0;
                 color: #666;
-                font-weight: normal;
             }
             h3 {
-                font-size: 13px;
-                margin: 10px 0 3px 0;
-                color: #000;
+                font-size: 12px;
                 font-weight: bold;
+                margin: 20px 0 6px 0;
+                padding: 4px 6px;
+            }
+            h4 {
+                font-size: 11px;
+                font-weight: bold;
+                margin: 8px 0 4px 0;
             }
             .team-box {
                 text-align: center;
                 font-weight: bold;
-                padding: 2px 3px;
+                padding: 4px 5px;
                 background-color: #f0f5ff;
                 border: 1px solid #c7d9f0;
-                border-radius: 3px;
+                border-radius: 4px;
                 font-size: 11px;
-                line-height: 1.1;
-                height: 60px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
+                line-height: 1.2;
             }
             .team-number {
-                color: #111827;
+                color: #2196f3;
                 font-weight: bold;
-                margin-bottom: 1px;
-                font-size: 11px;
+                margin-bottom: 2px;
+                font-size: 10px;
+                text-transform: uppercase;
             }
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 3px 0 6px 0;
+                margin: 4px 0 10px 0;
                 font-size: 11px;
             }
             th {
@@ -5098,20 +5075,38 @@ export const printGironiTournament = (
                 line-height: 1.3;
                 height: 24px;
             }
+            tr {
+                height: 24px;
+            }
             tr:nth-child(even) {
                 background-color: #f0f5ff;
             }
+            .avoid-break {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .footer {
+                margin-top: 20px;
+                padding-top: 10px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 8px;
+                color: #666;
+            }
         </style>
 
-        <div style="text-align: center; margin-bottom: 3px;">
-            <h1>${safeDisplayName}</h1>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <h1>🌐 ${safeDisplayName}</h1>
             <h2>${safeClubName} - ${escapeHtml(tournament.type)}</h2>
-            <div style="color: #111827; font-size: 13px; font-weight: bold; margin: 2px 0 0 0;">
+            <div style="color: #2196f3; font-size: 11px; font-weight: bold; margin: 3px 0 0 0;">
                 Giornata del ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
         </div>
 
-        <div style="border-bottom: 1px solid #1e3a6e; margin: 5px 0;"></div>
+        <div style="border-bottom: 2px solid #2196f3; margin: 10px 0 20px 0;"></div>
 
         ${gironiSections}
 
@@ -5122,17 +5117,17 @@ export const printGironiTournament = (
         ${finalsSection}
 
         ${!isScheduled && finalStandingsHtml ? `
-            <div class="section-block">
-            <h2 style="font-size: 14px; margin-top: 20px;">CLASSIFICA FINALE</h2>
+            <div class="section-block avoid-break">
+            <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">🏆 CLASSIFICA FINALE</h3>
             <table>
                 <thead>
-                    <tr>
-                        <th>Pos</th>
-                        <th>Squadra</th>
-                        <th>Punti</th>
-                        <th>GW</th>
-                        <th>GL</th>
-                        <th>Diff</th>
+                    <tr style="height: 20px;">
+                        <th style="width: 10%; text-align: center; height: 24px;">Pos</th>
+                        <th style="width: 45%;">Squadra</th>
+                        <th style="width: 11%; text-align: center;">Punti</th>
+                        <th style="width: 11%; text-align: center;">GW</th>
+                        <th style="width: 11%; text-align: center;">GL</th>
+                        <th style="width: 12%; text-align: center;">Diff</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -5141,9 +5136,13 @@ export const printGironiTournament = (
             </table>
             </div>
         ` : ''}
+
+        <div class="footer" style="text-align: center;">
+            Padel ELO Manager - ${escapeHtml(tournament.type)} - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+        </div>
     `;
 
-    return openPrintWindow(`${displayName.replace(' - ', ', ')}, Gironi e Fase Finale, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+    return openPrintWindow(`${safeDisplayName.replace(' - ', ', ')}, ${escapeHtml(tournament.type)}, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
 // Funzione per stampare il report del torneo TPRA (Eliminazione Diretta Singolo) con Tabellone ad Albero ed Albo d'Oro
