@@ -1,5 +1,5 @@
 ================================================================
-PADEL ELO MANAGER v6.7.9 - TESTI PROMOZIONALI
+PADEL ELO MANAGER v6.7.17 - TESTI PROMOZIONALI
 ================================================================
 
 
@@ -9,7 +9,7 @@ PADEL ELO MANAGER v6.7.9 - TESTI PROMOZIONALI
 
 Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
 
-Ho sviluppato *Padel ELO Manager v6.7.9* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
+Ho sviluppato *Padel ELO Manager v6.7.17* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico, con salvataggi protetti e regole coerenti per pareggi e fasi finali.
 
 Cosa fa in pratica:
 - *Flusso guidato di creazione* per Multi Giornata, Torneo a Squadre, Torneo Singolo e Nuova Giornata, con descrizioni chiare e passaggi coerenti

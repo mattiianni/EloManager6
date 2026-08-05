@@ -1,4 +1,4 @@
-# Padel ELO Manager — Design (v6.7.9)
+# Padel ELO Manager — Design (v6.7.17)
 
 Questo documento descrive l’architettura e le scelte di design dell’app **Padel ELO Manager** (frontend React/Vite + backend Express + PostgreSQL su Neon), con focus su flussi utente, modello dati e punti “non ovvi” (stampa PDF, PWA, multi-workspace, tornei a squadre).
 

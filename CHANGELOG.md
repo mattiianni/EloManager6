@@ -1,3 +1,13 @@
+## v6.7.17 — 2026-08-05
+
+### Stabilizzazione definitiva viewport e layout nav bar mobile iOS PWA
+
+- **Risoluzione viewport standalone su iOS**: Rimosse le unità `dvh` e `svh` da `index.css` poiché causavano il restringimento e il sollevamento dell'app standalone su iOS. Ripristinati i valori stabili `100vh` e `100%`.
+- **Risoluzione SplashScreen**: Ripristinata la classe `min-h-screen` sulle schermate di login e di caricamento iniziale per centrare perfettamente la login card.
+- **Risoluzione layout nav bar mobile**: Ripristinato il design originario a altezza fissa **58px** con padding bottom per la safe area in `App.tsx`, ma con sfondo solido e icone più scure (`var(--ios-secondaryLabel)`) per garantire massima stabilità ed evitare bug di rendering GPU di WebKit.
+
+---
+
 ## v6.7.16 — 2026-08-05
 
 ### Fix definitivo altezza viewport con -webkit-fill-available per iOS PWA
