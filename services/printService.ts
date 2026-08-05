@@ -4954,17 +4954,25 @@ export const printGironiTournament = (
     if (tournament.status !== 'scheduled') {
         // Raccoglie tutti i match per calcolo classifica finale
         const allMatches = [...gironiGroups.flat(), ...semifinalsMatches, ...finalsMatches];
-        const allPlayerIds = new Set<string>();
+        const pairStats = new Map<string, { pair: [Player, Player]; punti: number; gamesWon: number; gamesLost: number }>();
+
         allMatches.forEach(match => {
-            match.team1.forEach(id => allPlayerIds.add(id));
-            match.team2.forEach(id => allPlayerIds.add(id));
-            const team1Key = `${match.team1[0]}-${match.team1[1]}`;
-            const team2Key = `${match.team2[0]}-${match.team2[1]}`;
+            const p1 = getPlayerById(match.team1[0]);
+            const p2 = getPlayerById(match.team1[1]);
+            const p3 = getPlayerById(match.team2[0]);
+            const p4 = getPlayerById(match.team2[1]);
+            if (!p1 || !p2 || !p3 || !p4) return;
+
+            const k1 = teamKey(match.team1);
+            const k2 = teamKey(match.team2);
+            if (!pairStats.has(k1)) pairStats.set(k1, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0 });
+            if (!pairStats.has(k2)) pairStats.set(k2, { pair: [p3, p4], punti: 0, gamesWon: 0, gamesLost: 0 });
+
             const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
             const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
 
-            const team1Stat = pairStats.get(team1Key);
-            const team2Stat = pairStats.get(team2Key);
+            const team1Stat = pairStats.get(k1);
+            const team2Stat = pairStats.get(k2);
 
             if (team1Stat) {
                 team1Stat.gamesWon += team1Games;
