@@ -4657,22 +4657,24 @@ export const printGironiTournament = (
 
         // 4e. RETURN SEZIONE GIRONE COMPLETA
         return `
-            <div class="section-block" style="margin-bottom: 20px;">
-                <h2 style="font-size: 14px; font-weight: bold; margin: 10px 0; padding: 5px; background: #f0f0f0; border-left: 4px solid #007bff;">GIRONE ${gironeName}</h2>
+            <div class="section-block avoid-break" style="margin-bottom: 24px;">
+                <h3 style="font-size: 12px; font-weight: bold; margin: 20px 0 6px 0; padding: 4px 6px; background: #eff6ff; border-left: 4px solid #2196f3;">
+                    🌐 GIRONE ${gironeName}
+                </h3>
 
-                <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Squadre</h3>
+                <h4 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0; color: #475569;">Squadre Partecipanti</h4>
                 <div class="team-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
                     ${teamsHtml}
                 </div>
 
-                <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Partite</h3>
-                <table>
+                <h4 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0; color: #475569;">Partite Girone ${gironeName}</h4>
+                <table style="margin-bottom: 8px;">
                     <thead>
-                        <tr>
-                            <th style="width: 15%; text-align: center;">Partita</th>
-                            <th style="width: 30%;">Squadra A</th>
+                        <tr style="height: 20px;">
+                            <th style="width: 15%; text-align: center; height: 24px;">Partita</th>
+                            <th style="width: 35%;">Squadra A</th>
                             <th style="width: 15%; text-align: center;">Risultato</th>
-                            <th style="width: 30%;">Squadra B</th>
+                            <th style="width: 35%;">Squadra B</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -4681,16 +4683,16 @@ export const printGironiTournament = (
                 </table>
 
                 ${gironeIsComplete ? `
-                    <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Classifica Girone ${gironeName}</h3>
-                    <table>
+                    <h4 style="font-size: 11px; font-weight: bold; margin: 12px 0 4px 0; background: #f0f9ff; padding: 3px 5px; color: #0369a1;">CLASSIFICA GIRONE ${gironeName}</h4>
+                    <table style="margin-bottom: 6px;">
                         <thead>
-                            <tr>
-                                <th>Pos</th>
-                                <th>Squadra</th>
-                                <th>Punti</th>
-                                <th>GW</th>
-                                <th>GL</th>
-                                <th>Diff</th>
+                            <tr style="height: 20px;">
+                                <th style="width: 10%; text-align: center; height: 24px;">Pos</th>
+                                <th style="width: 45%;">Squadra</th>
+                                <th style="width: 11%; text-align: center;">Punti</th>
+                                <th style="width: 11%; text-align: center;">GW</th>
+                                <th style="width: 11%; text-align: center;">GL</th>
+                                <th style="width: 12%; text-align: center;">Diff</th>
                             </tr>
                         </thead>
                         <tbody>
