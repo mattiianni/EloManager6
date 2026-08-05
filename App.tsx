@@ -248,7 +248,7 @@ const App: React.FC = () => {
     return (
         <PadelStoreProvider>
             <HIGDialogHost />
-            <div className="app-shell app-grid flex h-full overflow-hidden">
+            <div className="app-shell app-grid flex h-screen w-screen overflow-hidden">
                 <Sidebar
                     activePage={activePage}
                     setActivePage={setActivePage}
