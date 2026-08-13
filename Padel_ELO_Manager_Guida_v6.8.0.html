@@ -281,12 +281,13 @@
     <li>Cos'e' Padel ELO Manager</li>
     <li>Accesso e schermata principale</li>
     <li>Flussi di Avvio: Multi Giornata vs Torneo Singolo</li>
+    <li>Dettaglio Inserimento: Real-Time vs Foglio di Stampa, Salvataggi Progressivi</li>
     <li>Creare una giornata singolo/a coppie</li>
-    <li>Scegliere il formato della giornata</li>
+    <li>8 Formati Torneo: Regole e Mini-Guide Dettagliate</li>
+    <li>Torneo a Squadre: Guida Manageriale Completa</li>
     <li>Stampare il PDF operativo</li>
     <li>Inserire risultati e creare il resoconto finale</li>
-    <li>Torneo a Squadre</li>
-    <li>Classifiche e statistiche</li>
+    <li>Classifiche, Statistiche ed ELO-Playtomic</li>
     <li>Admin, workspace e codici</li>
     <li>Domande frequenti</li>
 </ol>
@@ -384,8 +385,24 @@
     </tbody>
 </table>
 
-<h2>4. Creare una giornata singolo/a coppie</h2>
-<p>Questo flusso vale per i tornei classici: TorneOtto, Americano, Round Robin + Finali, Gironi + Fase Finale, Beat the Box e Torneo Libero.</p>
+<h2>4. Dettaglio Inserimento: Real-Time vs Foglio di Stampa, Salvataggi Progressivi</h2>
+<p>L'applicazione garantisce la massima flessibilità operativa per supportare sia chi ama gestire l'evento in maniera digitale, sia chi preferisce la classica carta e penna al campo:</p>
+
+<h3>Flessibilità di Inserimento</h3>
+<ul>
+    <li><strong>Il Flusso Cartaceo (Offline)</strong>: Generi il torneo, stampi il PDF delle "Schede Match Vuote" (foglio operativo) e lo posizioni sulla bacheca o lo consegni ai giocatori per ciascun campo. Gli atleti compilano a mano i punteggi dei loro incontri e ti restituiscono la scheda. A fine evento, o a blocchi, carichi i punteggi al desk in pochi minuti.</li>
+    <li><strong>Il Flusso Digitale (Real-Time)</strong>: Se disponi di un tablet, computer o gestisci il torneo direttamente dal tuo smartphone a bordo campo, puoi evitare del tutto le stampe. Fai click/tap direttamente sulla card di qualsiasi match visualizzato sul display per aprire la scheda inserimento punteggio. Digiti i set e premi "Salva Risultato": la classifica generale e l'ELO dei giocatori si aggiorneranno istantaneamente in tempo reale.</li>
+</ul>
+
+<h3>Salvataggi Progressivi e Resilienza</h3>
+<div class="info-box">
+    <p><strong>Salva un po' alla volta:</strong> I tornei richiedono tempo. Non è necessario attendere la conclusione di tutte le partite o inserire i punteggi tutti insieme. Puoi salvare anche una singola partita alla volta.</p>
+</div>
+<p>I dati vengono scritti immediatamente e in modo atomico sul database cloud. Se chiudi l'applicazione, si scarica il dispositivo o decidi di sospendere il torneo per riprenderlo il giorno successivo, non perderai alcun dato: rientrando in "Risultati" troverai il torneo esattamente nello stato in cui lo hai lasciato.</p>
+<p>Nei tornei strutturati in più fasi (come <em>Gironi + Fase Finale</em> o <em>Beat the Box</em>), i playoff (quarti, semifinali o finali) vengono calcolati e si sbloccano in automatico non appena tutti i match della fase propedeutica precedente sono stati completati e registrati a database.</p>
+
+<h2>5. Creare una giornata singolo/a coppie</h2>
+<p>Questo flusso vale per i tornei classici ad esclusione del Torneo a Squadre, che possiede un pannello di gestione personalizzato.</p>
 
 <div class="mobile-figure">
     <div class="phone">
@@ -418,51 +435,87 @@
     <li>Scegli <strong>Singolo / Coppie</strong>.</li>
     <li>Inserisci il <strong>numero di coppie</strong> da sorteggiare.</li>
     <li>Seleziona i giocatori disponibili.</li>
-    <li>Scegli il <strong>tipo di sorteggio</strong>.</li>
+    <li>Scegli il <strong>tipo di sorteggio</strong>:
+        <ul>
+            <li><strong>Casuale</strong>: Estrazione a sorte pura.</li>
+            <li><strong>Bilanciato ELO</strong>: Accoppia giocatori più forti con giocatori più deboli per equilibrare il livello delle coppie.</li>
+            <li><strong>Teste di Serie</strong>: Distribuisce i giocatori con ELO più alto in coppie diverse per non farli scontrare subito.</li>
+            <li><strong>Manuale</strong>: Decidi tu liberamente chi gioca con chi.</li>
+        </ul>
+    </li>
     <li>Attendi che l'app generi le coppie.</li>
     <li>Scegli il formato della giornata.</li>
     <li>Attendi la creazione del tabellone.</li>
 </ol>
 
-<h2>5. Scegliere il formato della giornata</h2>
-<p>Dopo il sorteggio devi scegliere il formato operativo della giornata. Ogni formato crea un tabellone diverso.</p>
+<h2>6. 8 Formati Torneo: Regole e Mini-Guide Dettagliate</h2>
+<p>L'applicazione include 8 formati di gioco completati, collaudati e rigidamente bloccati per garantirne il corretto comportamento nel tempo:</p>
 
-<div class="mobile-figure">
-    <div class="phone">
-        <div class="phone-screen">
-            <div class="app-title">Tipo Giornata</div>
-            <div class="mini-card">
-                <h5>Formati</h5>
-                <div class="mini-list">
-                    <div>TorneOtto 30'</div>
-                    <div>Americano</div>
-                    <div>Round Robin + Finali</div>
-                    <div>Gironi + Fase Finale</div>
-                    <div>Beat the Box</div>
-                    <div>Torneo Libero</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="figure-text">
-        <h4>Formato torneo</h4>
-        <p>Scegli il formato in base alla giornata che vuoi organizzare. Dopo la scelta, l'app crea il tabellone e ti permette di salvarlo, stamparlo o inserire i risultati.</p>
-    </div>
-</div>
+<h3>1. TorneOtto 30'</h3>
+<p><strong>Configurazione</strong>: Esattamente 8 giocatori divisi in 4 coppie prestabilite, 2 campi in parallelo.<br>
+<strong>Regole</strong>: Girone unico all'italiana (Round Robin) a tempo. Si disputano 6 partite complessive (ogni coppia gioca 3 partite). Ciascun match ha una durata fissa di 30 minuti. Vince chi accumula più punti/game totali.<br>
+<strong>Uso</strong>: Il formato perfetto per serate rapide ed equilibrate del circolo senza tempi morti.</p>
 
-<table>
-    <thead><tr><th>Formato</th><th>Uso consigliato</th><th>Nota pratica</th></tr></thead>
-    <tbody>
-        <tr><td><strong>TorneOtto 30'</strong></td><td>Giornata veloce e ordinata.</td><td>Ideale per serate rapide.</td></tr>
-        <tr><td><strong>Americano</strong></td><td>Rotazione con piu' turni.</td><td>Configura campi, turni e punteggio.</td></tr>
-        <tr><td><strong>Round Robin + Finali</strong></td><td>Campionato a girone singolo all'italiana, con andata/ritorno opzionale.</td><td>Fase finale opzionale; il torneo resta in corso fino alla sua conclusione.</td></tr>
-        <tr><td><strong>Gironi + Fase Finale</strong></td><td>Gironi all'italiana separati, poi tabellone a eliminazione.</td><td>Da 8 coppie puoi scegliere semifinali oppure quarti, semifinali e finali.</td></tr>
-        <tr><td><strong>Beat the Box</strong></td><td>Formato a box con finali.</td><td>Adatto a eventi piu' strutturati.</td></tr>
-        <tr><td><strong>Torneo Libero</strong></td><td>Massima flessibilita'.</td><td>Per giornate meno rigide.</td></tr>
-    </tbody>
-</table>
+<h3>2. Americano Individuale</h3>
+<p><strong>Configurazione</strong>: Da 4 a 12+ singoli partecipanti.<br>
+<strong>Regole</strong>: Si gioca senza coppie fisse. Ad ogni turno il sistema rimescola i giocatori per formare coppie diverse. Ogni partecipante affronta avversari diversi e gioca al fianco di compagni diversi. La classifica finale è individuale ed è determinata dalla somma dei game vinti nei vari turni.<br>
+<strong>Uso</strong>: Ideale per favorire la socializzazione e il divertimento nei gruppi misti.</p>
 
-<h2>6. Stampare il PDF operativo</h2>
+<h3>3. Round Robin + Finali</h3>
+<p><strong>Configurazione</strong>: Da 4 a 12 coppie fisse.<br>
+<strong>Regole</strong>: Fase iniziale a girone unico all'italiana (ogni coppia sfida tutte le altre). Al termine della fase a gironi, è possibile generare una fase finale ad eliminazione diretta (Semifinali e Finali, o direttamente Finale 1°/2° posto).<br>
+<strong>Uso</strong>: Il formato di campionato standard del circolo per incoronare la coppia regina.</p>
+
+<h3>4. Gironi + Fase Finale</h3>
+<p><strong>Configurazione</strong>: Da 6 a 16+ coppie fisse.<br>
+<strong>Regole</strong>: Le coppie vengono divise in 2, 3 o 4 gironi separati. Si qualificano alla fase finale (tabellone a eliminazione diretta) i primi di ogni girone ed eventualmente le migliori seconde/terze calcolate al volo dal sistema. Dalle 8 coppie in su, supporta la configurazione con Quarti di finale opzionali.<br>
+<strong>Uso</strong>: Perfetto per tornei estesi o domenicali con molti iscritti.</p>
+
+<h3>5. Beat the Box</h3>
+<p><strong>Configurazione</strong>: Giocatori singoli distribuiti in gruppi (box) da 4.<br>
+<strong>Regole</strong>: In ogni box si disputano 3 partite cambiando compagno ad ogni match. Al termine del turno, i punteggi individuali determinano la classifica del box. I migliori salgono di categoria al box superiore per il turno successivo, mentre i peggiori retrocedono al box inferiore.<br>
+<strong>Uso</strong>: Altamente competitivo ed avvincente, premia la stabilità individuale con compagni diversi.</p>
+
+<h3>6. TPRA / Eliminazione Diretta</h3>
+<p><strong>Configurazione</strong>: Da 8, 16 o 32 coppie fisse.<br>
+<strong>Regole</strong>: Tabellone classico ad albero a eliminazione diretta tennistica. Le teste di serie vengono posizionate automaticamente in base all'ELO storico dei giocatori. Il sistema gestisce in autonomia i BYE (turni di riposo per tabelloni incompleti, es. 12 coppie con 4 bye). Il vincitore avanza, chi perde viene eliminato.<br>
+<strong>Uso</strong>: Per tornei ufficiali o eventi agonistici ad alta tensione.</p>
+
+<h3>7. Torneo Libero</h3>
+<p><strong>Configurazione</strong>: Qualsiasi numero di coppie fisse.<br>
+<strong>Regole</strong>: Nessun vincolo di calendario o turni rigidi. L'organizzatore abbina liberamente le coppie sul momento. La classifica tiene conto dei punti accumulati (3 punti vittoria, 1 pareggio, 0 sconfitta).<br>
+<strong>Uso</strong>: Per pomeriggi di sfide libere o raduni amichevoli non strutturati.</p>
+
+<h3>8. Torneo a Squadre</h3>
+<p>Vedi sezione successiva per la guida manageriale dedicata a questo formato avanzato.</p>
+
+<h2>7. Torneo a Squadre: Guida Manageriale Completa</h2>
+<p>Il <strong>Torneo a Squadre</strong> si distacca dai flussi ordinari a coppie per gestire veri e propri campionati tra club o fazioni del circolo. Si articola in tre fasi precise:</p>
+
+<h3>Fase 1: Creazione della Shell (Torneo Root)</h3>
+<p>In questa fase crei il contenitore principale del torneo:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Accedi alla pagina <strong>Tornei</strong> e fai click su <strong>Nuovo Torneo / Nuova Giornata</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Nella sezione "Opzioni sorteggio coppie", seleziona <strong>Torneo a squadre</strong>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Inserisci il nome del torneo, il circolo ospitante, il numero di squadre partecipanti e il numero di giocatori minimi per squadra.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Conferma la creazione: il torneo apparirà nella lista con lo stato <em>Configurazione incompleta</em>.</div></div>
+
+<h3>Fase 2: Completa Configurazione</h3>
+<p>Prima di giocare, devi impostare le regole e i roster dei giocatori delle squadre:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Trova il blocco del torneo in <strong>Tornei</strong> e fai click sul pulsante arancione <strong>+ Completa configurazione</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Scegli il tipo di campionato: <em>Round Robin</em> (girone all'italiana), <em>Andata/Ritorno</em> o <em>Eliminazione Diretta</em>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Imposta la presenza della fase finale e definisci quante partite compongono la sfida (giornata) tra due squadre: <strong>3 partite</strong> o <strong>5 partite</strong>.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Per ogni squadra: premi "Modifica", imposta il nome del team e inserisci l'elenco dei giocatori (Nome e Cognome). Nota: per giocare a 5 partite, sono necessari almeno 8 iscritti per squadra.</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-text">Verificati i requisiti minimi, fai click su <strong>Completa configurazione</strong> per attivare il torneo.</div></div>
+
+<h3>Fase 3: Inserimento Giornate e Matchday</h3>
+<p>Una volta completata la configurazione, puoi gestire il calendario delle sfide:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Nel blocco del torneo a squadre, fai click su <strong>+ Inserisci giornata</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Imposta la data dell'incontro e seleziona le due squadre sfidanti (es. Team A vs Team B). Il sistema impedisce la ripetizione di sfide già giocate.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Componi le 3 o 5 partite di coppia selezionando i giocatori dal roster delle due squadre. Ricorda: un giocatore non può disputare più di un match all'interno dello stesso incontro.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Salva la giornata. Puoi ora stampare il report o inserire i risultati partita per partita in tempo reale o differito. I pareggi (es. 1-1 su 2 partite) sono ammessi nelle giornate ordinarie, ma vietati nei playoff.</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-text">Una volta concluso il girone, il pulsante diventerà <strong>+ Inserisci Finali</strong> per avviare la fase a eliminazione diretta calcolata sui punti delle squadre.</div></div>
+
+<h2>8. Stampare il PDF operativo</h2>
 <p>Quando il tabellone e' creato, puoi stampare o condividere il PDF. Questo e' il documento da portare in campo e far compilare a mano dai giocatori.</p>
 
 <div class="mobile-figure">
@@ -493,7 +546,7 @@
     <p><strong>Non dimenticare di salvare.</strong> Il PDF serve per il campo, ma il salvataggio serve all'app per ritrovare la giornata dopo.</p>
 </div>
 
-<h2>7. Inserire risultati e creare il resoconto finale</h2>
+<h2>9. Inserire risultati e creare il resoconto finale</h2>
 <p>Dopo che i giocatori hanno compilato il foglio in campo, rientra nell'app e registra i punteggi reali.</p>
 
 <div class="mobile-figure">
@@ -531,46 +584,7 @@
     <li>Genera PDF o resoconto finale.</li>
 </ol>
 
-<h2>8. Torneo a Squadre</h2>
-<p>Il Torneo a Squadre e' separato dai tornei singolo/a coppie. Non parte dal numero di coppie da sorteggiare, ma da squadre, calendario e matchday.</p>
-
-<div class="mobile-figure">
-    <div class="phone">
-        <div class="phone-screen">
-            <div class="app-title">Torneo a<br>Squadre</div>
-            <div class="mini-card">
-                <h5>Configurazione</h5>
-                <div class="mini-row"><span>Squadre</span><strong>6</strong></div>
-                <div class="mini-row"><span>Formato</span><strong>RR + Finali</strong></div>
-                <div class="mini-row"><span>Partite/giornata</span><strong>3</strong></div>
-            </div>
-            <div class="mini-card">
-                <h5>Matchday</h5>
-                <div class="mini-list">
-                    <div>Team 1 vs Team 4</div>
-                    <div>Team 2 vs Team 5</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="figure-text">
-        <h4>Flusso dedicato</h4>
-        <h1>Guida - Tornei a Squadre (v6.8.0)</h1><p>Crei prima il torneo root, poi configuri squadre e calendario. Le giornate sono matchday collegati al torneo principale. Nelle giornate ordinarie il pareggio è valido; nelle fasi a eliminazione e piazzamento deve sempre esserci un vincitore.</p>
-        <p>Per proseguire una competizione gia' iniziata, usa il bottone accanto al torneo o alla fase da giocare.</p>
-    </div>
-</div>
-
-<ol>
-    <li>Vai su <strong>Nuovo Torneo / Nuova Giornata</strong>.</li>
-    <li>Scegli <strong>Torneo a Squadre</strong>.</li>
-    <li>Configura squadre, giocatori, formato e calendario.</li>
-    <li>Apri il matchday da giocare.</li>
-    <li>Inserisci giocatori nei sub-match.</li>
-    <li>Salva, stampa PDF operativo o inserisci subito i risultati.</li>
-    <li>Chiudi la giornata e controlla riepilogo, classifiche e statistiche.</li>
-</ol>
-
-<h2>9. Classifiche e statistiche</h2>
+<h2>10. Classifiche, Statistiche ed ELO-Playtomic</h2>
 <p>Quando i risultati sono salvati, l'app aggiorna ranking e statistiche.</p>
 
 <div class="mobile-figure">
@@ -594,13 +608,12 @@
         <p><strong>Classifiche</strong> mostra il ranking ELO. <strong>Statistiche</strong> mostra analisi del torneo o della serie: top giocatori, games, streak, coppie frequenti e dati parziali se il torneo e' ancora in corso.</p>
     </div>
 </div>
-</div>
 
 <div class="info-box">
-    <p><strong>Novita' v5 - Integrazione ELO-Playtomic:</strong> Nella gestione dei giocatori e nelle classifiche, il punteggio ELO viene rigorosamente e automaticamente convertito nei livelli standard Playtomic (da 1.0 a 6.0). In questo modo, chiunque puo' capire istantaneamente il proprio livello reale e confrontarlo con lo schema rigoroso di Playtomic.</p>
+    <p><strong>Integrazione ELO-Playtomic:</strong> Nella gestione dei giocatori e nelle classifiche, il punteggio ELO viene rigorosamente e automaticamente convertito nei livelli standard Playtomic (da 1.0 a 6.0). In questo modo, chiunque puo' capire istantaneamente il proprio livello reale e confrontarlo con lo schema rigoroso di Playtomic.</p>
 </div>
 
-<h2>10. Admin, workspace e codici</h2>
+<h2>11. Admin, workspace e codici</h2>
 <p>Il pannello Admin permette di gestire workspace, codici di accesso e audit log.</p>
 
 <div class="mobile-figure">
@@ -633,7 +646,7 @@
     </tbody>
 </table>
 
-<h2>11. Domande frequenti</h2>
+<h2>12. Domande frequenti</h2>
 
 <h3>Devo creare un nuovo torneo ogni volta?</h3>
 <p>No. Se e' la stessa serie, usa l'aggancio a torneo esistente. Creare sempre tornei nuovi rende lo storico meno leggibile.</p>
