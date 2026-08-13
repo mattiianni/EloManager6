@@ -13,8 +13,8 @@
 3. **Aggiornamento Documentazione (Cruciale)**: Prima di procedere, verifica se ci sono nuove funzionalità (es. Integrazione Playtomic) e assicurati che siano state spiegate in: Guida HTML, Presentazione HTML e Testi Promo.
 4. Aggiornare i file `.md` rilevanti e il `README.md`.
 5. Aggiornare `CHANGELOG.md` (non usare piu' `UPDATE_SUMMARY_*.md`).
-6. Aggiornare l'HTML guida utente corrente (`Padel_ELO_Manager_Guida_v6.8.0.html`) e la guida in formato `.md` (`ISTRUZIONI_USO.md`).
-7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` e `node scripts/generate-user-guide-pdf.mjs`) per produrre in `docs/` i PDF aggiornati della guida d'uso generica (`Guida_Uso_v6.8.0.pdf`) e della guida tornei a squadre (`Guida_Torneo_a_Squadre_v6.8.0.pdf`), rimuovendo i vecchi file PDF.
+6. Aggiornare l'HTML guida utente corrente (`docs/Padel_ELO_Manager_Guida_v6.8.0.html`) e la guida in formato `.md` (`docs/ISTRUZIONI_USO.md`).
+7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` per la guida a squadre, e `swift scripts/html_to_pdf.swift docs/Padel_ELO_Manager_Guida_v6.8.0.html docs/Guida_Uso_v6.8.0.pdf` per la guida d'uso generica) per produrre in `docs/` i PDF aggiornati (`Guida_Torneo_a_Squadre_v6.8.0.pdf` e `Guida_Uso_v6.8.0.pdf`), rimuovendo i vecchi file PDF.
 8. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.
 9. Creare backup `.zip` di ripristino e salvarlo sul Desktop dell'utente (`~/Desktop/`).
