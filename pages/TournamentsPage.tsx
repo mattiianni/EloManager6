@@ -68,9 +68,20 @@ const parseMatchSets = (raw: any): { team1: number; team2: number }[] => {
 };
 
 // Helper functions for Beat the Box
-const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => Player | undefined) => {
-    // Use player-set grouping (order-independent)
-    const { boxes: groupedBoxes, phaseMatches: remainingMatches } = groupMatchesByPlayerSets(matches);
+const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => Player | undefined, tournament?: Tournament) => {
+    // Use player-set grouping (order-independent) to separate box matches from phase matches
+    const { boxes: groupedBoxes, phaseMatches: rawPhaseMatches } = groupMatchesByPlayerSets(matches);
+
+    // Deduplicate phase matches to fix old DBs with duplicated finals
+    const seenPhaseMatches = new Set<string>();
+    const dedupedPhaseMatches = rawPhaseMatches.filter(m => {
+        const signature = [...m.team1].sort().join(',') + '|' + [...m.team2].sort().join(',');
+        const signatureReverse = [...m.team2].sort().join(',') + '|' + [...m.team1].sort().join(',');
+        if (seenPhaseMatches.has(signature) || seenPhaseMatches.has(signatureReverse)) return false;
+        seenPhaseMatches.add(signature);
+        return true;
+    });
+
     const numBoxes = groupedBoxes.size;
     const boxMatches = Array.from(groupedBoxes.values()).flat();
 
@@ -84,17 +95,6 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
         const winner = team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2');
         return { ...match, winner } as Match;
     });
-
-    // Separate semifinals and finals
-    let semifinalMatches: Match[] = [];
-    let finalMatches: Match[] = [];
-
-    if (remainingMatches.length >= 4) {
-        semifinalMatches = remainingMatches.slice(0, 2);
-        finalMatches = remainingMatches.slice(2);
-    } else {
-        finalMatches = remainingMatches;
-    }
 
     // Create boxes from player-set grouping
     const boxes: { boxNumber: number; players: Player[]; matches: Match[] }[] = [];
@@ -118,14 +118,145 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
             matches: bMatchesWithWinner
         });
     });
-    
+
     // Calcola le classifiche usando calculateAllBoxStandings
-    // IMPORTANTE: usa boxMatchesWithWinner che ha i winner corretti
     const boxStandings = calculateAllBoxStandings(boxMatchesWithWinner, boxes);
-    
-    // Calculate games won/lost for each player (per fallback se non c'è elo_history)
+
+    // RIGENERAZIONE A RUNTIME DEI PLAYOFF per tornei in corso senza playoff salvati a DB
+    let remainingMatches = [...dedupedPhaseMatches];
+
+    if (tournament && tournament.status === 'scheduled' && remainingMatches.length === 0) {
+        const playoffType = (tournament.playoffType as any) || 'finals_only';
+        if (playoffType !== 'no_finals') {
+            const generated = createFinalsMatches(numBoxes, boxStandings, tournament.date, undefined, playoffType);
+            const generatedSemis = generated.semifinals || [];
+            const generatedFinals = generated.finals || [];
+
+            const enrichGenerated = (m: any, idx: number, phaseName: string) => ({
+                id: `generated-${phaseName}-${idx}`,
+                tournamentId: tournament.id,
+                date: tournament.date,
+                team1: m.team1,
+                team2: m.team2,
+                sets: m.sets || [{ team1: 0, team2: 0 }],
+                winner: null,
+                phase: m.phase || phaseName,
+                roundNumber: m.roundNumber || 4,
+                createdAt: new Date().toISOString()
+            } as Match);
+
+            const enrichedSemis = generatedSemis.map((m: any, i: number) => enrichGenerated(m, i, 'semifinal'));
+            const enrichedFinals = generatedFinals.map((m: any, i: number) => {
+                let phase = 'consolation';
+                if (generatedSemis.length > 0 && generatedFinals.length === 1) {
+                    // If we generated semifinals but only 1 final, it means we don't know the finalists yet, so it's the consolation match.
+                    phase = 'consolation';
+                } else {
+                    phase = i === 0 ? 'final_1_2' : (i === 1 ? 'final_3_4' : 'consolation');
+                }
+                return enrichGenerated(m, i, phase);
+            });
+
+            remainingMatches = [...enrichedSemis, ...enrichedFinals];
+        }
+    }
+
+    // Separate semifinals and finals using the robust algorithm from MatchesPage
+    let semifinalMatches: Match[] = [];
+    let finalMatches: Match[] = [];
+
+    if (remainingMatches.some(m => m.phase && m.phase !== 'ordinary')) {
+        // Nuova logica basata sulla proprietà phase
+        semifinalMatches = remainingMatches.filter(m => m.phase === 'semifinal');
+        const phaseOrder: { [key: string]: number } = { 'final_1_2': 0, 'final_3_4': 1, 'consolation': 2, 'consolation_final': 3, 'finalina': 4 };
+        finalMatches = remainingMatches
+            .filter(m => m.phase && m.phase !== 'semifinal' && m.phase !== 'ordinary')
+            .sort((a, b) => (phaseOrder[a.phase || ''] ?? 99) - (phaseOrder[b.phase || ''] ?? 99));
+    } else {
+        // Fallback per vecchi tornei pre-v6 senza phase
+        if (remainingMatches.length >= 4) {
+            const allPlayerOccurrences = new Map<string, number>();
+            remainingMatches.forEach(m => {
+                m.team1.concat(m.team2).forEach(p => {
+                    allPlayerOccurrences.set(p, (allPlayerOccurrences.get(p) || 0) + 1);
+                });
+            });
+
+            let consolazioneMatch: Match | null = null;
+            const mainMatches: Match[] = [];
+
+            remainingMatches.forEach(m => {
+                // Partita Consolazione players only appear once across all phase matches
+                const isConsolazione = m.team1.concat(m.team2).every(p => allPlayerOccurrences.get(p) === 1);
+                if (isConsolazione) {
+                    consolazioneMatch = m;
+                } else {
+                    mainMatches.push(m);
+                }
+            });
+
+            if (mainMatches.length === 4) {
+                let foundSemis = false;
+                for (let i = 0; i < 4; i++) {
+                    for (let j = i + 1; j < 4; j++) {
+                        const s1 = mainMatches[i];
+                        const s2 = mainMatches[j];
+
+                        if (!s1.winner || !s2.winner || s1.winner === 'draw' || s2.winner === 'draw') continue;
+
+                        const w1 = s1.winner === 'team1' ? s1.team1 : s1.team2;
+                        const w2 = s2.winner === 'team1' ? s2.team1 : s2.team2;
+                        const l1 = s1.winner === 'team1' ? s1.team2 : s1.team1;
+                        const l2 = s2.winner === 'team1' ? s2.team2 : s2.team1;
+
+                        const isMatchBetween = (m: Match, tA: string[], tB: string[]) => {
+                            const m1 = [...m.team1].sort().join(',');
+                            const m2 = [...m.team2].sort().join(',');
+                            const a = [...tA].sort().join(',');
+                            const b = [...tB].sort().join(',');
+                            return (m1 === a && m2 === b) || (m1 === b && m2 === a);
+                        };
+
+                        const otherMatches = mainMatches.filter(m => m !== s1 && m !== s2);
+                        const finale12 = otherMatches.find(m => isMatchBetween(m, w1, w2));
+                        const finale34 = otherMatches.find(m => isMatchBetween(m, l1, l2));
+
+                        if (finale12 && finale34) {
+                            semifinalMatches = [s1, s2];
+                            finalMatches = [finale12, finale34];
+                            foundSemis = true;
+                            break;
+                        }
+                    }
+                    if (foundSemis) break;
+                }
+
+                if (!foundSemis) {
+                    semifinalMatches = mainMatches.slice(0, 2);
+                    finalMatches = mainMatches.slice(2);
+                }
+            } else {
+                semifinalMatches = remainingMatches.slice(0, 2);
+                finalMatches = remainingMatches.slice(2);
+            }
+
+            if (consolazioneMatch && finalMatches.length === 2) {
+                finalMatches.push(consolazioneMatch);
+            }
+        } else if (remainingMatches.length === 2) {
+            if (tournament?.playoffType === 'finals_only' || (numBoxes === 2 && tournament?.playoffType !== 'semifinals')) {
+                finalMatches = remainingMatches;
+            } else {
+                semifinalMatches = remainingMatches;
+            }
+        } else {
+            finalMatches = remainingMatches;
+        }
+    }
+
+    // Calculate games won/lost for each player
     const playerStats = new Map<string, { gamesWon: number; gamesLost: number }>();
-    
+
     matches.forEach(m => {
         if (!m.winner || m.winner === 'draw') return;
         const sets = m.sets || [];
@@ -144,20 +275,20 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
             });
         });
     });
-    
-    // Crea classifica individuale basata su statistiche (Games W/L e % vittorie)
+
+    // Crea classifica individuale basata su statistiche
     const individualStandings: { player: Player; eloChange: number; gamesWon: number; gamesLost: number; winPercentage: number; rank: number }[] = [];
-    
+
     boxes.forEach(box => {
         box.players.forEach(player => {
             const stats = playerStats.get(player.id) || { gamesWon: 0, gamesLost: 0 };
             const winPercentage = (stats.gamesWon + stats.gamesLost) > 0
                 ? (stats.gamesWon / (stats.gamesWon + stats.gamesLost)) * 100
                 : 0;
-            
+
             individualStandings.push({
                 player,
-                eloChange: 0, // Non più usato, ma manteniamo per compatibilità
+                eloChange: 0,
                 gamesWon: stats.gamesWon,
                 gamesLost: stats.gamesLost,
                 winPercentage,
@@ -165,8 +296,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
             });
         });
     });
-    
-    // Ordina per % vittorie decrescente, poi per gamesWon
+
     individualStandings.sort((a, b) => {
         if (b.winPercentage !== a.winPercentage) {
             return b.winPercentage - a.winPercentage;
@@ -176,7 +306,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
     individualStandings.forEach((entry, idx) => {
         entry.rank = idx + 1;
     });
-    
+
     return { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings };
 };
 
@@ -301,8 +431,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
             setIsSingleMatchModalOpen(false);
             setSelectedSingleMatch(null);
+            showHIGAlert('Risultato salvato con successo!', 'Successo');
         } catch (err) {
             console.error('Error saving single match:', err);
+            setSingleMatchError('Errore durante il salvataggio. Riprova più tardi.');
         } finally {
             setIsSavingSingleMatch(false);
         }
@@ -586,7 +718,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         
         // Handle Beat the Box tournaments
         if (tournament.type === TournamentType.BeatTheBox) {
-            if (tournament.status === 'scheduled') {
+            const hasAnyResults = tournamentMatches.some(m => m.winner || (m.sets && m.sets.some(s => Number(s.team1 || 0) > 0 || Number(s.team2 || 0) > 0)));
+            if (!hasAnyResults) {
                 // Print blank score sheet for scheduled tournaments
                 // FILTRA SOLO I BOX MATCHES (escludi semifinali e finali)
                 
@@ -606,10 +739,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     });
                 });
                 
-                printBeatTheBoxBlank(tournament, boxes, getPlayerById as any);
+                printBeatTheBoxBlank({ ...tournament, name: displayName } as any, boxes, getPlayerById as any, (tournament as any).playoffType);
             } else {
-                // Print complete report for completed tournaments
-                const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById as any);
+                // Print complete report for completed or in-progress tournaments with scores
+                const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById as any, tournament);
                 
                 // USA SEMPRE I DATI RICALCOLATI (stesso algoritmo dell'UI)
                 printBeatTheBoxComplete(tournament, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, displayName);
@@ -665,13 +798,21 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             return;
         }
         
+        const playoffType = tournament.roundRobinPlayoffType || tournament.round_robin_playoff_type || 'finals_only';
+        let expectedPlayoffMatches = 0;
+        if (tournament.status === 'completed') {
+            if (playoffType === 'semifinals') expectedPlayoffMatches = 4;
+            else if (playoffType === 'finals_only') expectedPlayoffMatches = 2;
+        }
+        const roundRobinMatchCountVal = tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > expectedPlayoffMatches
+            ? tournamentMatches.length - expectedPlayoffMatches
+            : undefined;
+
         let standings: TournamentStandingEntry[];
         if (tournament.type === TournamentType.Americano) {
             standings = calculateAmericanoStandings(tournamentMatches, tournament.americanoScoringType);
-        } else if (tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2) {
-            // For Round Robin + Finali, calculate based on finals results
-            const roundRobinMatchCount = tournamentMatches.length - 2;
-            standings = calculateFinalStandingsForRoundRobinFinali(tournamentMatches, roundRobinMatchCount, getPlayerById as any);
+        } else if (tournament.type === TournamentType.RoundRobinFinali && roundRobinMatchCountVal) {
+            standings = calculateFinalStandingsForRoundRobinFinali(tournamentMatches, roundRobinMatchCountVal, getPlayerById as any);
         } else {
             standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
         }
@@ -681,10 +822,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         const americanoFields = tournament.type === TournamentType.Americano ? tournament.americanoFields : undefined;
         
         // For Round Robin + Finali tournaments, calculate the number of round robin matches
-        // (Total matches - 2 finals matches)
-        const roundRobinMatchCount = tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2
-            ? tournamentMatches.length - 2
-            : undefined;
+        const roundRobinMatchCount = roundRobinMatchCountVal;
         
         // Handle Eliminazione Diretta (TPRA) & Gironi + Fase Finale tournaments
         if (tournament.type === TournamentType.EliminazioneDiretta) {
@@ -692,7 +830,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         } else if (tournament.type === TournamentType.GironiFaseFinale) {
             printGironiTournament(tournament, tournamentMatches, getPlayerById, displayName);
         } else {
-            printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, displayName);
+            printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, displayName, tournament.roundRobinFields);
         }
     };
     const handlePrintSeries = (days: Tournament[]) => {
@@ -1698,72 +1836,201 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         );
                                                                                     });
                                                                                 } else {
-                                                                                    return (
-                                                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                                                                            {tournamentMatches.map((m, idx) => {
-                                                                                                const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
-                                                                                                const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
-                                                                                                const matchSets = parseMatchSets(m.sets);
-                                                                                                const hasScores = matchSets.length > 0 && matchSets.some(s => Number(s.team1) > 0 || Number(s.team2) > 0);
-                                                                                                const isCompleted = !!m.winner || hasScores;
+                                                                                    let initialMatches: Match[] = [];
+                                                                                    let playoffMatches: Match[] = [];
+                                                                                    let renderError: string | null = null;
 
-                                                                                                const t1SetsDisplay = hasScores ? (
-                                                                                                    <div className="flex items-center gap-1.5">
-                                                                                                        {matchSets.map((s, i) => (
-                                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
-                                                                                                                {s.team1}
-                                                                                                            </span>
-                                                                                                        ))}
+                                                                                    try {
+                                                                                        if (day.type === TournamentType.BeatTheBox) {
+                                                                                            const { boxes: groupedBoxes, phaseMatches: rawPhaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
+                                                                                            const enrichedBoxMatches: Match[] = [];
+                                                                                            groupedBoxes.forEach((bMatches, boxNum) => {
+                                                                                                bMatches.forEach(m => {
+                                                                                                    enrichedBoxMatches.push({
+                                                                                                        ...m,
+                                                                                                        groupNumber: boxNum
+                                                                                                    });
+                                                                                                });
+                                                                                            });
+                                                                                            initialMatches = enrichedBoxMatches;
+                                                                                            playoffMatches = rawPhaseMatches;
+                                                                                        } else {
+                                                                                            // Fasi knockout esplicite (indipendenti dal tipo di torneo)
+                                                                                            const KNOCKOUT_PHASES = ["quarterfinal", "semifinal", "final_1_2", "final_3_4", "final", "finalina", "consolation", "consolation_final", "playoff"];
+                                                                                            const isPlayoffMatch = (m: Match) => {
+                                                                                                if (m.phase && KNOCKOUT_PHASES.includes(m.phase)) return true;
+                                                                                                // GironiFaseFinale: i gironi hanno phase='group' o groupNumber > 0
+                                                                                                if (day.type === TournamentType.GironiFaseFinale) {
+                                                                                                    if (m.phase === 'group') return false;
+                                                                                                    if (m.groupNumber && m.groupNumber > 0) return false;
+                                                                                                    return false;
+                                                                                                }
+                                                                                                return false;
+                                                                                            };
+
+                                                                                            initialMatches = tournamentMatches.filter(m => !isPlayoffMatch(m));
+                                                                                            playoffMatches = tournamentMatches.filter(m => isPlayoffMatch(m));
+                                                                                        }
+                                                                                    } catch (e: any) {
+                                                                                        console.error("Error processing tournament matches:", e);
+                                                                                        renderError = e.message || String(e);
+                                                                                    }
+
+                                                                                    const getMatchLabel = (m: Match, sectionMatches: Match[], idx: number): string => {
+                                                                                        const phaseMatchIdx = sectionMatches
+                                                                                            .filter(x => x.phase === m.phase)
+                                                                                            .findIndex(x => x.id === m.id) + 1;
+                                                                                        if (m.phase === "quarterfinal") return `Quarto di Finale ${phaseMatchIdx}`;
+                                                                                        if (m.phase === "semifinal") return `Semifinale ${phaseMatchIdx}`;
+                                                                                        if (m.phase === "final_1_2") return "Finale 1°-2° Posto";
+                                                                                        if (m.phase === "final_3_4") return "Finale 3°-4° Posto";
+                                                                                        if (m.phase === "finalina" || m.phase === "consolation_final") return "Finalina 3°-4°";
+                                                                                        if (m.phase === "consolation") {
+                                                                                            return `Partita Consolazione`;
+                                                                                        }
+                                                                                        if (day.type === TournamentType.BeatTheBox) {
+                                                                                            if (!m.groupNumber) {
+                                                                                                // Playoff match senza groupNumber - etichetta basata su phase
+                                                                                                if (m.phase === 'semifinal') return `Semifinale ${phaseMatchIdx}`;
+                                                                                                if (m.phase === 'final_1_2') return 'Finale 1°-2° Posto';
+                                                                                                if (m.phase === 'final_3_4') return 'Finale 3°-4° Posto';
+                                                                                                return `Playoff - Partita ${phaseMatchIdx}`;
+                                                                                            }
+                                                                                            // Indice corretto dentro il box specifico
+                                                                                            const boxMatches = sectionMatches.filter(x => x.groupNumber === m.groupNumber);
+                                                                                            const boxIdx = boxMatches.findIndex(x => x.id === m.id) + 1;
+                                                                                            return `Box ${m.groupNumber} - Partita ${boxIdx}`;
+                                                                                        }
+                                                                                        if (day.type === TournamentType.GironiFaseFinale) {
+                                                                                            const letter = String.fromCharCode(64 + (m.groupNumber || 1));
+                                                                                            return `Girone ${letter} - Turno ${m.roundNumber || idx + 1}`;
+                                                                                        }
+                                                                                        if (day.type === TournamentType.RoundRobinFinali || day.type === TournamentType.Americano || day.type === TournamentType.TorneOtto) {
+                                                                                            const fieldsCount = (day.type === TournamentType.RoundRobinFinali ? day.roundRobinFields : day.americanoFields) || 2;
+                                                                                            const normalizedRounds = normalizeTournamentRounds(sectionMatches, day.type, {
+                                                                                                fields: fieldsCount,
+                                                                                                homeAway: day.roundRobinHomeAway || false,
+                                                                                            });
+                                                                                            for (const round of normalizedRounds) {
+                                                                                                const item = round.matches.find(x => x.match.id === m.id);
+                                                                                                if (item) {
+                                                                                                    const prefix = day.type === TournamentType.RoundRobinFinali ? 'GIORNATA' : 'TURNO';
+                                                                                                    return `${prefix} ${round.roundNumber} - CAMPO ${item.courtNumber}`;
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                        return `Partita ${idx + 1}`;
+                                                                                    };
+
+                                                                                    const getMatchBadgeClass = (m: Match): string => {
+                                                                                        if (m.phase === "final_1_2" || m.phase === "final_3_4" || m.phase === "finalina" || m.phase === "consolation_final")
+                                                                                            return "text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border-purple-200/60 dark:border-purple-800/60";
+                                                                                        if (m.phase === "quarterfinal" || m.phase === "semifinal" || m.phase === "consolation")
+                                                                                            return "text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 border-sky-200/60 dark:border-sky-800/60";
+                                                                                        if (day.type === TournamentType.BeatTheBox && !m.groupNumber)
+                                                                                            return "text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 border-sky-200/60 dark:border-sky-800/60";
+                                                                                        return "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200/60 dark:border-blue-800/60";
+                                                                                    };
+
+                                                                                    const renderMatchCard = (m: Match, idx: number, sectionMatches: Match[]) => {
+                                                                                        const t1Names = Array.isArray(m.team1) ? m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(" / ") : '';
+                                                                                        const t2Names = Array.isArray(m.team2) ? m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(" / ") : '';
+                                                                                        const matchSets = parseMatchSets(m.sets);
+                                                                                        const hasScores = matchSets.length > 0 && matchSets.some(s => Number(s.team1) > 0 || Number(s.team2) > 0);
+                                                                                        const isCompleted = !!m.winner || hasScores;
+
+                                                                                        const t1SetsDisplay = hasScores ? (
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                {matchSets.map((s, i) => (
+                                                                                                    <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                        {s.team1}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+                                                                                        const t2SetsDisplay = hasScores ? (
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                {matchSets.map((s, i) => (
+                                                                                                    <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
+                                                                                                        {s.team2}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
+
+                                                                                        return (
+                                                                                            <div 
+                                                                                                key={m.id || idx} 
+                                                                                                onClick={() => handleOpenSingleMatchModal(m)}
+                                                                                                title="Clicca per inserire o modificare il risultato"
+                                                                                                className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99] ${
+                                                                                                    isCompleted
+                                                                                                        ? "bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-800/40 hover:border-emerald-300 dark:hover:border-emerald-700/60"
+                                                                                                        : "bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08]"
+                                                                                                }`}
+                                                                                            >
+                                                                                                <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/40 dark:border-white/10">
+                                                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${getMatchBadgeClass(m)}`}>
+                                                                                                        {getMatchLabel(m, sectionMatches, idx)}
+                                                                                                    </span>
+                                                                                                    {isCompleted && (
+                                                                                                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                                                                                            <svg className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" viewBox="0 0 20 20">
+                                                                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                                                                            </svg>
+                                                                                                            INSERITO
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <div className="flex items-center justify-between gap-3">
+                                                                                                    <span className={`text-sm ${m.winner === "team1" ? "font-bold text-emerald-900 dark:text-emerald-200" : isCompleted ? "font-medium text-slate-700 dark:text-slate-300" : "font-medium text-app/80 dark:text-white/80"} leading-tight flex-1`}>{t1Names}</span>
+                                                                                                    {t1SetsDisplay}
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                    <span className="text-[10px] uppercase font-bold text-app-muted dark:text-white/40 tracking-wider">vs</span>
+                                                                                                    <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
+                                                                                                </div>
+                                                                                                <div className="flex items-center justify-between gap-3">
+                                                                                                    <span className={`text-sm ${m.winner === "team2" ? "font-bold text-emerald-900 dark:text-emerald-200" : isCompleted ? "font-medium text-slate-700 dark:text-slate-300" : "font-medium text-app/80 dark:text-white/80"} leading-tight flex-1`}>{t2Names}</span>
+                                                                                                    {t2SetsDisplay}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    };
+
+                                                                                    if (renderError) {
+                                                                                        return (
+                                                                                            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl text-red-700 dark:text-red-300 text-sm">
+                                                                                                <p className="font-bold mb-1">Errore nel caricamento delle partite del torneo:</p>
+                                                                                                <code className="text-xs">{renderError}</code>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+
+                                                                                    return (
+                                                                                        <div className="space-y-6">
+                                                                                            <div>
+                                                                                                {playoffMatches.length > 0 && (
+                                                                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
+                                                                                                        Fase Iniziale (Gironi / Box)
+                                                                                                    </h4>
+                                                                                                )}
+                                                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                                                                                    {initialMatches.map((m, idx) => renderMatchCard(m, idx, initialMatches))}
+                                                                                                </div>
+                                                                                            </div>
+
+                                                                                            {playoffMatches.length > 0 && (
+                                                                                                <div className="pt-4 border-t border-purple-500/20 dark:border-purple-400/20">
+                                                                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 mb-2.5 flex items-center gap-1.5">
+                                                                                                        <span>🏆</span> Fase Finale & Playoff
+                                                                                                    </h4>
+                                                                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                                                                                        {playoffMatches.map((m, idx) => renderMatchCard(m, idx, playoffMatches))}
                                                                                                     </div>
-                                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                                const t2SetsDisplay = hasScores ? (
-                                                                                                    <div className="flex items-center gap-1.5">
-                                                                                                        {matchSets.map((s, i) => (
-                                                                                                            <span key={i} className="flex items-center justify-center w-7 h-7 text-sm font-bold font-mono text-app dark:text-white bg-white dark:bg-black/20 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200/80 dark:border-white/10">
-                                                                                                                {s.team2}
-                                                                                                            </span>
-                                                                                                        ))}
-                                                                                                    </div>
-                                                                                                ) : <span className="text-sm font-bold text-app-muted dark:text-white/40">-</span>;
-                                                                                                
-                                                                                                return (
-                                                                                                    <div 
-                                                                                                        key={idx} 
-                                                                                                        onClick={() => handleOpenSingleMatchModal(m)}
-                                                                                                        title="Clicca per inserire o modificare il risultato"
-                                                                                                        className={`rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99] ${
-                                                                                                            isCompleted
-                                                                                                                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-500/50 dark:border-emerald-500/40 hover:border-emerald-500/80 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40'
-                                                                                                                : 'bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/20 dark:hover:bg-white/[0.08]'
-                                                                                                        }`}
-                                                                                                    >
-                                                                                                        {isCompleted && (
-                                                                                                            <div className="flex items-center justify-between pb-1.5 mb-0.5 border-b border-emerald-500/30 dark:border-emerald-400/30">
-                                                                                                                <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                                                                                                                    <svg className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" viewBox="0 0 20 20">
-                                                                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                                                                                                                    </svg>
-                                                                                                                    RISULTATO INSERITO
-                                                                                                                </span>
-                                                                                                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Modifica</span>
-                                                                                                            </div>
-                                                                                                        )}
-                                                                                                        <div className="flex items-center justify-between gap-3">
-                                                                                                            <span className={`text-sm ${m.winner === 'team1' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t1Names}</span>
-                                                                                                            {t1SetsDisplay}
-                                                                                                        </div>
-                                                                                                        <div className="flex items-center gap-2">
-                                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
-                                                                                                            <span className="text-[10px] uppercase font-bold text-app-muted dark:text-white/40 tracking-wider">vs</span>
-                                                                                                            <div className="flex-1 h-px bg-slate-200/60 dark:bg-white/10"></div>
-                                                                                                        </div>
-                                                                                                        <div className="flex items-center justify-between gap-3">
-                                                                                                            <span className={`text-sm ${m.winner === 'team2' ? 'font-bold text-emerald-900 dark:text-emerald-200' : isCompleted ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-medium text-app/80 dark:text-white/80'} leading-tight flex-1`}>{t2Names}</span>
-                                                                                                            {t2SetsDisplay}
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                );
-                                                                                            })}
+                                                                                                </div>
+                                                                                            )}
                                                                                         </div>
                                                                                     );
                                                                                 }

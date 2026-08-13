@@ -1,3 +1,14 @@
+## v6.8.0 — 2026-08-13
+
+### Riforma e stabilizzazione persistenza Playoff (Gironi + Fase Finale) & Risoluzione Bug Creazione TPRA
+
+- **Persistenza Immediata Playoff Gironi**: Introdotta la scrittura immediata dei match di playoff generati nel DB Neon in fase di avanzamento (click su "Procedi") per impedire il reset dello stato del torneo alla riapertura o ricaricamento della pagina.
+- **Risoluzione Logica di Riconoscimento Gironi**: Corretto il resume flow di `Gironi + Fase Finale` in `MatchesPage.tsx` eliminando l'uso di funzioni esclusive di *Beat the Box* che portavano a falsi positivi nel completamento della fase a gironi. Introdotto il controllo sicuro `initialPhaseCompleted` specchiato dal formato *Round Robin + Finali*.
+- **Risoluzione Bug Creazione TPRA (Eliminazione Diretta)**: Corretto il passaggio della prop `tournamentName` per sbloccare il pulsante "Crea Torneo TPRA" quando si crea un nuovo torneo ereditando il nome da uno esistente.
+- **Formati Congelati**: Aggiunti i formati `Gironi + Fase Finale` ed `Eliminazione Diretta` alla lista ufficiale dei formati blindati (`FROZEN FORMATS`), portando il totale a 6 formati stabili protetti.
+
+---
+
 ## v6.7.19 — 2026-08-05
 
 ### Ripristino e allineamento perfetto della funzione di stampa Gironi + Fase Finale

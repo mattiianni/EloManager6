@@ -1724,6 +1724,7 @@ const inferLegacyMatchPhase = (tournament, match, index, totalMatches) => {
     // nuove devono sempre essere persistite esplicitamente.
     if (tournament?.type === 'Gironi + Fase Finale') return 'group';
     if (tournament?.type === 'Round Robin + Finali') {
+        if (tournament.status === 'scheduled') return 'round_robin';
         const playoffType = tournament.roundRobinPlayoffType || tournament.round_robin_playoff_type;
         const playoffCount = playoffType === 'semifinals' ? 4 : (playoffType === 'no_finals' ? 0 : 2);
         const offset = totalMatches - index;
@@ -2216,6 +2217,18 @@ app.delete('/api/players', async (req, res) => {
     }
 });
 
+app.post('/api/log_frontend', async (req, res) => {
+    try {
+        const { level, message } = req.body;
+        const fs = require('fs');
+        const logLine = `[${new Date().toISOString()}] [FRONTEND ${level}] ${message}\n`;
+        fs.appendFileSync('frontend_console.log', logLine);
+        res.status(200).json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 // POST /api/matches - Add match
 app.post('/api/matches', async (req, res) => {
     try {
@@ -2327,7 +2340,7 @@ app.put('/api/matches', async (req, res) => {
         }
 
         const storedRows = await sql`
-            SELECT m.id, m.phase, t.type, t.round_robin_playoff_type,
+            SELECT m.id, m.phase, t.type, t.round_robin_playoff_type, t.status,
                    ROW_NUMBER() OVER (PARTITION BY m.tournament_id ORDER BY m.round_number ASC NULLS LAST, m.created_at ASC, m.id ASC) AS match_position,
                    COUNT(*) OVER (PARTITION BY m.tournament_id) AS match_count
             FROM matches m
@@ -2345,23 +2358,39 @@ app.put('/api/matches', async (req, res) => {
         const validated = [];
         for (const update of matchUpdates) {
             const stored = storedById.get(update.matchId);
-            const phase = inferLegacyMatchPhase(stored, stored, Number(stored.match_position) - 1, Number(stored.match_count));
+            // Priorità fase: 1) fase già in DB (se esiste) 2) fase inviata dal client 3) inferenza legacy
+            const phase = stored.phase || update.phase || inferLegacyMatchPhase(stored, stored, Number(stored.match_position) - 1, Number(stored.match_count));
             const outcome = validateMatchOutcome({
                 sets: update.sets,
                 tournamentType: stored.type,
                 phase,
             });
-            if ([MATCH_OUTCOME.NOT_ENTERED, MATCH_OUTCOME.FORBIDDEN_DRAW, MATCH_OUTCOME.INVALID_SCORE].includes(outcome.status)) {
+            if ([MATCH_OUTCOME.FORBIDDEN_DRAW, MATCH_OUTCOME.INVALID_SCORE].includes(outcome.status)) {
                 return sendOutcomeError(res, outcome.status, update.matchId);
             }
             validated.push({ ...update, phase, winner: outcome.winner });
         }
 
-        const queries = validated.map(update => sql`
-            UPDATE matches
-            SET sets = ${JSON.stringify(update.sets)}::jsonb, winner = ${update.winner}, phase = ${update.phase}
-            WHERE id = ${update.matchId} AND workspace_id = ${req.workspaceId}
-        `);
+        const queries = validated.map(update => {
+            if (Array.isArray(update.team1) && Array.isArray(update.team2) && update.team1.length === 2 && update.team2.length === 2) {
+                return sql`
+                    UPDATE matches
+                    SET sets = ${JSON.stringify(update.sets)}::jsonb,
+                        winner = ${update.winner},
+                        phase = ${update.phase},
+                        team1_p1_id = ${update.team1[0]},
+                        team1_p2_id = ${update.team1[1]},
+                        team2_p1_id = ${update.team2[0]},
+                        team2_p2_id = ${update.team2[1]}
+                    WHERE id = ${update.matchId} AND workspace_id = ${req.workspaceId}
+                `;
+            }
+            return sql`
+                UPDATE matches
+                SET sets = ${JSON.stringify(update.sets)}::jsonb, winner = ${update.winner}, phase = ${update.phase}
+                WHERE id = ${update.matchId} AND workspace_id = ${req.workspaceId}
+            `;
+        });
         await sql.transaction(queries);
 
         logger.info('Partite aggiornate atomicamente', { count: validated.length });
@@ -5610,15 +5639,21 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
         const normalizedMatches = [];
         for (let index = 0; index < matches.length; index++) {
             const match = matches[index];
-            if (!Array.isArray(match?.team1) || match.team1.length !== 2 || !Array.isArray(match?.team2) || match.team2.length !== 2) {
-                return res.status(400).json({ code: 'INVALID_TEAMS', matchId: match?.id || null, message: 'Ogni partita deve contenere due coppie complete' });
+            const isPlayoffPlaceholder = ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation'].includes(String(match?.phase || '')) &&
+                Array.isArray(match?.team1) && match.team1.length === 0 &&
+                Array.isArray(match?.team2) && match.team2.length === 0;
+
+            if (!isPlayoffPlaceholder) {
+                if (!Array.isArray(match?.team1) || match.team1.length !== 2 || !Array.isArray(match?.team2) || match.team2.length !== 2) {
+                    return res.status(400).json({ code: 'INVALID_TEAMS', matchId: match?.id || null, message: 'Ogni partita deve contenere due coppie complete' });
+                }
+                if (new Set([...match.team1, ...match.team2]).size !== 4) {
+                    return res.status(400).json({ code: 'DUPLICATE_PLAYER', matchId: match?.id || null, message: 'I quattro giocatori della partita devono essere distinti' });
+                }
             }
-            if (new Set([...match.team1, ...match.team2]).size !== 4) {
-                return res.status(400).json({ code: 'DUPLICATE_PLAYER', matchId: match?.id || null, message: 'I quattro giocatori della partita devono essere distinti' });
-            }
-            const phase = inferLegacyMatchPhase(tournament, match, index, matches.length);
-            const outcome = validateStoredMatch({ match, tournament, phase });
-            if (outcome.status === MATCH_OUTCOME.FORBIDDEN_DRAW || outcome.status === MATCH_OUTCOME.INVALID_SCORE || (tournament.status === 'completed' && outcome.status === MATCH_OUTCOME.NOT_ENTERED)) {
+            const phase = match?.phase || inferLegacyMatchPhase(tournament, match, index, matches.length);
+            const outcome = isPlayoffPlaceholder ? { winner: null, status: MATCH_OUTCOME.NOT_ENTERED } : validateStoredMatch({ match, tournament, phase });
+            if (!isPlayoffPlaceholder && (outcome.status === MATCH_OUTCOME.FORBIDDEN_DRAW || outcome.status === MATCH_OUTCOME.INVALID_SCORE || (tournament.status === 'completed' && outcome.status === MATCH_OUTCOME.NOT_ENTERED))) {
                 return sendOutcomeError(res, outcome.status, match?.id || `index:${index}`);
             }
             const fields = tournament.type === 'TorneOtto 30\'' ? 2 : Math.max(1, Number(tournament.americanoFields || tournament.roundRobinFields || 1));
@@ -5732,6 +5767,10 @@ app.put('/api/tournaments/complete', async (req, res) => {
         const normalizedMatches = [];
         for (let index = 0; index < matchesResult.length; index++) {
             const match = matchesResult[index];
+            const isPlayoffPlaceholder = (!match.team1_p1_id || !match.team2_p1_id) || (!match.winner && (!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)));
+            if (isPlayoffPlaceholder) {
+                continue;
+            }
             const phase = inferLegacyMatchPhase(tournament, match, index, matchesResult.length);
             const outcome = validateStoredMatch({ match, tournament, phase });
             if (![MATCH_OUTCOME.VALID_WIN, MATCH_OUTCOME.VALID_DRAW].includes(outcome.status)) {

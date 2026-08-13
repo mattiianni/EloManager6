@@ -18,7 +18,7 @@ interface PadelStore {
     // FIX: Match type for addMultipleMatches should exclude 'tournamentId' since backend assigns it
     addMultipleMatches: (matches: Omit<Match, 'id' | 'tournamentId'>[], newTournament: Omit<Tournament, 'id'>) => Promise<void>;
     deleteMatch: (matchId: string) => Promise<void>;
-    updateTournamentMatches: (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner'] }>, skipRefresh?: boolean) => Promise<void>;
+    updateTournamentMatches: (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner']; team1?: string[]; team2?: string[] }>, skipRefresh?: boolean) => Promise<void>;
     cascadeResetTournament: (tournamentId: string, phaseMatchIds: string[], skipRefresh?: boolean) => Promise<void>;
     completeTournament: (tournamentId: string) => Promise<void>;
     addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<Tournament>;
@@ -210,7 +210,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return operation;
     };
 
-    const updateTournamentMatches = async (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner'] }>, skipRefresh = false): Promise<void> => {
+    const updateTournamentMatches = async (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner']; team1?: string[]; team2?: string[] }>, skipRefresh = false): Promise<void> => {
          await apiRequest('/api/matches', {
             method: 'PUT',
             body: JSON.stringify({ matchUpdates }),

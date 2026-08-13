@@ -114,6 +114,7 @@ const generateRoundRobinMatches = (
             team1: t1,
             team2: t2,
             roundNumber: currentRoundNumber,
+            phase: 'round_robin',
           });
         }
       }
@@ -407,7 +408,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [roundRobinSemifinalMatches, setRoundRobinSemifinalMatches] = useState<Omit<Match, 'id'>[]>([]);
  const [roundRobinFields, setRoundRobinFields] = useState<number>(2);
  const [roundRobinHomeAway, setRoundRobinHomeAway] = useState<boolean>(false);
- const [roundRobinPlayoffType, setRoundRobinPlayoffType] = useState<'no_finals' | 'finals_only' | 'semifinals'>('semifinals');
+ const [roundRobinPlayoffType, setRoundRobinPlayoffType] = useState<'no_finals' | 'finals_only' | 'semifinals' | 'quarterfinals'>('semifinals');
  const [resultValidationError, setResultValidationError] = useState<string | null>(null);
 
  // Torneo Libero specific states
@@ -1603,7 +1604,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  matchIds: [],
  status: 'scheduled',
  americanoFields: selectedFormat === 'americano' ? americanoFields : undefined,
- americanoScoringType: selectedFormat === 'americano' ? americanoScoringType : undefined
+ americanoScoringType: selectedFormat === 'americano' ? americanoScoringType : undefined,
+ roundRobinPlayoffType: selectedFormat === 'round-robin-finali' ? roundRobinPlayoffType : undefined,
+ roundRobinFields: selectedFormat === 'round-robin-finali' ? roundRobinFields : undefined,
+ roundRobinHomeAway: selectedFormat === 'round-robin-finali' ? roundRobinHomeAway : undefined,
  };
 
  const matchesToSave = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
@@ -1633,6 +1637,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       winner: winner,
     };
   });
+
+
 
  console.log(`📝 Saving tournament: ${finalName} with ${scheduledMatches.length} matches`);
 
@@ -2047,7 +2053,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
               Scelta Fase Conclusiva
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${pairs.length >= 8 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
               <button
                 type="button"
                 className={`border-2 rounded-xl p-4 cursor-pointer text-left ${
@@ -2095,6 +2101,24 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
                   1° vs 4° e 2° vs 3° prima della finale.
                 </p>
               </button>
+
+              {pairs.length >= 8 && (
+                <button
+                  type="button"
+                  className={`border-2 rounded-xl p-4 cursor-pointer text-left ${
+                    roundRobinPlayoffType === 'quarterfinals'
+                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                  onClick={() => setRoundRobinPlayoffType('quarterfinals')}
+                  aria-pressed={roundRobinPlayoffType === 'quarterfinals'}
+                >
+                  <h4 className="font-bold text-base mb-1">Quarti + Semis + Finali</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Tabellone a 8 squadre: Quarti, Semifinali e Finali.
+                  </p>
+                </button>
+              )}
             </div>
           </div>
 
@@ -3094,7 +3118,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onFinish={onFinish}
  tournamentDate={tournamentDate}
  clubName={clubName}
-tournamentName={tournamentName}
+ tournamentName={(isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || ''}
  />
  );
  }

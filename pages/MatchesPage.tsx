@@ -14,6 +14,7 @@ import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/giro
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
+import { calculateRoundRobinStandings, generateRoundRobinPlayoffs } from '../formats/roundRobinFinali/engine.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName, formatPlayerShortName } from '../utils/format.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
@@ -21,9 +22,9 @@ import {
  calculateAllBoxStandings,
  createFinalsMatches as createBeatBoxFinalsMatches,
  calculateNumBoxes,
- BoxStanding,
- groupMatchesByPlayerSets
+ groupMatchesByPlayerSets,
 } from '../services/beatTheBoxService.ts';
+import { TournamentRegistry } from '../formats/registry.ts';
 
 // Helper: build fetch headers with auth token
 const authHeaders = (): Record<string, string> => {
@@ -329,6 +330,19 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [gironiFinalMatches, setGironiFinalMatches] = useState<Match[]>([]);
  const [showGironiCompleteConfirm, setShowGironiCompleteConfirm] = useState(false);
  const [showGironiCompleteSuccess, setShowGironiCompleteSuccess] = useState(false);
+
+ const resetAllFlowStates = () => {
+     setEditingTournament(null);
+     setFinalsFlowTournament(null);
+     setIsInFinalsPhase(false);
+     setShowFinalsStandingsModal(false);
+     setShowBeatBoxStandingsModal(false);
+     setIsInBeatBoxFinalsPhase(false);
+     setIsInBeatBoxSemifinalsPhase(false);
+     setIsInGironiQuarterfinalsPhase(false);
+     setIsInGironiSemifinalsPhase(false);
+     setIsInGironiFinalsPhase(false);
+ };
  const gironiQualifiedKeys = useMemo(() => {
  const playoffType = (finalsFlowTournament || editingTournament)?.gironiPlayoffType || 'semifinals';
  return new Set(selectGironiQualifiers(gironiStandings.map(group => group.standings || []), playoffType)
@@ -611,26 +625,30 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const generateMatchId = () => `temp_semifinal_${Date.now()}_${Math.random()}`;
 
  if (semifinalisti.length >= 4) {
- semifinals.push({
- id: generateMatchId(),
- date: t?.date || new Date().toISOString(),
- team1: [semifinalisti[0].pair[0].id, semifinalisti[0].pair[1].id] as [string, string],
- team2: [semifinalisti[3].pair[0].id, semifinalisti[3].pair[1].id] as [string, string],
- sets: [{ team1: 0, team2: 0 }],
- winner: null,
- tournamentId: t?.id
- });
+  semifinals.push({
+  id: generateMatchId(),
+  date: t?.date || new Date().toISOString(),
+  team1: [semifinalisti[0].pair[0].id, semifinalisti[0].pair[1].id] as [string, string],
+  team2: [semifinalisti[3].pair[0].id, semifinalisti[3].pair[1].id] as [string, string],
+  sets: [{ team1: 0, team2: 0 }],
+  winner: null,
+  tournamentId: t?.id,
+  phase: 'semifinal',
+  roundNumber: 2,
+  });
 
- semifinals.push({
- id: generateMatchId(),
- date: t?.date || new Date().toISOString(),
- team1: [semifinalisti[1].pair[0].id, semifinalisti[1].pair[1].id] as [string, string],
- team2: [semifinalisti[2].pair[0].id, semifinalisti[2].pair[1].id] as [string, string],
- sets: [{ team1: 0, team2: 0 }],
- winner: null,
- tournamentId: t?.id
- });
- }
+  semifinals.push({
+  id: generateMatchId(),
+  date: t?.date || new Date().toISOString(),
+  team1: [semifinalisti[1].pair[0].id, semifinalisti[1].pair[1].id] as [string, string],
+  team2: [semifinalisti[2].pair[0].id, semifinalisti[2].pair[1].id] as [string, string],
+  sets: [{ team1: 0, team2: 0 }],
+  winner: null,
+  tournamentId: t?.id,
+  phase: 'semifinal',
+  roundNumber: 2,
+  });
+  }
 
  return semifinals;
  };
@@ -775,6 +793,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  // Smart open handler: detects multi-phase tournament state and resumes from the right point
  const handleOpenTournament = async (tournament: Tournament) => {
+ resetAllFlowStates();
  if (tournament.type === TournamentType.TorneoASquadre) {
  const isTeamMatchday =
  !!tournament.teamTournamentRootId ||
@@ -788,6 +807,23 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
  showHIGAlert('Per i tornei a squadre la modifica risultati va aperta dalla giornata dedicata.');
  return;
+ }
+
+ // Fetch fresh matches directly from the database to avoid React state race conditions when navigating
+ let tournamentMatches: Match[] = [];
+ try {
+ const res = await fetch('/api/data', {
+     headers: authHeaders()
+ });
+ if (res.ok) {
+     const data = await res.json();
+     tournamentMatches = (data.matches || []).filter((m: Match) => m.tournamentId === tournament.id);
+ } else {
+     tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
+ }
+ } catch (err) {
+ console.error("Failed to fetch fresh matches, using local state:", err);
+ tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
  }
 
  const isBeatTheBox = tournament.type === TournamentType.BeatTheBox;
@@ -804,7 +840,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  // Multi-fase completato: cascade reset (cancella semifinali/finali, reverte ELO),
  // poi apri editing con solo le partite dei gironi/box
  if (tournament.status === 'completed') {
- const tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
  let phaseMatchIds: string[] = [];
 
  if (isBeatTheBox) {
@@ -817,10 +852,9 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
  .map(match => match.id);
  } else if (isRoundRobinFinali) {
- // Ultime 2 partite = finali
- if (tournamentMatches.length > 2) {
- phaseMatchIds = tournamentMatches.slice(-2).map(m => m.id);
- }
+ phaseMatchIds = tournamentMatches
+ .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
+ .map(match => match.id);
  }
 
  if (phaseMatchIds.length > 0) {
@@ -840,30 +874,56 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return;
  }
 
- // Check if already in a flow
- const alreadyInFlow = showBeatBoxStandingsModal || isInBeatBoxFinalsPhase ||
- isInBeatBoxSemifinalsPhase || !!finalsFlowTournament ||
- showGironiStandingsModal || isInGironiQuarterfinalsPhase || isInGironiSemifinalsPhase || isInGironiFinalsPhase ||
- showFinalsStandingsModal || isInFinalsPhase;
+  const { boxes, phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
 
- if (alreadyInFlow) {
- setEditingTournament(tournament);
- return;
- }
+  const phaseMatchIdSet = new Set(
+    tournamentMatches
+      .filter(m => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
+      .map(m => m.id)
+  );
+  // Only add groupMatchesByPlayerSets results for BeatTheBox (not Gironi — that function
+  // may misclassify group-stage matches as phase matches, polluting phaseMatchIdSet).
+  if (!isGironiFaseFinale && phaseMatches && phaseMatches.length > 0) {
+    phaseMatches.forEach(m => phaseMatchIdSet.add(m.id));
+  }
 
- const tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
- const { boxes } = groupMatchesByPlayerSets(tournamentMatches);
- const initialPhaseMatches = boxes.size > 0 ? Array.from(boxes.values()).flat() : tournamentMatches;
+  // For Gironi + Fase Finale, always use the phase field to separate group matches from playoffs.
+  const initialPhaseMatches = isGironiFaseFinale
+    ? tournamentMatches.filter(m => !['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
+    : (boxes.size > 0 
+        ? Array.from(boxes.values()).flat() 
+        : tournamentMatches.filter(m => !phaseMatchIdSet.has(m.id)));
 
- // Controlla se le partite della fase iniziale (box/gironi) sono tutte completate
- const initialPhaseCompleted = initialPhaseMatches.length > 0 &&
- initialPhaseMatches.every(m => m.winner && m.sets.length > 0 &&
- !(m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
+  // Controlla se le partite della fase iniziale (box/gironi) sono tutte completate
+  const initialPhaseCompleted = initialPhaseMatches.length > 0 &&
+  initialPhaseMatches.every(m => m.winner && m.sets.length > 0 &&
+  !(m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
 
- if (!initialPhaseCompleted) {
- setEditingTournament(tournament);
- return;
- }
+   const playoffMatches = tournamentMatches.filter(m => phaseMatchIdSet.has(m.id));
+   const playoffMatchesActive = playoffMatches.some(m =>
+     (m.winner && m.winner !== 'draw') ||
+     (m.sets && m.sets.length > 0 && !(m.sets.length === 1 && Number(m.sets[0]?.team1 || 0) === 0 && Number(m.sets[0]?.team2 || 0) === 0)) ||
+     (Array.isArray(m.team1) && m.team1.length > 0)
+   );
+
+   // Non-Gironi: se la fase iniziale non è completata, apri l'editor gironi/box standard.
+   if (!initialPhaseCompleted && !isGironiFaseFinale) {
+     setEditingTournament(tournament);
+     return;
+   }
+   // Gironi: usa il campo phase direttamente per decidere se aprire l'editor dei gironi.
+   // Non usare phaseMatchIdSet.size (potrebbe essere contaminato da groupMatchesByPlayerSets).
+   if (isGironiFaseFinale) {
+     const gironiPlayoffInDb = tournamentMatches.filter(m =>
+       ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || ''))
+     );
+     if (!initialPhaseCompleted && gironiPlayoffInDb.length === 0) {
+       // Group stage not done yet, no playoffs → open regular group stage editor
+       setEditingTournament(tournament);
+       return;
+     }
+   }
+
 
  // ===== BEAT THE BOX RESUME =====
  if (isBeatTheBox) {
@@ -897,12 +957,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date, undefined, (tournament.playoffType as any) || 'semifinals');
  if (semifinals && semifinals.length > 0) {
  setBeatBoxSemifinalMatches(semifinals.map((m, i) => ({
- ...m, id: `temp-sf-${i}`, tournamentId: tournament.id
+ ...m, id: `temp-sf-${i}`, tournamentId: tournament.id, phase: 'semifinal'
  } as Match)));
  setBeatBoxFinalMatches([]);
  } else {
  setBeatBoxFinalMatches(finals.map((m, i) => ({
- ...m, id: `temp-final-${i}`, tournamentId: tournament.id
+ ...m, id: `temp-final-${i}`, tournamentId: tournament.id, phase: m.phase || (i === 0 ? 'final_1_2' : (i === 1 ? 'final_3_4' : 'consolation'))
  } as Match)));
  setBeatBoxSemifinalMatches([]);
  }
@@ -959,86 +1019,284 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  // ===== GIRONI + FASE FINALE RESUME =====
  if (isGironiFaseFinale) {
- setFinalsFlowTournament(tournament);
- const standings = calculateGironiStandings(tournamentMatches);
- setGironiStandings(standings);
+    setFinalsFlowTournament(tournament);
+    const groupMatches = tournamentMatches.filter(m =>
+      !['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || ''))
+    );
+    const standings = calculateGironiStandings(groupMatches.length > 0 ? groupMatches : tournamentMatches);
+    setGironiStandings(standings);
 
- const phaseMatchesInDb = tournamentMatches.filter(match =>
- ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || ''))
- );
- const quarterInDb = phaseMatchesInDb.filter(match => match.phase === 'quarterfinal');
+    const phaseMatchesInDb = tournamentMatches.filter(match =>
+      ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || ''))
+    );
+    const quarterInDb = phaseMatchesInDb.filter(match => match.phase === 'quarterfinal');
+    const semiInDb = phaseMatchesInDb.filter(match => match.phase === 'semifinal');
+    const finalInDb = phaseMatchesInDb.filter(match => match.phase === 'final_1_2' || match.phase === 'final_3_4');
 
- if (tournament.gironiPlayoffType === 'quarterfinals' && quarterInDb.length > 0) {
- setGironiQuarterfinalMatches(quarterInDb);
- const allQuartersCompleted = quarterInDb.length === 4 && quarterInDb.every(match => match.winner === 'team1' || match.winner === 'team2');
- if (!allQuartersCompleted) {
- setIsInGironiQuarterfinalsPhase(true);
- return;
- }
- }
+    // === CASE 1: Quarters in progress ===
+    if (tournament.gironiPlayoffType === 'quarterfinals' && quarterInDb.length > 0) {
+      setGironiQuarterfinalMatches(quarterInDb);
+      const allQuartersCompleted = quarterInDb.length === 4 && quarterInDb.every(m => m.winner === 'team1' || m.winner === 'team2');
+      if (!allQuartersCompleted) {
+        setIsInGironiQuarterfinalsPhase(true);
+        return;
+      }
+      // Quarters done. Do we have semis?
+      if (semiInDb.length > 0) {
+        setGironiSemifinalMatches(semiInDb);
+        const allSemisDone = semiInDb.every(m => m.winner && m.sets.length > 0);
+        if (!allSemisDone) {
+          setIsInGironiSemifinalsPhase(true);
+          return;
+        }
+        // Semis done. Finals?
+        if (finalInDb.length > 0) {
+          setGironiFinalMatches(finalInDb);
+          setIsInGironiFinalsPhase(true);
+          return;
+        }
+        // Generate and PERSIST finals immediately
+        const generatedFinals = generateGironiFinalMatches(semiInDb, tournament);
+        persistGironiPlayoffMatches(generatedFinals, tournament.id).then(persistedFinals => {
+          setGironiFinalMatches(persistedFinals);
+          setIsInGironiFinalsPhase(true);
+        });
+        return;
+      }
+      // Quarters done, no semis in DB: generate and PERSIST semis immediately
+      const winners = quarterInDb.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+      const generatedSemis: Match[] = [
+        { id: `temp_gironi_sf_1_${Date.now()}`, date: tournament.date, team1: winners[0], team2: winners[3], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+        { id: `temp_gironi_sf_2_${Date.now()}`, date: tournament.date, team1: winners[1], team2: winners[2], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
+      ];
+      persistGironiPlayoffMatches(generatedSemis, tournament.id).then(persistedSemis => {
+        setGironiSemifinalMatches(persistedSemis);
+        setGironiQuarterfinalMatches(quarterInDb);
+        setIsInGironiSemifinalsPhase(true);
+      });
+      return;
+    }
 
- if (phaseMatchesInDb.length >= 2) {
- const semiInDb = phaseMatchesInDb.filter(match => match.phase === 'semifinal');
- const finalInDb = phaseMatchesInDb.filter(match => match.phase === 'final_1_2' || match.phase === 'final_3_4');
- if (tournament.gironiPlayoffType === 'quarterfinals' && quarterInDb.length === 4 && semiInDb.length === 0) {
- const winners = quarterInDb.map(match => match.winner === 'team1' ? match.team1 : match.team2);
- setGironiSemifinalMatches([
- { id: `temp_gironi_sf_1_${Date.now()}`, date: tournament.date, team1: winners[0], team2: winners[1], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
- { id: `temp_gironi_sf_2_${Date.now()}`, date: tournament.date, team1: winners[2], team2: winners[3], sets: [{ team1: 0, team2: 0 }], winner: null, tournamentId: tournament.id, phase: 'semifinal', roundNumber: 2 },
- ]);
- setIsInGironiSemifinalsPhase(true);
- return;
- }
- const allSemisCompleted = semiInDb.every(m => m.winner && m.sets.length > 0);
+    // === CASE 2: Semifinals in progress (no quarters, direct semis format) ===
+    if (semiInDb.length > 0) {
+      setGironiSemifinalMatches(semiInDb);
+      const allSemisDone = semiInDb.every(m => m.winner && m.sets.length > 0);
+      if (!allSemisDone) {
+        setIsInGironiSemifinalsPhase(true);
+        return;
+      }
+      // Semis done. Finals?
+      if (finalInDb.length > 0) {
+        setGironiFinalMatches(finalInDb);
+        setIsInGironiFinalsPhase(true);
+        return;
+      }
+      // Generate and PERSIST finals immediately
+      const generatedFinals = generateGironiFinalMatches(semiInDb, tournament);
+      persistGironiPlayoffMatches(generatedFinals, tournament.id).then(persistedFinals => {
+        setGironiFinalMatches(persistedFinals);
+        setIsInGironiFinalsPhase(true);
+      });
+      return;
+    }
 
- setGironiSemifinalMatches(semiInDb);
+    // === CASE 3: Finals already in DB (no semis for this format) ===
+    if (finalInDb.length > 0) {
+      setGironiFinalMatches(finalInDb);
+      setIsInGironiFinalsPhase(true);
+      return;
+    }
 
- if (allSemisCompleted) {
- if (finalInDb.length > 0) {
- setGironiFinalMatches(finalInDb);
- } else {
- const generatedFinals = generateGironiFinalMatches(semiInDb, tournament);
- setGironiFinalMatches(generatedFinals);
- }
- setIsInGironiFinalsPhase(true);
- } else {
- setIsInGironiSemifinalsPhase(true);
- }
- } else {
- if (tournament.gironiPlayoffType === 'quarterfinals') {
- const quarters = generateGironiQuarterfinalMatches(standings, tournament);
- setGironiQuarterfinalMatches(quarters);
- setGironiSemifinalMatches([]);
- } else {
- setGironiSemifinalMatches(generateGironiSemifinalMatches(standings, tournament));
- }
- setGironiFinalMatches([]);
- setShowGironiStandingsModal(true);
- }
- return;
+    // === CASE 4: No playoff matches at all ===
+    // Mirror Round Robin + Finali: only generate playoffs if all group stage matches are done.
+    if (initialPhaseCompleted) {
+      if (tournament.gironiPlayoffType === 'quarterfinals') {
+        const quarters = generateGironiQuarterfinalMatches(standings, tournament);
+        persistGironiPlayoffMatches(quarters, tournament.id).then(persistedQuarters => {
+          setGironiQuarterfinalMatches(persistedQuarters);
+          setGironiSemifinalMatches([]);
+          setGironiFinalMatches([]);
+          setShowGironiStandingsModal(true);
+        });
+      } else {
+        const semis = generateGironiSemifinalMatches(standings, tournament);
+        persistGironiPlayoffMatches(semis, tournament.id).then(persistedSemis => {
+          setGironiSemifinalMatches(persistedSemis);
+          setGironiFinalMatches([]);
+          setShowGironiStandingsModal(true);
+        });
+      }
+    } else {
+      // Group stage not yet completed — open the regular match score editor (same as Round Robin)
+      setEditingTournament(tournament);
+    }
+    return;
  }
 
  // ===== ROUND ROBIN + FINALI RESUME =====
  if (isRoundRobinFinali) {
- setFinalsFlowTournament(tournament);
- const standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
- setRoundRobinStandings(standings);
+    setFinalsFlowTournament(tournament);
+    const standings = calculateRoundRobinStandings(tournamentMatches, tournament, getPlayerById as any);
+    const standingsWithTeam = standings.map(s => ({
+      ...s,
+      team: s.pair || (s as any).team,
+      pair: s.pair || (s as any).team,
+    }));
+    setRoundRobinStandings(standingsWithTeam);
 
- const rrMatchCount = tournamentMatches.length > 2 ? tournamentMatches.length - 2 : tournamentMatches.length;
- const finalsInDb = tournamentMatches.slice(rrMatchCount);
+    const phaseMatchesInDb = tournamentMatches.filter(match =>
+      ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4'].includes(String(match.phase || ''))
+    );
+    const quarterInDb = phaseMatchesInDb.filter(match => match.phase === 'quarterfinal');
+    const semiInDb = phaseMatchesInDb.filter(match => match.phase === 'semifinal');
+    const finalInDb = phaseMatchesInDb.filter(match => match.phase === 'final_1_2' || match.phase === 'final_3_4');
 
- if (finalsInDb.length > 0) {
- setFinalsMatches(finalsInDb);
- setIsInFinalsPhase(true);
- } else {
- const top4 = standings.slice(0, 4);
- const finals = generateFinalsMatches(top4, tournament);
- setFinalsMatches(finals);
- setFinalsScores({});
- setShowFinalsStandingsModal(true);
- }
- return;
- }
+    const effectivePlayoffType = (tournament.roundRobinPlayoffType || tournament.round_robin_playoff_type) || 'finals_only';
+    const isMatchDone = (m: Match) => !!m.winner && m.sets && m.sets.length > 0 && !(m.sets.length === 1 && Number(m.sets[0].team1 || 0) === 0 && Number(m.sets[0].team2 || 0) === 0);
+
+    if (effectivePlayoffType === 'quarterfinals' && quarterInDb.length > 0) {
+      const allQuartersCompleted = quarterInDb.length === 4 && quarterInDb.every(isMatchDone);
+      if (!allQuartersCompleted) {
+        setFinalsMatches(quarterInDb);
+        setIsInFinalsPhase(true);
+        return;
+      }
+      if (semiInDb.length > 0) {
+        const allSemisCompleted = semiInDb.length === 2 && semiInDb.every(isMatchDone);
+        if (!allSemisCompleted) {
+          setFinalsMatches(semiInDb);
+          setIsInFinalsPhase(true);
+          return;
+        }
+        if (finalInDb.length > 0) {
+          setFinalsMatches(finalInDb);
+          setIsInFinalsPhase(true);
+          return;
+        } else {
+          const winners = semiInDb.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+          const losers = semiInDb.map(m => m.winner === 'team1' ? m.team2 : m.team1);
+          const generatedFinals: Match[] = [
+            {
+              id: `temp_final_0_${Date.now()}`,
+              date: tournament.date,
+              team1: winners[0],
+              team2: winners[1],
+              sets: [{ team1: 0, team2: 0 }],
+              winner: null,
+              tournamentId: tournament.id,
+              phase: 'final_1_2',
+              roundNumber: 3,
+            },
+            {
+              id: `temp_final_1_${Date.now()}`,
+              date: tournament.date,
+              team1: losers[0],
+              team2: losers[1],
+              sets: [{ team1: 0, team2: 0 }],
+              winner: null,
+              tournamentId: tournament.id,
+              phase: 'final_3_4',
+              roundNumber: 3,
+            }
+          ];
+          setFinalsMatches(generatedFinals);
+          setIsInFinalsPhase(true);
+          return;
+        }
+      } else {
+        const winners = quarterInDb.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+        const generatedSemis: Match[] = [
+          {
+            id: `temp_sf_0_${Date.now()}`,
+            date: tournament.date,
+            team1: winners[0],
+            team2: winners[3],
+            sets: [{ team1: 0, team2: 0 }],
+            winner: null,
+            tournamentId: tournament.id,
+            phase: 'semifinal',
+            roundNumber: 3,
+          },
+          {
+            id: `temp_sf_1_${Date.now()}`,
+            date: tournament.date,
+            team1: winners[1],
+            team2: winners[2],
+            sets: [{ team1: 0, team2: 0 }],
+            winner: null,
+            tournamentId: tournament.id,
+            phase: 'semifinal',
+            roundNumber: 3,
+          },
+        ];
+        setFinalsMatches(generatedSemis);
+        setIsInFinalsPhase(true);
+        return;
+      }
+    }
+
+    if (semiInDb.length > 0) {
+      const allSemisCompleted = semiInDb.length === 2 && semiInDb.every(isMatchDone);
+      if (!allSemisCompleted) {
+        setFinalsMatches(semiInDb);
+        setIsInFinalsPhase(true);
+        return;
+      }
+      if (finalInDb.length > 0) {
+        setFinalsMatches(finalInDb);
+        setIsInFinalsPhase(true);
+        return;
+      } else {
+        const winners = semiInDb.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+        const losers = semiInDb.map(m => m.winner === 'team1' ? m.team2 : m.team1);
+        const generatedFinals: Match[] = [
+          {
+            id: `temp_final_0_${Date.now()}`,
+            date: tournament.date,
+            team1: winners[0],
+            team2: winners[1],
+            sets: [{ team1: 0, team2: 0 }],
+            winner: null,
+            tournamentId: tournament.id,
+            phase: 'final_1_2',
+            roundNumber: 3,
+          },
+          {
+            id: `temp_final_1_${Date.now()}`,
+            date: tournament.date,
+            team1: losers[0],
+            team2: losers[1],
+            sets: [{ team1: 0, team2: 0 }],
+            winner: null,
+            tournamentId: tournament.id,
+            phase: 'final_3_4',
+            roundNumber: 3,
+          }
+        ];
+        setFinalsMatches(generatedFinals);
+        setIsInFinalsPhase(true);
+        return;
+      }
+    }
+
+    if (finalInDb.length > 0) {
+      setFinalsMatches(finalInDb);
+      setIsInFinalsPhase(true);
+      return;
+    }
+
+    // Only show playoff standings modal if the initial Round Robin group phase is 100% completed!
+    if (initialPhaseCompleted) {
+      const playoffRes = generateRoundRobinPlayoffs(standingsWithTeam, tournament);
+      setFinalsMatches(playoffRes.matchesToSave || []);
+      setShowFinalsStandingsModal(true);
+      return;
+    }
+
+    // Otherwise, the Round Robin group stage is still in progress: open standard match score modal
+    setEditingTournament(tournament);
+    return;
+  }
 
  // Fallback
  setEditingTournament(tournament);
@@ -1162,7 +1420,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const allTournamentMatches = matches.filter(m => m.tournamentId === editingTournament.id);
  let phaseMatchIds: string[] = [];
 
- if (isMultiPhase && editingTournament.status === 'completed') {
+ if (isMultiPhase) {
  if (isBeatTheBox) {
  // Beat the Box: use player-set grouping (order-independent)
  const { phaseMatches } = groupMatchesByPlayerSets(allTournamentMatches);
@@ -1300,6 +1558,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  ...m,
  id: `temp-sf-${i}`,
  tournamentId: editingTournament.id,
+ phase: 'semifinal',
  } as Match)));
  setBeatBoxFinalMatches([]);
  } else {
@@ -1308,98 +1567,244 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  ...m,
  id: `temp-final-${i}`,
  tournamentId: editingTournament.id,
+ phase: m.phase || (i === 0 ? 'final_1_2' : (i === 1 ? 'final_3_4' : 'consolation')),
  } as Match)));
  setBeatBoxSemifinalMatches([]);
  }
 
  // Mostra modale classifiche
- setShowBeatBoxStandingsModal(true);
- setIsSubmitting(false);
- return;
- }
+  setShowBeatBoxStandingsModal(true);
+  setIsSubmitting(false);
+  return;
+  }
+  const groupStageMatches = matches.filter(m => m.tournamentId === editingTournament.id && !phaseMatchIdSet.has(m.id));
+  const isRoundRobinFullyCompleted = groupStageMatches.length > 0 && groupStageMatches.every(m => {
+    const sets = editScores[m.id] || m.sets;
+    const team1Games = sets ? sets.reduce((sum: number, set: SetScore) => sum + (set.team1 || 0), 0) : 0;
+    const team2Games = sets ? sets.reduce((sum: number, set: SetScore) => sum + (set.team2 || 0), 0) : 0;
+    return sets && sets.length > 0 && (team1Games > 0 || team2Games > 0);
+  });
 
- // If tournament is scheduled (or cascade-reset) and is Round Robin + Finali, calculate standings and prepare finals
- if (effectiveStatus === 'scheduled' && isRoundRobinFinali && !isInFinalsPhase) {
- console.log(`🎯 Round Robin phase completed, calculating standings...`);
+   // If tournament is scheduled (or cascade-reset) and is Round Robin + Finali, calculate standings and prepare finals
+   if (effectiveStatus === 'scheduled' && isRoundRobinFinali && !isInFinalsPhase && isRoundRobinFullyCompleted) {
+    console.log(`🎯 Round Robin phase completed, calculating standings...`);
 
- // Save tournament reference for finals flow (with effective status for cascade)
- const effectiveTournament = cascadeTriggered ? { ...editingTournament, status: 'scheduled' as const } : editingTournament;
- setFinalsFlowTournament(effectiveTournament);
- console.log(`🔒 Saved finalsFlowTournament:`, editingTournament.name);
+    const effectiveTournament = cascadeTriggered ? { ...editingTournament, status: 'scheduled' as const } : editingTournament;
+    setFinalsFlowTournament(effectiveTournament);
 
- // Use pre-captured initial phase matches if cascade was triggered
- const tournamentMatches = cascadeTriggered
- ? initialPhaseMatches
- : matches.filter(m => m.tournamentId === editingTournament.id && !phaseMatchIdSet.has(m.id)).map(match => {
- const sets = editScores[match.id] || match.sets;
- const team1Games = sets.reduce((sum: number, set: SetScore) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum: number, set: SetScore) => sum + set.team2, 0);
- return {
- ...match,
- sets,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
- } as Match;
- });
+    const tournamentMatches = cascadeTriggered
+      ? initialPhaseMatches
+      : matches.filter(m => m.tournamentId === editingTournament.id && !phaseMatchIdSet.has(m.id)).map(match => {
+          const sets = editScores[match.id] || match.sets;
+          const team1Games = sets.reduce((sum: number, set: SetScore) => sum + set.team1, 0);
+          const team2Games = sets.reduce((sum: number, set: SetScore) => sum + set.team2, 0);
+          return {
+            ...match,
+            sets,
+            winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
+          } as Match;
+        });
 
- // Calculate standings
- const standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
- console.log(`🎯 Calculated standings:`, standings);
+    const rawStandings = calculateRoundRobinStandings(tournamentMatches, effectiveTournament, getPlayerById as any);
+    const standings = rawStandings.map(s => ({
+      ...s,
+      team: s.pair || (s as any).team,
+      pair: s.pair || (s as any).team,
+    }));
 
- setRoundRobinStandings(standings);
+    setRoundRobinStandings(standings);
 
- // Generate finals matches
- const top4 = standings.slice(0, 4);
- const finals = generateFinalsMatches(top4);
- setFinalsMatches(finals);
- setFinalsScores({});
+    // Check if playoff matches already exist in DB
+    const allTournamentMatches = matches.filter(m => m.tournamentId === effectiveTournament.id);
+    const existingPlayoffs = allTournamentMatches.filter(m =>
+      ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4'].includes(String(m.phase || ''))
+    );
 
- // Show standings modal
- setShowFinalsStandingsModal(true);
- setIsSubmitting(false);
- return;
- }
+    if (existingPlayoffs.length > 0) {
+      let qMatches = existingPlayoffs.filter(m => m.phase === 'quarterfinal');
+      let sMatches = existingPlayoffs.filter(m => m.phase === 'semifinal');
+      let fMatches = existingPlayoffs.filter(m => m.phase === 'final_1_2' || m.phase === 'final_3_4');
 
- // GIRONI + FASE FINALE: Gestione fase gironi → semifinali → finali
- if (effectiveStatus === 'scheduled' && isGironiFaseFinale && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
- console.log(`🏆 Gironi: Gironi phase completed, calculating standings...`);
+      const effectivePlayoffType = (effectiveTournament.roundRobinPlayoffType || (effectiveTournament as any).round_robin_playoff_type) || 'finals_only';
 
- // Save tournament reference (with effective status for cascade)
- setFinalsFlowTournament(cascadeTriggered ? { ...editingTournament, status: 'scheduled' } : editingTournament);
+      if (effectivePlayoffType === 'quarterfinals' && qMatches.length > 0) {
+        if (!qMatches[0].team1 || qMatches[0].team1.length === 0) {
+          const top8 = standings.slice(0, 8);
+          if (top8.length >= 8) {
+            const quarterPairs = [
+              [top8[0], top8[7]],
+              [top8[1], top8[6]],
+              [top8[2], top8[5]],
+              [top8[3], top8[4]],
+            ];
+            qMatches = qMatches.map((m, idx) => ({
+              ...m,
+              team1: (quarterPairs[idx][0].team || quarterPairs[idx][0].pair).map((p: any) => p.id),
+              team2: (quarterPairs[idx][1].team || quarterPairs[idx][1].pair).map((p: any) => p.id),
+            }));
+          }
+        }
+        const allQuartersDone = qMatches.length === 4 && qMatches.every(m => m.winner && m.winner !== 'draw');
+        if (!allQuartersDone) {
+          setFinalsMatches(qMatches);
+          setIsInFinalsPhase(true);
+          setIsSubmitting(false);
+          return;
+        }
 
- // Use pre-captured initial phase matches if cascade was triggered
- const tournamentMatches = cascadeTriggered
- ? initialPhaseMatches
- : matches.filter(m => m.tournamentId === editingTournament.id && !phaseMatchIdSet.has(m.id)).map(match => {
- const sets = editScores[match.id] || match.sets;
- const team1Games = sets.reduce((sum: number, set: SetScore) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum: number, set: SetScore) => sum + set.team2, 0);
- return {
- ...match,
- sets,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
- } as Match;
- });
+        if (sMatches.length > 0) {
+          if (!sMatches[0].team1 || sMatches[0].team1.length === 0) {
+            const winners = qMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+            sMatches = sMatches.map((m, idx) => ({
+              ...m,
+              team1: idx === 0 ? winners[0] : winners[1],
+              team2: idx === 0 ? winners[3] : winners[2],
+            }));
+          }
+          const allSemisDone = sMatches.length === 2 && sMatches.every(m => m.winner && m.winner !== 'draw');
+          if (!allSemisDone) {
+            setFinalsMatches(sMatches);
+            setIsInFinalsPhase(true);
+            setIsSubmitting(false);
+            return;
+          }
 
- // Calcola classifiche gironi
- const standings = calculateGironiStandings(tournamentMatches);
- setGironiStandings(standings);
+          if (fMatches.length > 0) {
+            if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+              const winners = sMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+              const losers = sMatches.map(m => m.winner === 'team1' ? m.team2 : m.team1);
+              fMatches = fMatches.map(m => {
+                if (m.phase === 'final_1_2') return { ...m, team1: winners[0], team2: winners[1] };
+                return { ...m, team1: losers[0], team2: losers[1] };
+              });
+            }
+            setFinalsMatches(fMatches);
+            setIsInFinalsPhase(true);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      } else if (effectivePlayoffType === 'semifinals' && sMatches.length > 0) {
+        if (!sMatches[0].team1 || sMatches[0].team1.length === 0) {
+          const top4 = standings.slice(0, 4);
+          if (top4.length >= 4) {
+            sMatches = sMatches.map((m, idx) => ({
+              ...m,
+              team1: (top4[idx === 0 ? 0 : 1].team || top4[idx === 0 ? 0 : 1].pair).map((p: any) => p.id),
+              team2: (top4[idx === 0 ? 3 : 2].team || top4[idx === 0 ? 3 : 2].pair).map((p: any) => p.id),
+            }));
+          }
+        }
+        const allSemisDone = sMatches.length === 2 && sMatches.every(m => m.winner && m.winner !== 'draw');
+        if (!allSemisDone) {
+          setFinalsMatches(sMatches);
+          setIsInFinalsPhase(true);
+          setIsSubmitting(false);
+          return;
+        }
 
- const phaseMatches = editingTournament.gironiPlayoffType === 'quarterfinals'
- ? generateGironiQuarterfinalMatches(standings)
- : generateGironiSemifinalMatches(standings);
- if (phaseMatches.length < (editingTournament.gironiPlayoffType === 'quarterfinals' ? 4 : 2)) {
- console.error('Failed to generate Gironi playoff phase - not enough qualified teams');
- showHIGAlert('Errore: impossibile generare la fase conclusiva. Verifica i risultati dei gironi.');
- setIsSubmitting(false);
- return;
- }
- if (editingTournament.gironiPlayoffType === 'quarterfinals') {
- setGironiQuarterfinalMatches(phaseMatches);
- setGironiSemifinalMatches([]);
- } else {
- setGironiSemifinalMatches(phaseMatches);
- }
- setGironiFinalMatches([]);
+        if (fMatches.length > 0) {
+          if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+            const winners = sMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+            const losers = sMatches.map(m => m.winner === 'team1' ? m.team2 : m.team1);
+            fMatches = fMatches.map(m => {
+              if (m.phase === 'final_1_2') return { ...m, team1: winners[0], team2: winners[1] };
+              return { ...m, team1: losers[0], team2: losers[1] };
+            });
+          }
+          setFinalsMatches(fMatches);
+          setIsInFinalsPhase(true);
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (effectivePlayoffType === 'finals_only' && fMatches.length > 0) {
+        if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+          const top4 = standings.slice(0, 4);
+          if (top4.length >= 4) {
+            fMatches = fMatches.map(m => {
+              if (m.phase === 'final_1_2') return { ...m, team1: (top4[0].team || top4[0].pair).map((p: any) => p.id), team2: (top4[1].team || top4[1].pair).map((p: any) => p.id) };
+              return { ...m, team1: (top4[2].team || top4[2].pair).map((p: any) => p.id), team2: (top4[3].team || top4[3].pair).map((p: any) => p.id) };
+            });
+          }
+        }
+        setFinalsMatches(fMatches);
+        setIsInFinalsPhase(true);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const playoffResult = generateRoundRobinPlayoffs(standings, effectiveTournament);
+    const finals = playoffResult.matchesToSave || [];
+    setFinalsMatches(finals);
+    setFinalsScores({});
+
+    setShowFinalsStandingsModal(true);
+    setIsSubmitting(false);
+    return;
+  }
+
+  // GIRONI + FASE FINALE: Gestione fase gironi → semifinali → finali
+  if (effectiveStatus === 'scheduled' && isGironiFaseFinale && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
+    if (onlySave) {
+      // User clicked "Salva" to save intermediate scores without advancing to playoffs
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Save tournament reference (with effective status for cascade)
+    setFinalsFlowTournament(cascadeTriggered ? { ...editingTournament, status: 'scheduled' } : editingTournament);
+
+    // Use pre-captured initial phase matches if cascade was triggered
+    const tournamentMatches = cascadeTriggered
+    ? initialPhaseMatches
+    : matches.filter(m => m.tournamentId === editingTournament.id && !phaseMatchIdSet.has(m.id)).map(match => {
+    const sets = editScores[match.id] || match.sets;
+    const team1Games = sets.reduce((sum: number, set: SetScore) => sum + set.team1, 0);
+    const team2Games = sets.reduce((sum: number, set: SetScore) => sum + set.team2, 0);
+    return {
+    ...match,
+    sets,
+    winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2')
+    } as Match;
+    });
+
+    // Controlla se le partite del girone sono tutte completate con vincitore prima di generare i playoff
+    const groupMatchesCompleted = tournamentMatches.length > 0 && tournamentMatches.every(m => {
+      const sets = m.sets || [];
+      const team1Games = sets.reduce((sum: number, set: SetScore) => sum + (set.team1 || 0), 0);
+      const team2Games = sets.reduce((sum: number, set: SetScore) => sum + (set.team2 || 0), 0);
+      return (m.winner === 'team1' || m.winner === 'team2') || (sets.length > 0 && (team1Games > 0 || team2Games > 0));
+    });
+
+    if (!groupMatchesCompleted) {
+      showHIGAlert('Completa tutti i risultati dei gironi prima di procedere alla fase finale.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    console.log(`🏆 Gironi: Gironi phase completed, calculating standings...`);
+
+    // Calcola classifiche gironi
+    const standings = calculateGironiStandings(tournamentMatches);
+    setGironiStandings(standings);
+
+    const phaseMatches = editingTournament.gironiPlayoffType === 'quarterfinals'
+    ? generateGironiQuarterfinalMatches(standings)
+    : generateGironiSemifinalMatches(standings);
+    if (phaseMatches.length < (editingTournament.gironiPlayoffType === 'quarterfinals' ? 4 : 2)) {
+    console.error('Failed to generate Gironi playoff phase - not enough qualified teams');
+    showHIGAlert('Errore: impossibile generare la fase conclusiva. Verifica i risultati dei gironi.');
+    setIsSubmitting(false);
+    return;
+    }
+    if (editingTournament.gironiPlayoffType === 'quarterfinals') {
+    setGironiQuarterfinalMatches(phaseMatches);
+    setGironiSemifinalMatches([]);
+    } else {
+    setGironiSemifinalMatches(phaseMatches);
+    }
+    setGironiFinalMatches([]);
 
  // Mostra modale classifiche
  setShowGironiStandingsModal(true);
@@ -1437,21 +1842,269 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
  };
 
- const handleProceedToFinalsPhase = () => {
- console.log(`🎯 Proceeding to finals phase...`);
- console.log(`🎯 editingTournament:`, editingTournament);
- console.log(`🎯 finalsFlowTournament:`, finalsFlowTournament);
- console.log(`🎯 finalsMatches:`, finalsMatches);
- setShowFinalsStandingsModal(false);
+  const handleProceedToFinalsPhase = () => {
+  console.log(`🎯 Proceeding to finals phase...`);
+  console.log(`🎯 editingTournament:`, editingTournament);
+  console.log(`🎯 finalsFlowTournament:`, finalsFlowTournament);
+  console.log(`🎯 finalsMatches:`, finalsMatches);
+  setShowFinalsStandingsModal(false);
 
- // Use setTimeout to ensure the standings modal closes before opening finals modal
- setTimeout(() => {
- setIsInFinalsPhase(true);
- console.log(`🎯 isInFinalsPhase set to true`);
- }, 100);
- };
+  // Use setTimeout to ensure the standings modal closes before opening finals modal
+  setTimeout(() => {
+  setIsInFinalsPhase(true);
+  console.log(`🎯 isInFinalsPhase set to true`);
+  }, 100);
+  };
 
- const handleCompleteTournamentWithFinals = async () => {
+  /**
+   * Saves an array of generated playoff matches (temp-* IDs) immediately to the Neon DB.
+   * Returns the same list but with real DB IDs replacing temp IDs.
+   * This is the key function that prevents state loss on page reload.
+   */
+  const persistGironiPlayoffMatches = async (matchesList: Match[], tournamentId: string): Promise<Match[]> => {
+    const saved: Match[] = [];
+    for (const match of matchesList) {
+      if (match.id.startsWith('temp')) {
+        try {
+          const res = await fetch('/api/matches', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              date: match.date,
+              team1: match.team1,
+              team2: match.team2,
+              sets: match.sets || [{ team1: 0, team2: 0 }],
+              winner: match.winner || null,
+              tournamentId: tournamentId,
+              phase: match.phase,
+              roundNumber: match.roundNumber,
+            }),
+          });
+          if (res.ok) {
+            const saved_data = await res.json();
+            saved.push({ ...match, id: saved_data.matchId || saved_data.id });
+          } else {
+            console.error('Failed to persist playoff match:', match.phase);
+            saved.push(match);
+          }
+        } catch (err) {
+          console.error('Error persisting playoff match:', err);
+          saved.push(match);
+        }
+      } else {
+        saved.push(match);
+      }
+    }
+    return saved;
+  };
+
+  const handleSaveRoundRobinQuartersAndGenerateSemis = async () => {
+    const tournament = finalsFlowTournament || editingTournament;
+    if (!tournament) return;
+
+    const allQuarters = finalsMatches.filter(m => m.phase === 'quarterfinal');
+    const completedQuarters = allQuarters.map(match => {
+        const sets = finalsScores[match.id] || match.sets;
+        const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+        const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+        return {
+            ...match,
+            sets,
+            winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+        } as Match;
+    });
+
+    if (completedQuarters.length < 4 || completedQuarters.some(m => !m.winner || m.winner === 'draw')) {
+        showHIGAlert('Completa tutti i risultati dei 4 quarti di finale prima di procedere.');
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        const savedQuarters: Match[] = [];
+        for (const match of completedQuarters) {
+            if (match.id.startsWith('temp')) {
+                const res = await fetch('/api/matches', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        date: match.date,
+                        team1: match.team1,
+                        team2: match.team2,
+                        sets: match.sets,
+                        winner: match.winner,
+                        tournamentId: tournament.id,
+                        phase: 'quarterfinal',
+                        roundNumber: match.roundNumber,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed to save quarterfinal match');
+                const saved = await res.json();
+                savedQuarters.push({ ...match, id: saved.matchId || saved.id });
+            } else {
+                await updateTournamentMatches([{ matchId: match.id, sets: match.sets, winner: match.winner, team1: match.team1, team2: match.team2 }], true);
+                savedQuarters.push(match);
+            }
+        }
+
+        // Semifinale 1: Winner Q1 vs Winner Q4
+        // Semifinale 2: Winner Q2 vs Winner Q3
+        const winners = savedQuarters.map(m => m.winner === 'team1' ? m.team1 : m.team2);
+        const allTournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
+        const existingSemis = allTournamentMatches.filter(m => m.phase === 'semifinal');
+
+        let generatedSemis: Match[] = [];
+        if (existingSemis.length >= 2) {
+            generatedSemis = existingSemis.map((m, idx) => ({
+                ...m,
+                team1: idx === 0 ? winners[0] : winners[1],
+                team2: idx === 0 ? winners[3] : winners[2],
+            }));
+        } else {
+            generatedSemis = [
+                {
+                    id: `temp_sf_0_${Date.now()}`,
+                    date: tournament.date,
+                    team1: winners[0],
+                    team2: winners[3],
+                    sets: [{ team1: 0, team2: 0 }],
+                    winner: null,
+                    tournamentId: tournament.id,
+                    phase: 'semifinal',
+                    roundNumber: 3,
+                },
+                {
+                    id: `temp_sf_1_${Date.now()}`,
+                    date: tournament.date,
+                    team1: winners[1],
+                    team2: winners[2],
+                    sets: [{ team1: 0, team2: 0 }],
+                    winner: null,
+                    tournamentId: tournament.id,
+                    phase: 'semifinal',
+                    roundNumber: 3,
+                },
+            ];
+        }
+
+        setFinalsMatches(generatedSemis);
+        setFinalsScores({});
+        await fetchData();
+        showHIGAlert('✅ Quarti di finale salvati e passati al report PDF! Inserisci ora i risultati delle Semifinali.');
+    } catch (e: any) {
+        console.error('Errore nel salvataggio dei quarti:', e);
+        showHIGAlert('Errore nel salvataggio dei quarti di finale');
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveRoundRobinSemisAndGenerateFinals = async () => {
+    const tournament = finalsFlowTournament || editingTournament;
+    if (!tournament) return;
+
+    // Check if both semifinals are completed
+    const allSemis = finalsMatches.filter(m => m.phase === 'semifinal');
+    const completedSemis = allSemis.map(match => {
+        const sets = finalsScores[match.id] || match.sets;
+        const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+        const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+        return {
+            ...match,
+            sets,
+            winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+        } as Match;
+    });
+
+    if (completedSemis.some(m => !m.winner || m.winner === 'draw')) {
+        showHIGAlert('Completa tutti i risultati delle semifinali prima di procedere.');
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        const savedSemis: Match[] = [];
+        // Save semifinals to database
+        for (const match of completedSemis) {
+            if (match.id.startsWith('temp')) {
+                const res = await fetch('/api/matches', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        date: match.date,
+                        team1: match.team1,
+                        team2: match.team2,
+                        sets: match.sets,
+                        winner: match.winner,
+                        tournamentId: tournament.id,
+                        phase: 'semifinal',
+                        roundNumber: match.roundNumber,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed to save semifinal match');
+                const saved = await res.json();
+                savedSemis.push({ ...match, id: saved.matchId || saved.id });
+            } else {
+                await updateTournamentMatches([{ matchId: match.id, sets: match.sets, winner: match.winner, team1: match.team1, team2: match.team2 }], true);
+                savedSemis.push(match);
+            }
+        }
+
+        // Generate finals matches from semifinals results
+        const winners = savedSemis.map(match => match.winner === 'team1' ? match.team1 : match.team2);
+        const losers = savedSemis.map(match => match.winner === 'team1' ? match.team2 : match.team1);
+
+        const allTournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
+        const existingFinals = allTournamentMatches.filter(m => m.phase === 'final_1_2' || m.phase === 'final_3_4');
+
+        let generatedFinals: Match[] = [];
+        if (existingFinals.length >= 2) {
+            generatedFinals = existingFinals.map(m => {
+                if (m.phase === 'final_1_2') {
+                    return { ...m, team1: winners[0], team2: winners[1] };
+                }
+                return { ...m, team1: losers[0], team2: losers[1] };
+            });
+        } else {
+            generatedFinals = [
+                {
+                    id: `temp_final_0_${Date.now()}`,
+                    date: tournament.date,
+                    team1: winners[0],
+                    team2: winners[1],
+                    sets: [{ team1: 0, team2: 0 }],
+                    winner: null,
+                    tournamentId: tournament.id,
+                    phase: 'final_1_2',
+                    roundNumber: 3,
+                },
+                {
+                    id: `temp_final_1_${Date.now()}`,
+                    date: tournament.date,
+                    team1: losers[0],
+                    team2: losers[1],
+                    sets: [{ team1: 0, team2: 0 }],
+                    winner: null,
+                    tournamentId: tournament.id,
+                    phase: 'final_3_4',
+                    roundNumber: 3,
+                }
+            ] as Match[];
+        }
+
+        setFinalsMatches(generatedFinals);
+        setFinalsScores({});
+        await fetchData();
+        showHIGAlert('Semifinali salvate con successo! Ora inserisci i punteggi delle finali.');
+    } catch (error) {
+        console.error('Failed to save semifinals:', error);
+        showHIGAlert('Errore nel salvataggio delle semifinali. Riprova.');
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+  const handleCompleteTournamentWithFinals = async () => {
  const tournament = finalsFlowTournament || editingTournament;
  if (!tournament) {
  console.error('❌ No tournament reference available!');
@@ -1463,20 +2116,22 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setIsSubmitting(true);
  try {
  // Save finals matches to database
- const finalsMatchesToSave = finalsMatches.map(match => {
- const sets = finalsScores[match.id] || match.sets;
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+  const finalsMatchesToSave = finalsMatches.map(match => {
+  const sets = finalsScores[match.id] || match.sets;
+  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+  const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
 
- return {
- date: match.date,
- team1: match.team1,
- team2: match.team2,
- sets,
- winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
- tournamentId: tournament.id
- };
- });
+  return {
+  date: match.date,
+  team1: match.team1,
+  team2: match.team2,
+  sets,
+  winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
+  tournamentId: tournament.id,
+  phase: match.phase,
+  roundNumber: match.roundNumber,
+  };
+  });
 
  // Add finals matches
  for (const match of finalsMatchesToSave) {
@@ -1526,7 +2181,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  const handleCompleteBeatBoxTournament = async () => {
  console.log('🔵 handleCompleteBeatBoxTournament chiamato');
- const tournament = finalsFlowTournament;
+ const tournament = finalsFlowTournament || editingTournament;
  console.log('🔵 Tournament:', tournament);
  if (!tournament) {
  console.error('❌ No tournament reference available!');
@@ -1695,8 +2350,30 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
      * Salva le partite di una fase intermedia (semifinali / finali) nel DB
      * senza chiudere il torneo. Usato dal bottone "Salva" presente in ogni step.
      */
-    const savePhaseMatches = async (matchesList: Match[], tId: string, setMatchesList: (m: Match[]) => void) => {
-        const allToSave = matchesList.filter(m => m.sets && m.sets.length > 0 && m.sets.some(s => s.team1 > 0 || s.team2 > 0));
+    const savePhaseMatches = async (matchesList: Match[], tId: string, setMatchesList: (m: Match[]) => void, scoresMap?: Record<string, SetScore[]>) => {
+        const updatedList = matchesList.map(m => {
+            const scores = (scoresMap && scoresMap[m.id]) || m.sets || [{ team1: 0, team2: 0 }];
+            const team1Games = scores.reduce((sum, s) => sum + (s.team1 || 0), 0);
+            const team2Games = scores.reduce((sum, s) => sum + (s.team2 || 0), 0);
+            let winner: 'team1' | 'team2' | 'draw' | null = m.winner;
+            if (scores.length > 0 && (team1Games > 0 || team2Games > 0)) {
+                if (team1Games > team2Games) winner = 'team1';
+                else if (team2Games > team1Games) winner = 'team2';
+                else winner = 'draw';
+            }
+            return {
+                ...m,
+                sets: scores,
+                winner,
+            };
+        });
+
+        const playoffPhases = ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'];
+        const allToSave = updatedList.filter(m => {
+            const isPlayoff = playoffPhases.includes(String(m.phase || ''));
+            if (isPlayoff) return true; // Always save playoff matches, even 0-0 placeholders
+            return m.sets && m.sets.length > 0 && m.sets.some(s => (s.team1 || 0) > 0 || (s.team2 || 0) > 0);
+        });
         if (allToSave.length === 0) {
             setShowSaveSuccess(true);
             return;
@@ -1705,10 +2382,10 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         try {
             const existing = allToSave.filter(m => !m.id.startsWith('temp'));
             if (existing.length > 0) {
-                await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
+                await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner, team1: m.team1, team2: m.team2 })), true);
             }
             const temp = allToSave.filter(m => m.id.startsWith('temp'));
-            const newMatchesList = [...matchesList];
+            const newMatchesList = [...updatedList];
             for (const match of temp) {
                 const res = await fetch('/api/matches', {
                     method: 'POST',
@@ -2007,18 +2684,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <HIGSheet
  isOpen={!!editingTournament && !isInFinalsPhase && !showFinalsStandingsModal && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase}
  onClose={() => {
- // Only reset if we're not in any flow
- if (!showFinalsStandingsModal && !isInFinalsPhase && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase) {
- setEditingTournament(null);
- setIsInFinalsPhase(false);
- setShowFinalsStandingsModal(false);
- setShowBeatBoxStandingsModal(false);
- setIsInBeatBoxFinalsPhase(false);
- setIsInBeatBoxSemifinalsPhase(false);
- setShowGironiStandingsModal(false);
- setIsInGironiSemifinalsPhase(false);
- setIsInGironiFinalsPhase(false);
- }
+     resetAllFlowStates();
  }}
  title={editingTournament?.status === 'scheduled' ?"Inserisci Risultati" :"Modifica Risultati"}
  >
@@ -2189,10 +2855,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
 
  // Per altri tipi di torneo, mostra normalmente
- if (editingTournament?.type === TournamentType.Americano || editingTournament?.type === TournamentType.TorneOtto) {
+ if (editingTournament?.type === TournamentType.Americano || editingTournament?.type === TournamentType.TorneOtto || editingTournament?.type === TournamentType.RoundRobinFinali) {
      const allPlayersIds = new Set(tournamentMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]));
      const numPlayers = allPlayersIds.size;
-     const matchesPerRound = Math.min(editingTournament.americanoFields || 2, Math.floor(numPlayers / 4));
+     const matchesPerRound = editingTournament.type === TournamentType.RoundRobinFinali
+          ? (editingTournament.roundRobinFields || 2)
+          : Math.min(editingTournament.americanoFields || 2, Math.floor(numPlayers / 4));
      const normalizedRounds = normalizeTournamentRounds(tournamentMatches, editingTournament.type, {
          fields: matchesPerRound,
          participantIds: Array.from(allPlayersIds),
@@ -2380,34 +3048,46 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  {/* Modal for Round Robin standings and proceed to finals */}
  <HIGSheet
  isOpen={showFinalsStandingsModal}
- onClose={() => setShowFinalsStandingsModal(false)}
+ onClose={() => resetAllFlowStates()}
  title="Round Robin Completato!"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg">
  <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Classifica Round Robin</h3>
- <div className="space-y-2">
- {roundRobinStandings.slice(0, 4).map((standing, index) => (
- <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
- <span className="font-medium">
- {index + 1}° - {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
- </span>
- <span className="text-sm text-gray-600 dark:text-gray-400">
- {standing.points} punti
- </span>
+ {(() => {
+    const playoffType = (finalsFlowTournament || editingTournament)?.roundRobinPlayoffType || 'finals_only';
+    const qualCount = playoffType === 'quarterfinals' ? 8 : 4;
+    return (
+      <>
+        <div className="space-y-2">
+          {roundRobinStandings.slice(0, qualCount).map((standing, index) => {
+            const team = standing.team || standing.pair;
+            if (!team || !team[0] || !team[1]) return null;
+            return (
+              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                <span className="font-medium">
+                  {index + 1}° - {formatPlayerShortName(team[0])} & {formatPlayerShortName(team[1])}
+                </span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {standing.points} punti
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-gray-600 dark:text-gray-400 mt-3">
+          {playoffType === 'quarterfinals'
+            ? 'Le prime 8 squadre sono qualificate per i quarti di finale. Vuoi procedere?'
+            : 'Le prime 4 squadre sono qualificate per la fase finale. Vuoi procedere?'}
+        </p>
+      </>
+    );
+  })()}
  </div>
- ))}
- </div>
- </div>
- <p className="text-gray-600 dark:text-gray-400">
- Le prime 4 squadre sono qualificate per le finali. Vuoi procedere con le partite finali?
- </p>
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
- setShowFinalsStandingsModal(false);
- setEditingTournament(null);
- setIsInFinalsPhase(false);
+     resetAllFlowStates();
  }}
  variant="secondary"
  className="flex-1"
@@ -2426,7 +3106,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  {/* Modal for Gironi standings and proceed to semifinals */}
  <HIGSheet
  isOpen={showGironiStandingsModal}
- onClose={() => setShowGironiStandingsModal(false)}
+ onClose={() => resetAllFlowStates()}
  title="Gironi Completati!"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2469,9 +3149,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
- setShowGironiStandingsModal(false);
- setEditingTournament(null);
- setIsInGironiSemifinalsPhase(false);
+     resetAllFlowStates();
  }}
  variant="secondary"
  className="flex-1"
@@ -2502,10 +3180,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <HIGSheet
  isOpen={isInFinalsPhase && !!(finalsFlowTournament || editingTournament)}
  onClose={() => {
- setIsInFinalsPhase(false);
- setEditingTournament(null);
- setFinalsFlowTournament(null);
- setShowFinalsStandingsModal(false);
+     resetAllFlowStates();
  }}
  title="Finali - Round Robin + Finali"
  >
@@ -2533,120 +3208,170 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </tr>
  </thead>
  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
- {roundRobinStandings.map((standing, index) => (
- <tr key={index} className={index < 4 ?"bg-green-50 dark:bg-green-900" :""}>
- <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
- {index + 1}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.points}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gamesWon}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gamesLost}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gameDifference}
- </td>
- </tr>
- ))}
+ {(() => {
+    const playoffType = (finalsFlowTournament || editingTournament)?.roundRobinPlayoffType || 'finals_only';
+    const qualCount = playoffType === 'quarterfinals' ? 8 : 4;
+    return roundRobinStandings.map((standing, index) => {
+      const team = standing.team || standing.pair;
+      if (!team || !team[0] || !team[1]) return null;
+      return (
+        <tr key={index} className={index < qualCount ? "bg-green-50 dark:bg-green-900" : ""}>
+          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+            {index + 1}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {formatPlayerShortName(team[0])} & {formatPlayerShortName(team[1])}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {standing.points}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {standing.gamesWon}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {standing.gamesLost}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {standing.gameDifference}
+          </td>
+        </tr>
+      );
+    });
+  })()}
  </tbody>
  </table>
  </div>
- <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Le prime 4 squadre (evidenziate in verde) sono qualificate per le finali.</p>
+ <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+    {((finalsFlowTournament || editingTournament)?.roundRobinPlayoffType === 'quarterfinals')
+      ? 'Le prime 8 squadre (evidenziate in verde) sono qualificate per i quarti di finale.'
+      : 'Le prime 4 squadre (evidenziate in verde) sono qualificate per la fase finale.'}
+  </p>
  </div>
 
- {/* Finals matches input */}
- <div className="space-y-6">
- <h4 className="font-semibold text-gray-700 dark:text-gray-300">Partite Finali</h4>
- <div className="space-y-4 max-h-[30vh] overflow-y-auto p-1">
- {finalsMatches.map((match, index) => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+  {/* Finals matches input */}
+  <div className="space-y-6">
+  {(() => {
+    const isQuarters = finalsMatches.some(m => m.phase === 'quarterfinal');
+    const isSemis = finalsMatches.some(m => m.phase === 'semifinal');
+    return (
+      <h4 className="font-semibold text-gray-700 dark:text-gray-300">
+        {isQuarters ? 'Partite Quarti di Finale' : (isSemis ? 'Partite Semifinali' : 'Partite Finali')}
+      </h4>
+    );
+  })()}
+  <div className="space-y-4 max-h-[30vh] overflow-y-auto p-1">
+  {finalsMatches.map((match, index) => {
+  const team1 = match.team1.map(p => getPlayerById(p)!);
+  const team2 = match.team2.map(p => getPlayerById(p)!);
+  if (!team1[0] || !team2[0]) return null;
 
- const isFinalePrimoSecondo = index === 0;
+  let matchTitle = `Partita ${index + 1}`;
+  let cardClass = 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600';
+  let titleClass = 'text-sky-700 dark:text-sky-300';
 
- return (
- <div
- key={match.id}
- className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${
- isFinalePrimoSecondo
- ? 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600'
- : 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600'
- }`}
- >
- <div className="text-right text-sm">
- <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">
- ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}
- </p>
- </div>
- <div className="text-center">
- <MatchScoreInput
- sets={finalsScores[match.id] || [{team1: 0, team2: 0}]}
- onSetsChange={(sets) => setFinalsScores(prev => ({ ...prev, [match.id]: sets }))}
- disabled={isSubmitting}
- />
- <p className={`text-xs font-medium mt-1 ${
- isFinalePrimoSecondo
- ? 'text-emerald-700 dark:text-emerald-300'
- : 'text-sky-700 dark:text-sky-300'
- }`}>
- {isFinalePrimoSecondo ? 'Finale 1°-2°' : 'Finale 3°-4°'}
- </p>
- </div>
- <div className="text-sm">
- <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">
- ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
- </p>
- </div>
- </div>
- );
- })}
- </div>
- </div>
- <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
- <Button
- onClick={() => {
- setIsInFinalsPhase(false);
- setEditingTournament(null);
- }}
- variant="secondary"
- className="flex-1"
- disabled={isSubmitting}
- >
- Annulla
- </Button>
- <Button
- onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id, setFinalsMatches)}
- disabled={isSubmitting}
- variant="success"
- className="flex-1"
- >
- {isSubmitting ? 'Salvataggio...' : 'Salva'}
- </Button>
- <Button
- onClick={handleCompleteTournamentWithFinals}
- className="flex-1"
- disabled={isSubmitting || Object.keys(finalsScores).length !== finalsMatches.length}
- >
- {isSubmitting ? 'Finalizzando...' : 'Finalizza Torneo'}
- </Button>
- </div>
- </div>
+  if (match.phase === 'quarterfinal') {
+    matchTitle = `Quarto di Finale ${index + 1}`;
+    cardClass = 'bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700';
+    titleClass = 'text-indigo-700 dark:text-indigo-300';
+  } else if (match.phase === 'semifinal') {
+    matchTitle = `Semifinale ${index + 1}`;
+    cardClass = 'bg-purple-50 dark:bg-purple-950/40 border-2 border-purple-300 dark:border-purple-700';
+    titleClass = 'text-purple-700 dark:text-purple-300';
+  } else if (match.phase === 'final_1_2') {
+    matchTitle = 'Finale 1°-2° Posto';
+    cardClass = 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600';
+    titleClass = 'text-emerald-700 dark:text-emerald-300';
+  } else if (match.phase === 'final_3_4') {
+    matchTitle = 'Finale 3°-4° Posto';
+    cardClass = 'bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700';
+    titleClass = 'text-amber-700 dark:text-amber-300';
+  }
+
+  return (
+  <div
+  key={match.id}
+  className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${cardClass}`}
+  >
+  <div className="text-right text-sm">
+  <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
+  <p className="text-xs text-gray-500 dark:text-gray-400">
+  ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}
+  </p>
+  </div>
+  <div className="text-center">
+  <MatchScoreInput
+  sets={finalsScores[match.id] || (match.sets && match.sets.length > 0 ? match.sets : [{team1: 0, team2: 0}])}
+  onSetsChange={(sets) => setFinalsScores(prev => ({ ...prev, [match.id]: sets }))}
+  disabled={isSubmitting}
+  />
+  <p className={`text-xs font-medium mt-1 ${titleClass}`}>
+  {matchTitle}
+  </p>
+  </div>
+  <div className="text-sm">
+  <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
+  <p className="text-xs text-gray-500 dark:text-gray-400">
+  ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
+  </p>
+  </div>
+  </div>
+  );
+  })}
+  </div>
+  </div>
+  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+  <Button
+  onClick={() => {
+  setIsInFinalsPhase(false);
+  setEditingTournament(null);
+  }}
+  variant="secondary"
+  className="flex-1"
+  disabled={isSubmitting}
+  >
+  Annulla
+  </Button>
+  <Button
+  onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id, setFinalsMatches, finalsScores)}
+  disabled={isSubmitting}
+  variant="success"
+  className="flex-1"
+  >
+  {isSubmitting ? 'Salvataggio...' : 'Salva'}
+  </Button>
+  {finalsMatches.some(m => m.phase === 'quarterfinal') ? (
+  <Button
+  onClick={handleSaveRoundRobinQuartersAndGenerateSemis}
+  className="flex-1"
+  disabled={isSubmitting}
+  >
+  {isSubmitting ? 'Salvataggio...' : 'Salva e Genera Semifinali'}
+  </Button>
+  ) : finalsMatches.some(m => m.phase === 'semifinal') ? (
+  <Button
+  onClick={handleSaveRoundRobinSemisAndGenerateFinals}
+  className="flex-1"
+  disabled={isSubmitting}
+  >
+  {isSubmitting ? 'Salvataggio...' : 'Salva e Genera Finali'}
+  </Button>
+  ) : (
+  <Button
+  onClick={handleCompleteTournamentWithFinals}
+  className="flex-1"
+  disabled={isSubmitting || Object.keys(finalsScores).length !== finalsMatches.length}
+  >
+  {isSubmitting ? 'Finalizzando...' : 'Finalizza Torneo'}
+  </Button>
+  )}
+  </div>
+  </div>
  </HIGSheet>
 
  {/* Modal for Beat the Box standings and proceed to semifinals/finals */}
  <HIGSheet
  isOpen={showBeatBoxStandingsModal}
- onClose={() => setShowBeatBoxStandingsModal(false)}
+ onClose={() => resetAllFlowStates()}
  title="📦 Classifiche Box Completate"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
@@ -2677,17 +3402,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
- setShowBeatBoxStandingsModal(false);
- setEditingTournament(null);
- setFinalsFlowTournament(null);
- setIsInBeatBoxFinalsPhase(false);
- setIsInBeatBoxSemifinalsPhase(false);
- setBeatBoxFinalMatches([]);
- setBeatBoxSemifinalMatches([]);
- setBeatBoxStandings([]);
- setBeatBoxFinalStandings([]);
- setBeatBoxAllMatches([]);
- setShowBeatBoxStandingsModal(false);
+     resetAllFlowStates();
  }}
  variant="secondary"
  className="flex-1"
@@ -2780,7 +3495,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(beatBoxSemifinalMatches, finalsFlowTournament!.id, setBeatBoxSemifinalMatches)}
+ onClick={() => savePhaseMatches(beatBoxSemifinalMatches, (finalsFlowTournament || editingTournament)!.id, setBeatBoxSemifinalMatches, beatBoxSemifinalScores)}
  disabled={isSubmitting}
  variant="success"
  className="flex-1"
@@ -2801,6 +3516,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
 
  // Crea finali dai risultati delle semifinali
+ const activeT = finalsFlowTournament || editingTournament!;
  const sfResults = {
      sf1Winner: beatBoxSemifinalMatches[0].winner as 'team1' | 'team2',
      sf2Winner: beatBoxSemifinalMatches[1].winner as 'team1' | 'team2',
@@ -2808,14 +3524,14 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const { finals } = createBeatBoxFinalsMatches(
      beatBoxNumBoxes,
      beatBoxStandings,
-     finalsFlowTournament!.date,
+     activeT.date,
      sfResults,
-     finalsFlowTournament!.playoffType || 'semifinals'
+     activeT.playoffType || 'semifinals'
  );
  setBeatBoxFinalMatches(finals.map((m, i) => ({
      ...m,
      id: `temp-final-${i}`,
-     tournamentId: finalsFlowTournament!.id
+     tournamentId: activeT.id
  })));
 
  setIsInBeatBoxSemifinalsPhase(false);
@@ -2910,7 +3626,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(beatBoxFinalMatches, finalsFlowTournament!.id, setBeatBoxFinalMatches)}
+ onClick={() => savePhaseMatches(beatBoxFinalMatches, (finalsFlowTournament || editingTournament)!.id, setBeatBoxFinalMatches)}
  variant="success"
  className="flex-1"
  disabled={isSubmitting}
@@ -3144,7 +3860,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  })}
  <div className="flex gap-3 pt-4">
  <Button variant="outline" className="flex-1" onClick={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}>Indietro</Button>
- <Button variant="success" className="flex-1" disabled={isSubmitting} onClick={() => savePhaseMatches(gironiQuarterfinalMatches, finalsFlowTournament!.id, setGironiQuarterfinalMatches)}>Salva</Button>
+ <Button variant="success" className="flex-1" disabled={isSubmitting} onClick={() => savePhaseMatches(gironiQuarterfinalMatches, (finalsFlowTournament || editingTournament)!.id, setGironiQuarterfinalMatches)}>Salva</Button>
  <Button className="flex-1" disabled={isSubmitting} onClick={() => {
  const valid = gironiQuarterfinalMatches.length === 4 && gironiQuarterfinalMatches.every(match => match.winner === 'team1' || match.winner === 'team2');
  if (!valid) { showHIGAlert('Inserisci un vincitore per tutti i quarti.'); return; }
@@ -3229,7 +3945,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(gironiSemifinalMatches, finalsFlowTournament!.id, setGironiSemifinalMatches)}
+ onClick={() => savePhaseMatches(gironiSemifinalMatches, (finalsFlowTournament || editingTournament)!.id, setGironiSemifinalMatches)}
  variant="success"
  className="flex-1"
  disabled={isSubmitting}
@@ -3258,15 +3974,17 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const semi2Winner = semi2.winner === 'team1' ? semi2.team1 : semi2.team2;
  const semi2Loser = semi2.winner === 'team1' ? semi2.team2 : semi2.team1;
 
+ const activeT = finalsFlowTournament || editingTournament!;
+
  // Crea finale 1°-2°
  const finale12 = {
  id: 'temp-gironi-final-1',
- date: finalsFlowTournament!.date,
+ date: activeT.date,
  team1: semi1Winner,
  team2: semi2Winner,
  sets: [{ team1: 0, team2: 0 }],
  winner: null as 'team1' | 'team2' | null,
- tournamentId: finalsFlowTournament!.id,
+ tournamentId: activeT.id,
  phase: 'final_1_2' as const,
  roundNumber: 3,
  };
@@ -3274,12 +3992,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  // Crea finalina 3°-4°
  const finale34 = {
  id: 'temp-gironi-final-2',
- date: finalsFlowTournament!.date,
+ date: activeT.date,
  team1: semi1Loser,
  team2: semi2Loser,
  sets: [{ team1: 0, team2: 0 }],
  winner: null as 'team1' | 'team2' | null,
- tournamentId: finalsFlowTournament!.id,
+ tournamentId: activeT.id,
  phase: 'final_3_4' as const,
  roundNumber: 3,
  };
@@ -3376,7 +4094,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(gironiFinalMatches, finalsFlowTournament!.id, setGironiFinalMatches)}
+ onClick={() => savePhaseMatches(gironiFinalMatches, (finalsFlowTournament || editingTournament)!.id, setGironiFinalMatches)}
  disabled={isSubmitting}
  variant="success"
  className="flex-1"
@@ -3396,7 +4114,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                                 message: "Confermi di voler completare il torneo? Gli ELO verranno aggiornati definitivamente.",
                                 actionText: "Finalizza Torneo",
                                 onConfirm: async () => {
-                                    const tournament = finalsFlowTournament;
+                                    const tournament = finalsFlowTournament || editingTournament;
                                     if (!tournament) return;
                                     setIsSubmitting(true);
                                     try {

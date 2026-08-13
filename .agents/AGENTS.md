@@ -43,3 +43,17 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
 
 **MANDATORY**: Non prendere MAI iniziative non richieste riguardo alla veste grafica (UI) o alla logica di business dell'applicazione. Se noti un comportamento anomalo a livello grafico o logico che l'utente non ha segnalato, NON modificarlo. 
 Tuttavia, I BUG (crash, errori a schermo, variabili non definite) e le rotture di codice DEVONO essere sempre indagati e corretti. Attieniti strettamente al prompt per le modifiche di design.
+
+# Formati Bloccati (FROZEN FORMATS)
+
+I seguenti 6 formati di torneo sono stati completati, collaudati e sono **rigidamente bloccati**:
+- **Round Robin + Finali** (`round-robin-finali` / `isRoundRobinFinali`) - BLOCCATO E CONGELATO
+- **Beat the Box** (`beat_the_box` / `isBeatTheBox`) - BLOCCATO E CONGELATO
+- **TorneOtto** (`torneotto30` / `isTorneOtto`) - BLOCCATO E CONGELATO
+- **Americano** (`americano` / `isAmericano`) - BLOCCATO E CONGELATO
+- **Gironi + Fase Finale** (`gironi-fase-finale` / `isGironiFaseFinale`) - BLOCCATO E CONGELATO
+- **Eliminazione Diretta** (`eliminazione-diretta` / `isEliminazioneDiretta` / TPRA) - BLOCCATO E CONGELATO
+
+NON apportare MAI modifiche alla logica di business o alla struttura di questi 6 formati se non esplicitamente richiesto dall'utente.
+
+

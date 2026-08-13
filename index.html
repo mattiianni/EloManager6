@@ -93,6 +93,26 @@
   }
 }
 </script>
+    <script>
+      (function() {
+        var originalLog = console.log;
+        var originalError = console.error;
+        var originalWarn = console.warn;
+        function sendLog(level, args) {
+          try {
+            fetch('/api/log_frontend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ level: level, message: Array.from(args).map(String).join(' ') })
+            });
+          } catch(e) {}
+        }
+        console.log = function() { sendLog('LOG', arguments); originalLog.apply(console, arguments); };
+        console.error = function() { sendLog('ERROR', arguments); originalError.apply(console, arguments); };
+        console.warn = function() { sendLog('WARN', arguments); originalWarn.apply(console, arguments); };
+        window.onerror = function(msg, url, lineNo, columnNo, error) { sendLog('ERROR', [msg, url, lineNo, columnNo]); return false; };
+      })();
+    </script>
     <script type="module" src="/index.tsx"></script>
     <script>
       // Clear outdated PWA caches on version change

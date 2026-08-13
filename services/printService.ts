@@ -10,6 +10,8 @@ import { formatPlayerShortName } from '../utils/format.ts';
 import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
 import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 
+import { TournamentRegistry } from '../formats/registry.ts';
+
 export const MANROPE_PRINT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
 
 export const escapeHtml = (value: unknown): string => String(value ?? '')
@@ -1195,808 +1197,14 @@ export const printTournamentReport = (
     getPlayerById: (id: string) => Player | undefined,
     americanoFields?: number,
     americanoScoringType?: 'games-diff' | 'points',
-    roundRobinMatchCount?: number,  // Numero di partite del round robin (se presente)
+    roundRobinMatchCount?: number,
     displayNameOverride?: string,
-    roundRobinFields?: number  // Numero di campi per Round Robin
+    roundRobinFields?: number
 ) => {
+    const printer = TournamentRegistry.getPrinter(tournament.type);
+    const content = printer.generatePdfHtml(tournament, matches, getPlayerById, displayNameOverride);
     const displayName = displayNameOverride || tournament.name;
-    const safeDisplayName = escapeHtml(displayName);
-    const safeClubName = escapeHtml(tournament.club);
-    const isAmericano = tournament.type === TournamentType.Americano ||
-                        (tournament.type === TournamentType.Serie && (americanoScoringType !== undefined || americanoFields !== undefined));
-    const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
-    const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
-
-    if (isGironiFaseFinale) {
-        return printGironiTournament(tournament, matches, getPlayerById, displayName);
-    }
-
-    // Teams section (only for non-Americano tournaments)
-    let teamsContent = '';
-    if (!isAmericano) {
-        const teams = standings.map(s => s.team);
-        teamsContent = teams.map((pair, index) => {
-            const p1 = pair && pair[0] ? escapeHtml(`${pair[0].name || ''} ${pair[0].surname || ''}`.trim()) : 'Da definire';
-            const p2 = pair && pair[1] ? escapeHtml(`${pair[1].name || ''} ${pair[1].surname || ''}`.trim()) : 'Da definire';
-            return `
-            <div class="team-box" style="text-align: center; font-weight: bold; padding: 6px 4px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; line-height: 1.2; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                <div class="team-number" style="color: #0284c7; font-weight: 800; font-size: 10px; uppercase; tracking-wider; margin-bottom: 2px;">SQUADRA ${index + 1}</div>
-                <div style="color: #0f172a; font-weight: 600;">${p1}</div>
-                <div style="color: #64748b; font-size: 10px; margin: 1px 0;">&</div>
-                <div style="color: #0f172a; font-weight: 600;">${p2}</div>
-            </div>
-        `;
-        }).join('');
-    }
-
-    // Helper function to generate match row HTML
-    const generateMatchRow = (match: Match, index: number, isFinal: boolean = false, finalsIndex: number = -1) => {
-        const resolveP = (id: string) => id ? getPlayerById(id) : undefined;
-        const t1p1 = resolveP(match.team1[0]);
-        const t1p2 = resolveP(match.team1[1]);
-        const t2p1 = resolveP(match.team2[0]);
-        const t2p2 = resolveP(match.team2[1]);
-
-        const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-
-        if (isAmericano) {
-            // Americano: show individual players, not teams
-            const team1Name = printableTeamName([t1p1, t1p2]);
-            const team2Name = printableTeamName([t2p1, t2p2]);
-            const maxCourts = americanoFields || 2; // Use provided fields or default to 2
-            const court = `Campo ${(index % maxCourts) + 1}`;
-
-            return `
-                <tr style="height: 20px;">
-                    <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
-                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
-                    <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
-                        ${tournament.status === 'scheduled' ?
-                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' :
-                            scoreHtml
-                        }
-                    </td>
-                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team2Name}</td>
-                </tr>
-            `;
-        } else {
-            // Regular tournaments: show teams
-            const team1Name = printableTeamName([t1p1, t1p2]);
-            const team2Name = printableTeamName([t2p1, t2p2], ' / ');
-
-            let court = '-';
-            if (isFinal && finalsIndex >= 0) {
-                court = finalsIndex === 0 ? 'Finale 1°-2°' : 'Finale 3°-4°';
-            } else if (tournament.type === TournamentType.TorneOtto) {
-                court = `Campo ${(index % 2) + 1}`;
-            } else if (isRoundRobin) {
-                const maxCourts = roundRobinFields || 2;
-                court = `Campo ${(index % maxCourts) + 1}`;
-            }
-
-            return `
-                <tr style="height: 20px;">
-                    <td style="text-align: center; width: 10%; font-size: 10px; padding: 3px 4px; height: 20px; line-height: 1.2;">${court}</td>
-                    <td style="width: 32%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team1Name}</td>
-                    <td style="text-align: center; width: 26%; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; white-space: nowrap;">
-                        ${tournament.status === 'scheduled' ?
-                            '<span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 3px 8px; display: inline-block; font-size: 11px;">&nbsp;</span>' :
-                            scoreHtml
-                        }
-                    </td>
-                    <td style="width: 32%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; min-height: 20px; line-height: 1.2; overflow-wrap: anywhere;">${team2Name}</td>
-                </tr>
-            `;
-        }
-    };
-
-    // Split matches into Round Robin and Finals if applicable
-    const phasePartition = partitionMatchesByPhase(matches);
-    const hasExtraFinals = isRoundRobinFinali && (
-        phasePartition.hasExplicitPhases || (!!roundRobinMatchCount && matches.length > roundRobinMatchCount)
-    );
-    const fallbackRoundRobinMatchCount = roundRobinMatchCount ?? matches.length;
-    const roundRobinMatches = phasePartition.hasExplicitPhases
-        ? phasePartition.regular
-        : (hasExtraFinals ? matches.slice(0, fallbackRoundRobinMatchCount) : matches);
-    const finalsMatches = phasePartition.hasExplicitPhases
-        ? [...phasePartition.semifinals, ...phasePartition.finals]
-        : (hasExtraFinals ? matches.slice(fallbackRoundRobinMatchCount) : []);
-    const isFinalsCompleted = tournament.status === 'completed' && finalsMatches.length > 0 && finalsMatches.some(m => m.winner || (m.sets && m.sets.some(s => s.team1 > 0 || s.team2 > 0)));
-
-    let roundRobinContent = '';
-    const isRoundRobin = tournament.type === TournamentType.RoundRobinFinali;
-    const isTorneOtto = tournament.type === TournamentType.TorneOtto;
-    const isHomeAway = tournament.roundRobinHomeAway || false;
-
-    if (isAmericano || isRoundRobin || isTorneOtto) {
-        const matchesPerRound = (isAmericano && americanoFields && americanoFields > 0) ? americanoFields : 2;
-        const roundsMap = new Map<number, typeof roundRobinMatches>();
-        roundRobinMatches.forEach((m, idx) => {
-            const r = m.roundNumber || (matchesPerRound > 0 ? Math.floor(idx / matchesPerRound) + 1 : 1);
-            if (!roundsMap.has(r)) roundsMap.set(r, []);
-            roundsMap.get(r)!.push(m);
-        });
-
-        const totalRoundsCount = roundsMap.size;
-        let currentRound = 0;
-
-        // Build list of all teams or players in tournament
-        const allTeamsMap = new Map<string, [Player, Player]>();
-        roundRobinMatches.forEach(m => {
-            const k1 = m.team1.join(',');
-            const k2 = m.team2.join(',');
-            if (!allTeamsMap.has(k1)) {
-                allTeamsMap.set(k1, [
-                    getPlayerById(m.team1[0]) || ({ id: m.team1[0], name: 'Giocatore', surname: '1' } as Player),
-                    getPlayerById(m.team1[1]) || ({ id: m.team1[1], name: 'Giocatore', surname: '2' } as Player)
-                ]);
-            }
-            if (!allTeamsMap.has(k2)) {
-                allTeamsMap.set(k2, [
-                    getPlayerById(m.team2[0]) || ({ id: m.team2[0], name: 'Giocatore', surname: '1' } as Player),
-                    getPlayerById(m.team2[1]) || ({ id: m.team2[1], name: 'Giocatore', surname: '2' } as Player)
-                ]);
-            }
-        });
-
-        const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
-
-        const normalizedRounds = normalizeTournamentRounds(roundRobinMatches, tournament.type, {
-            fields: matchesPerRound,
-            homeAway: isHomeAway,
-            participantIds: Array.from(allPlayersIds),
-        });
-        const orderedRoundRobinMatches = normalizedRounds.flatMap(round => round.matches.map(item => item.match));
-        const normalizedRoundByNumber = new Map(normalizedRounds.map(round => [round.roundNumber, round]));
-        const courtByMatch = new Map(
-            normalizedRounds.flatMap(round => round.matches.map(item => [item.match, item.courtNumber] as const)),
-        );
-
-        roundRobinContent = orderedRoundRobinMatches.map((match, index) => {
-            const r = match.roundNumber || (matchesPerRound > 0 ? Math.floor(index / matchesPerRound) + 1 : 1);
-            let rowHtml = '';
-
-            if (r !== currentRound) {
-                currentRound = r;
-
-                const roundTitle = normalizedRoundByNumber.get(currentRound)?.label || `Turno ${currentRound}`;
-
-                const matchesInRound = roundsMap.get(currentRound) || [];
-                let restingText = '';
-
-                if (isAmericano) {
-                    const playersInRound = new Set(matchesInRound.flatMap(m => [...m.team1, ...m.team2]));
-                    const allPlayers = Array.from(allPlayersIds).map(id => getPlayerById(id)).filter(Boolean) as Player[];
-                    const restingPlayers = allPlayers.filter(p => !playersInRound.has(p.id));
-                    if (restingPlayers.length > 0) {
-                        restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-top: 4px; border-radius: 4px; font-weight: normal;"><b>Giocatori a Riposo:</b> ${restingPlayers.map(p => `${p.name} ${p.surname}`).join(', ')}</div>`;
-                    }
-                } else if (isRoundRobin) {
-                    const teamsInRoundKeys = new Set(matchesInRound.flatMap(m => [m.team1.join(','), m.team2.join(',')]));
-                    const restingTeams: string[] = [];
-                    allTeamsMap.forEach((pair, key) => {
-                        if (!teamsInRoundKeys.has(key)) {
-                            restingTeams.push(`${pair[0].name} ${pair[0].surname} & ${pair[1].name} ${pair[1].surname}`);
-                        }
-                    });
-                    if (restingTeams.length > 0) {
-                        restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-top: 4px; border-radius: 4px; font-weight: normal;"><b>Coppie a Riposo:</b> ${restingTeams.join(' | ')}</div>`;
-                    }
-                }
-
-                rowHtml += `
-                    <tr class="round-header">
-                        <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
-                            ${roundTitle}
-                            ${restingText}
-                        </td>
-                    </tr>
-                `;
-            }
-
-            rowHtml += generateMatchRow(match, (courtByMatch.get(match) || 1) - 1, false, -1);
-            return rowHtml;
-        }).join('');
-    } else {
-        roundRobinContent = roundRobinMatches.map((match, index) => generateMatchRow(match, index, false, -1)).join('');
-    }
-
-    const finalsContent = finalsMatches.map((match, index) => generateMatchRow(match, index, true, index)).join('');
-
-    // For Gironi + Fase Finale tournaments, split matches into gironi, semifinals, and finals
-    let gironiContent = '';
-    let gironiStandingsContent = '';
-    let gironiSemifinalsContent = '';
-    let gironiFinals34Content = '';
-    let gironiFinalsContent = '';
-
-    if (isGironiFaseFinale) {
-        let gironiMatches = matches;
-        let semifinalMatches: Match[] = [];
-        let finalMatches: Match[] = [];
-
-        const explicitPhases = partitionMatchesByPhase(matches);
-        if (explicitPhases.hasExplicitPhases) {
-            gironiMatches = explicitPhases.regular;
-            semifinalMatches = explicitPhases.semifinals;
-            finalMatches = explicitPhases.finals;
-        } else if (tournament.status === 'completed' && matches.length >= 4) {
-            // Last 4 matches are: semifinal A, semifinal B, finale 3-4, finalissima
-            gironiMatches = matches.slice(0, -4);
-            semifinalMatches = matches.slice(-4, -2);
-            finalMatches = matches.slice(-2);
-        }
-
-        // Calculate number of gironi (each girone has 6 matches for 4 teams)
-        const numGironi = Math.ceil(gironiMatches.length / 6);
-
-        // Store girone standings
-        const gironiStandings: Map<string, { pair: [Player, Player], punti: number, gamesWon: number, gamesLost: number }[]> = new Map();
-
-        // Create content for each girone
-        for (let i = 0; i < numGironi; i++) {
-            const gironeName = String.fromCharCode(65 + i); // A, B, C, D
-            const gironeMatches = gironiMatches.slice(i * 6, (i + 1) * 6);
-            const gironeMatchesHtml = gironeMatches.map((match, idx) => {
-                const t1p1 = getPlayerById(match.team1[0]);
-                const t1p2 = getPlayerById(match.team1[1]);
-                const t2p1 = getPlayerById(match.team2[0]);
-                const t2p2 = getPlayerById(match.team2[1]);
-                if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-
-                const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-                const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-                // Lo stato del torneo non determina se questa singola partita ha un
-                // risultato: nei tornei in corso i risultati possono essere parziali.
-                const scoreHtml = formatScoreBoxes(match.sets, false);
-
-                return `
-                    <tr style="height: 16px;">
-                        <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
-                        <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ?
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
-                                scoreHtml
-                            }
-                        </td>
-                        <td style="width: 37%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            gironiContent += `
-                <div class="section-block">
-                <h3 style="font-size: 11px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #f0f0f0;">PARTITE E RISULTATI GIRONE ${gironeName}</h3>
-                <table style="margin-bottom: 2px;">
-                    <tbody>
-                        ${gironeMatchesHtml}
-                    </tbody>
-                </table>
-                </div>
-            `;
-
-            // Calculate standings for this girone
-            const gironeTeams = new Map<string, { pair: [Player, Player], punti: number, gamesWon: number, gamesLost: number }>();
-
-            // Get all unique teams from girone matches
-            gironeMatches.forEach(match => {
-                const team1Key = `${match.team1[0]}-${match.team1[1]}`;
-                const team2Key = `${match.team2[0]}-${match.team2[1]}`;
-
-                if (!gironeTeams.has(team1Key)) {
-                    const p1 = getPlayerById(match.team1[0]);
-                    const p2 = getPlayerById(match.team1[1]);
-                    if (p1 && p2) {
-                        gironeTeams.set(team1Key, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0 });
-                    }
-                }
-                if (!gironeTeams.has(team2Key)) {
-                    const p1 = getPlayerById(match.team2[0]);
-                    const p2 = getPlayerById(match.team2[1]);
-                    if (p1 && p2) {
-                        gironeTeams.set(team2Key, { pair: [p1, p2], punti: 0, gamesWon: 0, gamesLost: 0 });
-                    }
-                }
-
-                // Calculate stats
-                const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
-                const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
-
-                const team1Stat = gironeTeams.get(team1Key);
-                const team2Stat = gironeTeams.get(team2Key);
-
-                if (team1Stat) {
-                    team1Stat.gamesWon += team1Games;
-                    team1Stat.gamesLost += team2Games;
-                    if (team1Games > team2Games) team1Stat.punti += 3;
-                }
-
-                if (team2Stat) {
-                    team2Stat.gamesWon += team2Games;
-                    team2Stat.gamesLost += team1Games;
-                    if (team2Games > team1Games) team2Stat.punti += 3;
-                }
-            });
-
-            // Sort standings
-            const sortedStandings = Array.from(gironeTeams.values()).sort((a, b) => {
-                if (b.punti !== a.punti) return b.punti - a.punti;
-                return (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
-            });
-
-            gironiStandings.set(gironeName, sortedStandings);
-        }
-
-        // Create standings tables side by side
-        const standingsTables = Array.from(gironiStandings.entries()).map(([gironeName, standings]) => {
-            const standingsRows = standings.map((entry, idx) => `
-                <tr style="height: 14px;">
-                    <td style="text-align: center; width: 15%; font-size: 8px; padding: 1px 2px; height: 14px; line-height: 1.0;">${idx + 1}°</td>
-                    <td style="width: 55%; font-size: 8px; padding: 1px 2px; height: 14px; line-height: 1.0;">${entry.pair[0].name} ${entry.pair[0].surname} / ${entry.pair[1].name} ${entry.pair[1].surname}</td>
-                    <td style="text-align: center; width: 15%; font-size: 8px; padding: 1px 2px; height: 14px; line-height: 1.0;">${entry.punti}</td>
-                    <td style="text-align: center; width: 15%; font-size: 8px; padding: 1px 2px; height: 14px; line-height: 1.0;">${entry.gamesWon - entry.gamesLost >= 0 ? '+' : ''}${entry.gamesWon - entry.gamesLost}</td>
-                </tr>
-            `).join('');
-
-            return `
-                <div class="section-block" style="flex: 1; min-width: 0;">
-                    <h3 style="font-size: 10px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #e8f5e9; text-align: center;">CLASSIFICA GIRONE ${gironeName}</h3>
-                    <table style="margin-bottom: 2px; font-size: 8px;">
-                        <thead>
-                            <tr>
-                                <th style="text-align: center; font-size: 8px; padding: 1px 2px;">Pos</th>
-                                <th style="font-size: 8px; padding: 1px 2px;">Coppia</th>
-                                <th style="text-align: center; font-size: 8px; padding: 1px 2px;">Pt</th>
-                                <th style="text-align: center; font-size: 8px; padding: 1px 2px;">Diff</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${standingsRows}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        }).join('');
-
-        gironiStandingsContent = `
-            <div style="display: flex; gap: 4px; margin: 12px 0;">
-                ${standingsTables}
-            </div>
-        `;
-
-        // Semifinals content
-        if (semifinalMatches.length > 0) {
-            const generateSemifinalRow = (match: Match) => {
-                const t1p1 = getPlayerById(match.team1[0]);
-                const t1p2 = getPlayerById(match.team1[1]);
-                const t2p1 = getPlayerById(match.team2[0]);
-                const t2p2 = getPlayerById(match.team2[1]);
-                if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-
-                const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-                const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-                const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-
-                return `
-                    <tr style="height: 16px;">
-                        <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
-                        <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ?
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
-                                scoreHtml
-                            }
-                        </td>
-                        <td style="width: 37%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
-                    </tr>
-                `;
-            };
-
-            gironiSemifinalsContent = `
-                <div class="section-block">
-                <h3 style="font-size: 11px; font-weight: bold; margin: 16px 0 2px 0; padding: 1px 2px; background: #eff6ff;">SEMIFINALE A</h3>
-                <table style="margin-bottom: 2px;">
-                    <tbody>
-                        ${generateSemifinalRow(semifinalMatches[0])}
-                    </tbody>
-                </table>
-                </div>
-                ${semifinalMatches.length > 1 ? `
-                <div class="section-block">
-                <h3 style="font-size: 11px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #eff6ff;">SEMIFINALE B</h3>
-                <table style="margin-bottom: 2px;">
-                    <tbody>
-                        ${generateSemifinalRow(semifinalMatches[1])}
-                    </tbody>
-                </table>
-                </div>
-                ` : ''}
-            `;
-        }
-
-        // Finals content
-        if (finalMatches.length > 0) {
-            const generateFinalRow = (match: Match) => {
-                const t1p1 = getPlayerById(match.team1[0]);
-                const t1p2 = getPlayerById(match.team1[1]);
-                const t2p1 = getPlayerById(match.team2[0]);
-                const t2p2 = getPlayerById(match.team2[1]);
-                if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
-
-                const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-                const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
-                const scoreHtml = formatScoreBoxes(match.sets, tournament.status === 'scheduled');
-
-                return `
-                    <tr style="height: 16px;">
-                        <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
-                        <td style="text-align: center; width: 26%; font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap;">
-                            ${tournament.status === 'scheduled' ?
-                                '<span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 2px 8px; display: inline-block; font-size: 9px;">&nbsp;</span>' :
-                                scoreHtml
-                            }
-                        </td>
-                        <td style="width: 37%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 9px; padding: 2px 3px; height: 16px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
-                    </tr>
-                `;
-            };
-
-            gironiFinals34Content = `
-                <div class="section-block">
-                <h3 style="font-size: 11px; font-weight: bold; margin: 16px 0 2px 0; padding: 1px 2px; background: #ffe0b2;">FINALE 3° E 4° POSTO</h3>
-                <table style="margin-bottom: 2px;">
-                    <tbody>
-                        ${generateFinalRow(finalMatches[0])}
-                    </tbody>
-                </table>
-                </div>
-            `;
-
-            if (finalMatches.length > 1) {
-                gironiFinalsContent = `
-                    <div class="section-block">
-                    <h3 style="font-size: 11px; font-weight: bold; margin: 12px 0 2px 0; padding: 1px 2px; background: #ffd700;">FINALISSIMA</h3>
-                    <table style="margin-bottom: 2px;">
-                        <tbody>
-                            ${generateFinalRow(finalMatches[1])}
-                        </tbody>
-                    </table>
-                    </div>
-                `;
-            }
-        }
-    }
-
-    // For non-RoundRobinFinali and non-GironiFaseFinale tournaments, use all matches
-    const matchesContent = !isRoundRobinFinali && !isGironiFaseFinale ? roundRobinContent : '';
-
-    // Standings content - different for Americano vs regular tournaments
-    const standingsContent = standings.map((entry, index) => {
-        if (isAmericano) {
-            // Americano: individual standings
-            const player = entry.team[0]; // In Americano, each entry has only one player
-            if (americanoScoringType === 'points') {
-                // For "points" scoring: only show Punti Fatti and Punti Subiti
-                return `
-                    <tr style="height: 20px;">
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${index + 1}</td>
-                        <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${player.name} ${player.surname}</td>
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesWon}</td>
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesLost}</td>
-                    </tr>
-                `;
-            } else {
-                // For "games-diff" scoring: show Games W, Games L, Differenza
-                return `
-                    <tr style="height: 20px;">
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${index + 1}</td>
-                        <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${player.name} ${player.surname}</td>
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesWon}</td>
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesLost}</td>
-                        <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gameDifference}</td>
-                    </tr>
-                `;
-            }
-        } else {
-            // Regular tournaments: team standings
-            return `
-                <tr style="height: 20px;">
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${index + 1}</td>
-                    <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.team[0].name} ${entry.team[0].surname} & ${entry.team[1].name} ${entry.team[1].surname}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.points}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesWon}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gamesLost}</td>
-                    <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${entry.gameDifference}</td>
-                </tr>
-            `;
-        }
-    }).join('');
-
-    const content = `
-        <style>
-            @page {
-                size: A4;
-                margin: 12mm 10mm;
-            }
-            body {
-                font-family: 'Manrope', sans-serif;
-                font-feature-settings: 'cv11', 'tnum', 'lnum';
-                font-size: 11px;
-                line-height: 1.3;
-                margin: 0;
-                padding: 0;
-                background: white;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            h1 {
-                font-size: 22px;
-                margin: 0 0 3px 0;
-                color: #111827;
-                font-weight: bold;
-            }
-            h2 {
-                font-size: 14px;
-                margin: 0 0 2px 0;
-                color: #666;
-                font-weight: normal;
-            }
-            h3 {
-                font-size: 13px;
-                margin: 10px 0 3px 0;
-                color: #000;
-                font-weight: bold;
-            }
-            .separator {
-                border-bottom: 1px solid #1e3a6e;
-                margin: 5px 0;
-            }
-            .date-info {
-                color: #111827;
-                font-size: 13px;
-                font-weight: bold;
-                margin: 2px 0 0 0;
-            }
-            .team-box {
-                text-align: center;
-                font-weight: bold;
-                padding: 2px 3px;
-                background-color: #f0f5ff;
-                border: 1px solid #c7d9f0;
-                border-radius: 3px;
-                font-size: 11px;
-                line-height: 1.1;
-                height: 60px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-            }
-            .team-number {
-                color: #111827;
-                font-weight: bold;
-                margin-bottom: 1px;
-                font-size: 11px;
-            }
-            .score-box {
-                background-color: #1e3a6e;
-                color: white;
-                padding: 5px 10px;
-                border-radius: 3px;
-                border: none;
-                font-weight: bold;
-                font-size: 12px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                min-height: 24px;
-            }
-            .score-box-blank {
-                background-color: white;
-                border: 1px solid #c7d9f0;
-                border-radius: 3px;
-                padding: 5px 8px;
-                margin: 0 1px;
-                width: 30px;
-                height: 30px;
-                display: inline;
-                font-size: 14px;
-                font-weight: bold;
-                color: #3b82f6;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 3px 0 6px 0;
-                font-size: 11px;
-            }
-            th {
-                background-color: #1e3a6e;
-                color: white;
-                padding: 5px 6px;
-                text-align: left;
-                font-weight: bold;
-                font-size: 11px;
-                height: 24px;
-            }
-            td {
-                padding: 5px 6px;
-                border-bottom: 1px solid #e5e7eb;
-                vertical-align: middle;
-                font-size: 11px;
-                line-height: 1.3;
-                height: 24px;
-            }
-            .court-cell {
-                font-size: 10px;
-                white-space: nowrap;
-                width: 10%;
-            }
-            .team-name {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            tr:nth-child(even) {
-                background-color: #f0f5ff;
-            }
-            /* Force UNIFORM row height 24px for ALL tables and ALL sections */
-            table tbody tr {
-                height: 24px !important;
-            }
-            table tbody td {
-                height: 24px !important;
-                padding: 5px 6px !important;
-                font-size: 11px !important;
-                line-height: 1.3 !important;
-            }
-            table thead tr {
-                height: 24px !important;
-            }
-            table thead th {
-                height: 24px !important;
-                padding: 5px 6px !important;
-                font-size: 11px !important;
-            }
-            .footer {
-                margin-top: 10px;
-                padding-top: 5px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 8px;
-                color: #666;
-            }
-            /* Le sezioni con molte partite devono poter continuare nella pagina
-               successiva; righe e intestazioni dei turni restano invece unite. */
-            .section-block {
-                break-inside: auto;
-                page-break-inside: auto;
-            }
-            tr.round-header {
-                break-after: avoid;
-                page-break-after: avoid;
-            }
-        </style>
-
-        <div style="text-align: center; margin-bottom: 3px;">
-            <h1>${safeDisplayName}</h1>
-            <h2>${safeClubName} - ${escapeHtml(getTournamentTypeDisplayName(tournament.type))}</h2>
-            <div class="date-info">Giornata del ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</div>
-        </div>
-
-        <div class="separator"></div>
-
-        ${!isAmericano ? `
-        <div class="section-block">
-            <h3 style="font-size: ${isGironiFaseFinale ? '11px' : '13px'}; font-weight: bold; margin: ${isGironiFaseFinale ? '8px' : '10px'} 0 3px 0;">SQUADRE</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; margin-bottom: ${isGironiFaseFinale ? '12px' : '12px'};">
-                ${teamsContent}
-            </div>
-        </div>
-        ` : ''}
-
-        ${isGironiFaseFinale ? `
-        ${gironiContent}
-        ${gironiStandingsContent}
-        ${gironiSemifinalsContent}
-        ${gironiFinals34Content}
-        ${gironiFinalsContent}
-        ` : isRoundRobinFinali && roundRobinMatchCount ? `
-        <div class="section-block">
-            <h3 style="margin-top: 12px;">Partite Round Robin</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: center;">Campo</th>
-                        <th>Squadra A</th>
-                        <th style="text-align: center;">Risultato</th>
-                        <th>Squadra B</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${roundRobinContent}
-                </tbody>
-            </table>
-        </div>
-
-        ${isFinalsCompleted && finalsContent ? `
-        <div class="section-block">
-            <h3 style="margin-top: 12px;">Finali</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: center;">Tipo</th>
-                        <th>Squadra A</th>
-                        <th style="text-align: center;">Risultato</th>
-                        <th>Squadra B</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${finalsContent}
-                </tbody>
-            </table>
-        </div>
-        ` : tournament.roundRobinPlayoffType === 'no_finals'
-            ? ''
-            : renderBlankFinalPhase(tournament.roundRobinPlayoffType === 'semifinals')}
-        ` : `
-        <div class="section-block">
-            <h3 style="margin-top: 12px;">Partite e Risultati</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: center;">Campo</th>
-                        <th>Squadra A</th>
-                        <th style="text-align: center;">Risultato</th>
-                        <th>Squadra B</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${matchesContent}
-                </tbody>
-            </table>
-        </div>
-        `}
-
-        ${tournament.status === 'completed' ? `
-        <div class="section-block">
-            <h3 style="font-size: ${isGironiFaseFinale ? '11px' : '13px'}; font-weight: bold; margin: ${isGironiFaseFinale ? '16px' : '14px'} 0 3px 0;">${isGironiFaseFinale ? 'CLASSIFICA' : 'Classifica Giornata'}</h3>
-            <table style="margin-bottom: 2px;">
-                <thead>
-                    <tr>
-                        <th style="text-align: center;">Pos</th>
-                        <th>Squadra</th>
-                        ${isAmericano && americanoScoringType === 'points' ? `
-                            <th style="text-align: center;">Punti Fatti</th>
-                            <th style="text-align: center;">Punti Subiti</th>
-                        ` : isAmericano ? `
-                            <th style="text-align: center;">Games V</th>
-                            <th style="text-align: center;">Games P</th>
-                            <th style="text-align: center;">Differenza</th>
-                        ` : `
-                            <th style="text-align: center;">Punti</th>
-                            <th style="text-align: center;">Games V</th>
-                            <th style="text-align: center;">Games P</th>
-                            <th style="text-align: center;">Differenza</th>
-                        `}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${standingsContent}
-                </tbody>
-            </table>
-        </div>
-        ` : ''}
-
-        <div class="footer">
-            <div style="text-align: left; margin-bottom: 4px;">
-                Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
-            </div>
-            <div style="text-align: right; font-size: 8px;">
-                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
-            </div>
-        </div>
-    `;
-
-    return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Torneo, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+    return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Torneo, ${tournament.date}`, content);
 };
 
 export const printTeamTournamentRoundRobinSchedule = (
@@ -2006,11 +1214,6 @@ export const printTeamTournamentRoundRobinSchedule = (
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
         showHIGAlert('Formato torneo non supportato per la stampa a squadre.');
-        return false;
-    }
-
-    if (config.format !== 'ROUND ROBIN') {
-        showHIGAlert('Stampa attualmente disponibile solo per Round Robin.');
         return false;
     }
 
@@ -2168,9 +1371,9 @@ export const printTeamTournamentMatchdayCalendar = (
                     ${t1Players}
                 </td>
                 <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
-                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
                     -
-                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
                 </td>
                 <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
                     ${t2Players}
@@ -4136,7 +3339,7 @@ export const printBlankScoreSheet = (
                     <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
                     <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
-                        <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                        <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
                     </td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
                 </tr>
@@ -4179,7 +3382,7 @@ export const printBlankScoreSheet = (
                     <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
                     <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
-                        <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                        <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
                     </td>
                     <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
                 </tr>
@@ -4206,7 +3409,7 @@ export const printBlankScoreSheet = (
                         <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">${court}</td>
                         <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team1Name}</td>
                         <td style="text-align: center; width: 20%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">
-                            <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
+                            <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 13px;">&nbsp;</span>
                         </td>
                         <td style="width: 32.5%; font-size: 12px; padding: 4px 5px; height: 22px; line-height: 1.2;">${team2Name}</td>
                     </tr>
@@ -4626,7 +3829,7 @@ export const printGironiTournament = (
                         <td style="text-align: center; width: 15%; font-size: 11px; padding: 3px 4px; white-space: nowrap;">
                             ${hasEnteredScore(match)
                                 ? scoreHtml
-                                : '<span style="border: 1px solid #ccc; padding: 4px 12px; display: inline-block; font-size: 11px;">&nbsp;</span>'}
+                                : '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 10px; display: inline-block; font-size: 11px; background: #fff;">&nbsp;&nbsp;&nbsp;</span>'}
                         </td>
                         <td style="width: 30%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 3px 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
                     </tr>
@@ -5960,16 +5163,18 @@ export const printTournamentStatistics = (stats: any) => {
  * Stampa il tabellone vuoto per Beat the Box (senza risultati)
  */
 export const printBeatTheBoxBlank = (
-    tournamentDetails: Pick<Tournament, 'name' | 'club' | 'date' | 'type'>,
+    tournamentDetails: Pick<Tournament, 'name' | 'club' | 'date' | 'type'> & { playoffType?: string },
     boxes: { boxNumber: number; players: Player[]; matches: Omit<Match, 'id' | 'tournamentId'>[] }[],
-    getPlayerById: (id: string) => Player | undefined
+    getPlayerById: (id: string) => Player | undefined,
+    playoffTypeStr?: string
 ) => {
     const numBoxes = boxes.length;
+    const wantSemifinals = (playoffTypeStr || tournamentDetails.playoffType) === 'semifinals' || !(playoffTypeStr || tournamentDetails.playoffType);
 
     // Genera il contenuto delle finali basato sul numero di box
     const generateFinalsContent = () => {
-        if (numBoxes === 2) {
-            // 4 coppie (2 box)
+        if (numBoxes === 2 && !wantSemifinals) {
+            // 4 coppie (2 box) - solo finali
             return `
                 <div class="section-block" style="margin: 20px 0;">
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">
@@ -5980,27 +5185,27 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box 1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box 2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666;">2° Box 2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666;">2° Box 1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6014,35 +5219,118 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">3° Box 1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">3° Box 2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666;">4° Box 2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666;">4° Box 1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             `;
-        } else if (numBoxes === 3) {
-            // 6 coppie (3 box)
+        } else if (numBoxes === 2 && wantSemifinals) {
+            // 4 coppie (2 box) - con semifinali
+            return `
+                <div class="section-block" style="margin: 20px 0;">
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8eaf6; border-left: 4px solid #5c6bc0;">
+                        SEMIFINALI
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box 1</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">2° Box 2</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box 2</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">2° Box 1</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">
+                        🏆 FASE FINALE - 1°/2° POSTO
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincente Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincente Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50;">
+                        🥉 FASE FINALE - 3°/4° POSTO
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else if (numBoxes === 3 && !wantSemifinals) {
+            // 6 coppie (3 box) - solo finali
             return `
                 <div class="section-block" style="margin: 20px 0;">
                     <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">
@@ -6053,25 +5341,25 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box A + Miglior Secondo</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box B + 1° Box C</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6085,25 +5373,108 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Secondo 2° + Peggior Terzo</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Terzo 2° + Secondo Terzo</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else if (numBoxes === 3 && wantSemifinals) {
+            // 6 coppie (3 box) - con semifinali
+            return `
+                <div class="section-block" style="margin: 20px 0;">
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8eaf6; border-left: 4px solid #5c6bc0;">
+                        SEMIFINALI
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box A + 2° Box B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box B + 2° Box C</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box C + 2° Box A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Miglior Terzo + Secondo Terzo</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #fff3e0; border-left: 4px solid #ff9800;">
+                        🏆 FASE FINALE - 1°/2° POSTO
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincente Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincente Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; padding: 4px 6px; background: #e8f5e8; border-left: 4px solid #4caf50;">
+                        🥉 FASE FINALE - 3°/4° POSTO
+                    </h3>
+                    <table style="margin-bottom: 16px; font-size: 11px;">
+                        <tbody>
+                            <tr style="height: 22px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente Semi A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente Semi B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6116,33 +5487,32 @@ export const printBeatTheBoxBlank = (
                         <tbody>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Quarto Terzo + Ultimo Quarto</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Peggior Terzo</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Terzo Quarto + Secondo Quarto</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Peggior Terzo</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            `;
-        } else {
+            `;        } else {
             // 8+ coppie (4+ box) - Semifinali + Finali
             const semifinalsHtml = Array.from({ length: Math.floor(numBoxes / 2) }, (_, i) => {
                 const box1 = i * 2 + 1;
@@ -6157,25 +5527,25 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box ${box1} + 2° Box ${box1}</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1° Box ${box2} + 2° Box ${box2}</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="margin: 8px 0; font-weight: bold;">vs</div>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6197,14 +5567,14 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincitore SF1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Vincitore SF2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6220,14 +5590,14 @@ export const printBeatTheBoxBlank = (
                             <tr style="height: 22px;">
                                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente SF1</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                                 <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                                 </td>
                                 <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <div style="font-size: 9px; color: #666; margin-bottom: 2px;">Perdente SF2</div>
-                                    <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -6253,7 +5623,7 @@ export const printBeatTheBoxBlank = (
                 <tr style="height: 22px;">
                     <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
                     <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
-                        <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                        <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
                     </td>
                     <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
                 </tr>
@@ -6495,7 +5865,33 @@ export const printBeatTheBoxComplete = (
         `;
     }
 
-    const finalsContent = finalMatches.map((match, idx) => {
+    // Fix finali: se ci sono le semifinali (playoffType === 'semifinals') e la finale generata è solo 1 (consolazione),
+    // dobbiamo renderizzare i segnaposto per le altre due finali mancanti.
+    let displayFinalMatches = [...finalMatches];
+    if (semifinalMatches.length > 0 && finalMatches.length === 1) {
+        // La finalMatches[0] in questo caso è la consolazione. Inseriamo due match vuoti all'inizio.
+        displayFinalMatches = [
+            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            finalMatches[0]
+        ];
+    } else if (semifinalMatches.length > 0 && finalMatches.length === 0) {
+        displayFinalMatches = [
+            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { team1: [], team2: [], sets: [], winner: null } as any as Match
+        ];
+    } else if (semifinalMatches.length === 0 && finalMatches.length === 0) {
+        // Se non ci sono semifinali e mancano le finali, mettiamo 2 vuote (1/2, 3/4)
+        if (tournament.type !== 'torneo_libero') { // TODO check
+           displayFinalMatches = [
+               { team1: [], team2: [], sets: [], winner: null } as any as Match,
+               { team1: [], team2: [], sets: [], winner: null } as any as Match
+           ];
+        }
+    }
+
+    const finalsContent = displayFinalMatches.map((match, idx) => {
         let matchTitle = '';
         let bgColor = '#fff9c4';
 
@@ -6510,13 +5906,27 @@ export const printBeatTheBoxComplete = (
             bgColor = '#f5f5f5';
         }
 
+        const matchRowHtml = (match.team1.length === 0) ? `
+            <tr style="height: 24px;">
+                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3;">
+                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%;">&nbsp;</span>
+                </td>
+                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3;">
+                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                </td>
+                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3;">
+                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%;">&nbsp;</span>
+                </td>
+            </tr>
+        ` : generateMatchRow(match);
+
         return {
             order: idx === 0 ? 3 : (idx === 1 ? 2 : 1),
             html: `
             <tr style="height: 20px;">
                 <td colspan="3" style="background: ${bgColor}; padding: 5px 6px; font-size: 11px; font-weight: bold; text-align: center; height: 24px;">${matchTitle}</td>
             </tr>
-            ${generateMatchRow(match)}
+            ${matchRowHtml}
         `
         };
     }).sort((a, b) => a.order - b.order).map(x => x.html).join('');

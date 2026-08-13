@@ -80,7 +80,7 @@ export const normalizeTournamentRounds = <
             matches: orderedMatches.map(({ match, originalIndex }, index) => ({
                 match,
                 originalIndex,
-                courtNumber: index + 1,
+                courtNumber: options.fields && options.fields > 0 ? (index % options.fields) + 1 : index + 1,
             })),
             restingParticipantIds: participantIds.filter(id => !activeIds.has(id)),
         };

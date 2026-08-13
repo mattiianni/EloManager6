@@ -81,7 +81,7 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
       };
     case 'success':
       return {
-        backgroundColor: '#16a34a',
+        backgroundColor: 'var(--ios-systemGreen)',
         color: '#ffffff',
         borderRadius: 12,
       };

@@ -3,3 +3,15 @@ dist
 .env
 logs
 npm-debug.log*
+*.sqlite
+*.db
+data.json
+filtered.json
+inspect_*.js
+inspect_*.mjs
+inspect_*.cjs
+scratch.js
+scratch/
+*.cjs
+
+

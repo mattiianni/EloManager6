@@ -7,9 +7,10 @@ interface MatchScoreInputProps {
     sets: SetScore[];
     onSetsChange?: (sets: SetScore[]) => void;
     disabled?: boolean;
+    phaseLabel?: string;
 }
 
-const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, disabled = false }) => {
+const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, disabled = false, phaseLabel }) => {
     // Assicurati che ci sia sempre almeno un set
     const displaySets = !sets || sets.length === 0 ? [{ team1: 0, team2: 0 }] : sets;
     
@@ -36,8 +37,14 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-            {displaySets.map((set, index) => (
+        <div className="flex flex-col items-center gap-1">
+            {phaseLabel && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60">
+                    {phaseLabel}
+                </span>
+            )}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                {displaySets.map((set, index) => (
                 <div key={index} className="group relative flex items-center gap-1.5 rounded-xl border border-slate-200/70 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-md shadow-sm">
                     <input
                         type="number"
@@ -75,6 +82,7 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
                     <MaterialIcon name="add" className="text-[18px]" />
                 </Button>
             )}
+            </div>
         </div>
     );
 };

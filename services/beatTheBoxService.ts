@@ -160,12 +160,14 @@ export function createFinalsFor2Boxes(boxStandings: BoxStanding[], date: string)
             date,
             team1: [box1[0].player.id, box2[1].player.id],
             team2: [box2[0].player.id, box1[1].player.id],
+            phase: 'final_1_2',
             sets: [], winner: null,
         },
         {
             date,
             team1: [box1[2].player.id, box2[3].player.id],
             team2: [box2[2].player.id, box1[3].player.id],
+            phase: 'final_3_4',
             sets: [], winner: null,
         }
     ];
@@ -195,18 +197,21 @@ export function createFinalsOnlyFor3Boxes(boxStandings: BoxStanding[], date: str
             date,
             team1: [shuffledFirsts[0].player.id, seconds[0].player.id],
             team2: [shuffledFirsts[1].player.id, shuffledFirsts[2].player.id],
+            phase: 'final_1_2',
             sets: [], winner: null,
         },
         {
             date,
             team1: [seconds[1].player.id, thirds[2].player.id],
             team2: [seconds[2].player.id, thirds[0].player.id],
+            phase: 'final_3_4',
             sets: [], winner: null,
         },
         {
             date,
             team1: [fourths[0].player.id, thirds[1].player.id],
             team2: [fourths[1].player.id, fourths[2].player.id],
+            phase: 'consolation',
             sets: [], winner: null,
         }
     ];
@@ -229,6 +234,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
             date,
             team1: [getSafeId(0, 0), getSafeId(1, 1)],
             team2: [getSafeId(1, 0), getSafeId(2, 1)],
+            phase: 'semifinal',
             sets: [], winner: null,
         },
         {
@@ -238,6 +244,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
                 [0, 1, 2].map(i => ({ id: getSafeId(i, 2), points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 })).sort((a, b) => b.points - a.points || b.diff - a.diff)[0].id,
                 [0, 1, 2].map(i => ({ id: getSafeId(i, 2), points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 })).sort((a, b) => b.points - a.points || b.diff - a.diff)[1].id
             ],
+            phase: 'semifinal',
             sets: [], winner: null,
         }
     ];
@@ -267,6 +274,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
             date,
             team1: consolationTeam1,
             team2: consolationTeam2,
+            phase: 'consolation',
             sets: [], winner: null,
         });
     }
@@ -279,6 +287,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team1 : sf1.team2,
             team2: semifinalResults.sf2Winner === 'team1' ? sf2.team1 : sf2.team2,
+            phase: 'final_1_2',
             sets: [], winner: null,
         });
         
@@ -286,6 +295,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team2 : sf1.team1,
             team2: semifinalResults.sf2Winner === 'team1' ? sf2.team2 : sf2.team1,
+            phase: 'final_3_4',
             sets: [], winner: null,
         });
 
@@ -293,6 +303,7 @@ export function createSemifinalsAndFinalsFor3Boxes(
             date,
             team1: consolationTeam1,
             team2: consolationTeam2,
+            phase: 'consolation',
             sets: [], winner: null,
         });
     }
@@ -319,24 +330,28 @@ export function createFinalsOnlyFor4Boxes(boxStandings: BoxStanding[], date: str
             date,
             team1: [firsts[0], firsts[1]],
             team2: [firsts[2], firsts[3]],
+            phase: 'final_1_2',
             sets: [], winner: null,
         },
         {
             date,
             team1: [seconds[0], seconds[1]],
             team2: [seconds[2], seconds[3]],
+            phase: 'final_3_4',
             sets: [], winner: null,
         },
         {
             date,
             team1: [thirds[0], thirds[1]],
             team2: [thirds[2], thirds[3]],
+            phase: 'consolation',
             sets: [], winner: null,
         },
         {
             date,
             team1: [fourths[0], fourths[1]],
             team2: [fourths[2], fourths[3]],
+            phase: 'consolation',
             sets: [], winner: null,
         }
     ];
@@ -370,6 +385,7 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
         date,
         team1: [getSafeId(top8, 0), getSafeId(top8, 7)],
         team2: [getSafeId(top8, 3), getSafeId(top8, 4)],
+        phase: 'semifinal',
         sets: [], winner: null,
     });
     
@@ -377,6 +393,7 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
         date,
         team1: [getSafeId(top8, 1), getSafeId(top8, 6)],
         team2: [getSafeId(top8, 2), getSafeId(top8, 5)],
+        phase: 'semifinal',
         sets: [], winner: null,
     });
     
@@ -391,6 +408,7 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team1 : sf1.team2,
             team2: semifinalResults.sf2Winner === 'team1' ? sf2.team1 : sf2.team2,
+            phase: 'final_1_2',
             sets: [], winner: null,
         });
         
@@ -399,6 +417,7 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team2 : sf1.team1,
             team2: semifinalResults.sf2Winner === 'team1' ? sf2.team2 : sf2.team1,
+            phase: 'final_3_4',
             sets: [], winner: null,
         });
 
@@ -408,6 +427,7 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
                  date,
                  team1: [getSafeId(next8, 0), getSafeId(next8, 3)],
                  team2: [getSafeId(next8, 1), getSafeId(next8, 2)],
+                 phase: 'consolation',
                  sets: [], winner: null,
              });
         }

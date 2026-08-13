@@ -2313,10 +2313,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                     
                     {!isTeamTournamentFlow && !isNavigationOverlayOpen && (
-                        <div className="fixed left-4 right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 rounded-2xl bg-white/90 p-2 shadow-lg backdrop-blur-xl dark:bg-slate-900/90 xl:static xl:px-4 xl:py-0 xl:bg-transparent xl:shadow-none xl:backdrop-blur-none">
+                        <div className="fixed xl:sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] xl:bottom-6 left-4 right-4 xl:left-auto xl:right-auto z-20 rounded-2xl bg-white/90 p-2 xl:p-4 shadow-lg xl:shadow-2xl backdrop-blur-xl dark:bg-slate-900/90 xl:border xl:border-slate-200 xl:dark:border-slate-700">
                             <Button
                                 onClick={handleDraw}
-                                className="w-full"
+                                className="w-full xl:py-4 xl:text-lg"
                                 disabled={isShuffling || (mode !== 'Manual' && !isFull)}
                             >
                                 <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : 'Sorteggia Coppie')}</span>

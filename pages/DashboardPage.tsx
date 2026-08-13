@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
+import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { Player, TournamentType } from '../types.ts';
 import { groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
@@ -240,7 +241,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                                     <SFIcon name="trophy.fill" size={18} color="white" />
                                 </div>
                                 <div>
-                                    <div className="font-bold text-[15px] text-slate-900 dark:text-white">{lastGiornata.name}</div>
+                                    <div className="font-bold text-[15px] text-slate-900 dark:text-white">{getTournamentDisplayName(lastGiornata as any, tournaments)}</div>
                                     <div className="text-[12px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{lastGiornata.type} • {new Date(lastGiornata.date).toLocaleDateString('it-IT')}</div>
                                 </div>
                             </div>
