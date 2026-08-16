@@ -1,3 +1,13 @@
+## v6.8.1 — 2026-08-16
+
+### Linearizzazione e Uniformità Grafica Schermata Inserimento Risultati (Eliminazione Container Annidati)
+
+- **Eliminazione Doppi Container in Creazione Round Robin**: Rimosso il riquadro card della giornata e il riquadro card interno del singolo match in `TournamentFlow.tsx` per il formato *Round Robin + Finali*, adottando un layout flat a righe continue identico alla schermata post-salvataggio di `MatchesPage.tsx`.
+- **Ottimizzazione Spazio Orizzontale Mobile**: Eliminati oltre 90px di padding/margini annidati su schermi smartphone, garantendo il pieno sviluppo e la massima leggibilità dei nomi delle coppie senza accavallamenti sul componente di inserimento punteggi.
+- **Uniformità Grafica Playoff**: Semplificati i blocchi Quarti, Semifinali e Finali in `TournamentFlow.tsx` convertendoli in righe flat snelle e lineari conformi ai canoni Apple HIG.
+
+---
+
 ## v6.8.0 — 2026-08-13
 
 ### Riforma e stabilizzazione persistenza Playoff (Gironi + Fase Finale) & Risoluzione Bug Creazione TPRA
