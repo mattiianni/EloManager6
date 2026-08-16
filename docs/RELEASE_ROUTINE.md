@@ -18,7 +18,7 @@
 8. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.
 9. Creare backup `.zip` di ripristino e salvarlo sul Desktop dell'utente (`~/Desktop/`).
-10. Creare dump `.txt` completo file-per-file del codice e salvarlo sul Desktop dell'utente (`~/Desktop/`).
+10. Creare 2 dump `.txt` distinti del codice sorgente (`ELO_Manager_LOGICA_v...txt` e `ELO_Manager_GRAFICA_v...txt`) e salvarli sul Desktop dell'utente (`~/Desktop/`).
 11. Fare commit e push della versione locale corrente.
 
 ## Note operative

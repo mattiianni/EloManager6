@@ -21,16 +21,31 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
      zip -r ~/Desktop/PadelManager2_v$(node -p "require('./package.json').version")_$(date +%Y-%m-%d).zip . -x "node_modules/*" ".git/*" ".gemini/*" "dist/*" "*/.DS_Store"
      ```
 
-4. **Esporta il Codice Sorgente in TXT:**
-   - Esegui un comando per generare un file di testo contenente tutto il codice sorgente sulla Scrivania, ad esempio:
+4. **Esporta il Codice Sorgente in 2 File TXT (Logica e Grafica):**
+   - Esegui il comando per generare due file di testo distinti sulla Scrivania:
      ```bash
-     OUTPUT_FILE=~/Desktop/ELO_Manager_full_source_v$(node -p "require('./package.json').version")_$(date +%Y-%m-%d).txt
-     echo "Padel Manager Source Code" > $OUTPUT_FILE
-     find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/.gemini/*" -not -name "*.jpg" -not -name "*.png" -not -name "*.zip" -not -name "package-lock.json" | sort | while read -r file; do
-         echo -e "\n\n================================================================" >> $OUTPUT_FILE
-         echo "FILE: $file" >> $OUTPUT_FILE
-         echo "================================================================" >> $OUTPUT_FILE
-         cat "$file" >> $OUTPUT_FILE
+     VERSION=$(node -p "require('./package.json').version")
+     DATE=$(date +%Y-%m-%d)
+     LOGIC_FILE=~/Desktop/ELO_Manager_LOGICA_v${VERSION}_${DATE}.txt
+     UI_FILE=~/Desktop/ELO_Manager_GRAFICA_v${VERSION}_${DATE}.txt
+
+     echo "Padel Manager - Source Code: LOGICA" > $LOGIC_FILE
+     echo "Padel Manager - Source Code: GRAFICA & UI" > $UI_FILE
+
+     # File Grafica (Componenti, Pagine, Stili, Template UI)
+     find ./components ./pages ./index.css ./index.html ./App.tsx ./index.tsx ./tailwind.config.js ./postcss.config.js -type f -not -name "*.png" -not -name "*.jpg" -not -name "*.zip" 2>/dev/null | sort | while read -r file; do
+         echo -e "\n\n================================================================" >> $UI_FILE
+         echo "FILE: $file" >> $UI_FILE
+         echo "================================================================" >> $UI_FILE
+         cat "$file" >> $UI_FILE
+     done
+
+     # File Logica (Backend, Servizi, Utils, Formati, Hooks, Script, Config)
+     find ./server.js ./services ./utils ./formats ./hooks ./types.ts ./constants.ts ./scripts ./package.json ./tsconfig.json ./vite.config.ts ./vercel.json -type f -not -name "*.png" -not -name "*.jpg" -not -name "*.zip" -not -name "*.sqlite" -not -name "*.db" 2>/dev/null | sort | while read -r file; do
+         echo -e "\n\n================================================================" >> $LOGIC_FILE
+         echo "FILE: $file" >> $LOGIC_FILE
+         echo "================================================================" >> $LOGIC_FILE
+         cat "$file" >> $LOGIC_FILE
      done
      ```
 
