@@ -18,7 +18,7 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
 3. **Backup ZIP sulla Scrivania:**
    - Esegui un comando per creare uno zip pulito sulla scrivania (escludendo `node_modules` e `.git`):
      ```bash
-     zip -r ~/Desktop/PadelManager2_v$(node -p "require('./package.json').version")_$(date +%Y-%m-%d).zip . -x "node_modules/*" ".git/*" ".gemini/*" "dist/*" "*/.DS_Store"
+     zip -r ~/Desktop/Elo_Manager_v$(node -p "require('./package.json').version")_$(date +%Y-%m-%d).zip . -x "node_modules/*" ".git/*" ".gemini/*" "dist/*" "*/.DS_Store"
      ```
 
 4. **Esporta il Codice Sorgente in 2 File TXT (Logica e Grafica):**
@@ -26,8 +26,8 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
      ```bash
      VERSION=$(node -p "require('./package.json').version")
      DATE=$(date +%Y-%m-%d)
-     LOGIC_FILE=~/Desktop/ELO_Manager_LOGICA_v${VERSION}_${DATE}.txt
-     UI_FILE=~/Desktop/ELO_Manager_GRAFICA_v${VERSION}_${DATE}.txt
+     LOGIC_FILE=~/Desktop/Elo_Manager_Logica_v${VERSION}_${DATE}.txt
+     UI_FILE=~/Desktop/Elo_Manager_Grafica_v${VERSION}_${DATE}.txt
 
      echo "Padel Manager - Source Code: LOGICA" > $LOGIC_FILE
      echo "Padel Manager - Source Code: GRAFICA & UI" > $UI_FILE

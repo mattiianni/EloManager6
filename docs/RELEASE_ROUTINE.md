@@ -17,8 +17,8 @@
 7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` per la guida a squadre, e `swift scripts/html_to_pdf.swift docs/Padel_ELO_Manager_Guida_v6.8.1.html docs/Guida_Uso_v6.8.1.pdf` per la guida d'uso generica) per produrre in `docs/` i PDF aggiornati (`Guida_Torneo_a_Squadre_v6.8.1.pdf` e `Guida_Uso_v6.8.1.pdf`), rimuovendo i vecchi file PDF.
 8. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.
-9. Creare backup `.zip` di ripristino e salvarlo sul Desktop dell'utente (`~/Desktop/`).
-10. Creare 2 dump `.txt` distinti del codice sorgente (`ELO_Manager_LOGICA_v...txt` e `ELO_Manager_GRAFICA_v...txt`) e salvarli sul Desktop dell'utente (`~/Desktop/`).
+9. Creare backup `.zip` di ripristino (`Elo_Manager_v...zip`) e salvarlo sul Desktop dell'utente (`~/Desktop/`).
+10. Creare 2 dump `.txt` distinti del codice sorgente (`Elo_Manager_Logica_v...txt` e `Elo_Manager_Grafica_v...txt`) e salvarli sul Desktop dell'utente (`~/Desktop/`).
 11. Fare commit e push della versione locale corrente.
 
 ## Note operative
