@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.8.1)
+# Istruzioni d'Uso (v6.8.2)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.8.1` — `Ago 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.8.2` — `Ago 2026`).
 
 ## Accesso
 

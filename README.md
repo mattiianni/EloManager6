@@ -1,21 +1,23 @@
-# Padel ELO Manager (v6.8.1)
+# Padel ELO Manager (v6.8.2)
 
-Applicazione full-stack PWA per la gestione avanzata di tornei di padel con algoritmo ELO dinamico in tempo reale, statistiche approfondite, reportistica PDF, design system Apple HIG e isolamento dati multi-workspace.
+Applicazione gestionale completa per tornei di Padel con calcolo dinamico del punteggio ELO, gestione a gironi, fasi finali, esportazione e stampa referti.
 
-Versione documentata: `v6.8.1` (Mese: `Ago 2026`)
+Versione documentata: `v6.8.2` (Mese: `Ago 2026`)
 
-## Stato attuale
+---
 
-- Runtime frontend: `React 18 + TypeScript + Vite`
-- Backend: `Express 5`
-- Database: `Neon PostgreSQL`
-- Auth: `JWT` con codice di accesso a 6 cifre
-- Multi-workspace: attivo
-- PWA: attiva tramite `vite-plugin-pwa`
+## Panoramica
 
-## Routine release
+Padel ELO Manager consente di:
+- Organizzare tornei individuali, a coppie e a squadre (Americano, TorneOtto, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta TPRA).
+- Gestire il flusso di gioco e la registrazione dei punteggi in tempo reale.
+- Calcolare l'aggiornamento dei punteggi ELO dei giocatori secondo le regole ufficiali.
+- Generare report, classifiche e documenti stampabili in formato PDF.
 
-- Versione corrente: `6.8.1`
+---
+
+## Stato del Progetto
+- Versione corrente: `6.8.2`
 - Routine obbligatoria: documentazione, test/build, guida PDF, backup ZIP, dump TXT, commit e push.
 
 ## Aggiornamenti v6.7.9

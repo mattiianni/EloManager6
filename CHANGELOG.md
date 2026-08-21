@@ -1,3 +1,8 @@
+## v6.8.2 — 2026-08-21
+- **Fix Round Robin + Finali Save & Resume**: Eliminato il taglio per array position (`slice`) in fase di salvataggio ed allineato il riconoscimento fasi al tag esplicito `match.phase`. Risolto il problema della cancellazione a cascata e della perdita di partite del girone.
+- **Isolamento Beat the Box**: Rimosso l'uso improprio di `groupMatchesByPlayerSets` sui formati Round Robin e Gironi.
+- **Apertura Modale Istantanea**: Eliminata la chiamata bloccante `/api/data` al click su "in corso - inserisci risultati", garantendo un caricamento a 0ms e sincronizzazione immediata dei risultati.
+
 ## v6.8.1 — 2026-08-16
 
 ### Linearizzazione e Uniformità Grafica Schermata Inserimento Risultati (Eliminazione Container Annidati)

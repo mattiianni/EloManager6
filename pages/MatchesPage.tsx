@@ -687,12 +687,18 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  console.log(`🎯 MatchesPage: Found ${tournamentMatches.length} matches for tournament`);
 
  let standings: TournamentStandingEntry[];
+ const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
+ const rrFinalsInDb = isRoundRobinFinali
+    ? tournamentMatches.filter(m => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4'].includes(String(m.phase || '')))
+    : [];
+ const hasRrFinals = isRoundRobinFinali && tournament.status === 'completed' && rrFinalsInDb.length >= 2;
+
  if (tournament.type === TournamentType.Americano) {
  console.log(`🎯 MatchesPage: Using Americano calculation`);
  standings = calculateAmericanoStandings(tournamentMatches, editingTournament?.americanoScoringType);
- } else if (tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2) {
+ } else if (hasRrFinals) {
  console.log(`🎯 MatchesPage: Using Round Robin + Finali calculation`);
- const roundRobinMatchCount = tournamentMatches.length - 2;
+ const roundRobinMatchCount = tournamentMatches.length - rrFinalsInDb.length;
  standings = calculateFinalStandingsForRoundRobinFinali(tournamentMatches, roundRobinMatchCount, getPlayerById as any);
  } else {
  console.log(`🎯 MatchesPage: Using standard calculation`);
@@ -704,9 +710,8 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const americanoFields = tournament.type === TournamentType.Americano ? tournament.americanoFields : undefined;
 
  // For Round Robin + Finali tournaments, calculate the number of round robin matches
- // (Total matches - 2 finals matches)
- const roundRobinMatchCount = tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2
- ? tournamentMatches.length - 2
+ const roundRobinMatchCount = hasRrFinals
+ ? tournamentMatches.length - rrFinalsInDb.length
  : undefined;
 
  // Handle Beat the Box tournaments
@@ -809,121 +814,103 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return;
  }
 
- // Fetch fresh matches directly from the database to avoid React state race conditions when navigating
- let tournamentMatches: Match[] = [];
- try {
- const res = await fetch('/api/data', {
-     headers: authHeaders()
- });
- if (res.ok) {
-     const data = await res.json();
-     tournamentMatches = (data.matches || []).filter((m: Match) => m.tournamentId === tournament.id);
- } else {
-     tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
- }
- } catch (err) {
- console.error("Failed to fetch fresh matches, using local state:", err);
- tournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
- }
+ const tournamentMatches: Match[] = matches.filter(m => m.tournamentId === tournament.id);
 
- const isBeatTheBox = tournament.type === TournamentType.BeatTheBox;
- const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
- const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
- const isMultiPhase = isBeatTheBox || isGironiFaseFinale || isRoundRobinFinali;
+    const openRegularEditor = (t: Tournament) => {
+        const initialScores = tournamentMatches.reduce((acc, match) => {
+            acc[match.id] = match.sets;
+            return acc;
+        }, {} as Record<string, SetScore[]>);
+        setEditScores(initialScores);
+        setEditingTournament(t);
+    };
 
- // Non-multi-fase: apri sempre il modale semplice
- if (!isMultiPhase) {
- setEditingTournament(tournament);
- return;
- }
+    const isBeatTheBox = tournament.type === TournamentType.BeatTheBox;
+    const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
+    const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
+    const isMultiPhase = isBeatTheBox || isGironiFaseFinale || isRoundRobinFinali;
 
- // Multi-fase completato: cascade reset (cancella semifinali/finali, reverte ELO),
- // poi apri editing con solo le partite dei gironi/box
- if (tournament.status === 'completed') {
- let phaseMatchIds: string[] = [];
+    // Non-multi-fase: apri sempre il modale semplice
+    if (!isMultiPhase) {
+        openRegularEditor(tournament);
+        return;
+    }
 
- if (isBeatTheBox) {
- const { phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
- phaseMatchIds = phaseMatches.map(m => m.id);
- } else if (isGironiFaseFinale) {
- // Le fasi conclusive sono persistite esplicitamente: non dedurre mai la fase
- // dalla posizione, perché le ultime righe possono essere normali partite di girone.
- phaseMatchIds = tournamentMatches
- .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
- .map(match => match.id);
- } else if (isRoundRobinFinali) {
- phaseMatchIds = tournamentMatches
- .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
- .map(match => match.id);
- }
+    // Multi-fase completato: cascade reset (cancella semifinali/finali, reverte ELO),
+    // poi apri editing con solo le partite dei gironi/box
+    if (tournament.status === 'completed') {
+        let phaseMatchIds: string[] = [];
 
- if (phaseMatchIds.length > 0) {
- try {
- await cascadeResetTournament(tournament.id, phaseMatchIds);
- // fetchData() viene chiamato internamente (skipRefresh=false)
- // Dopo: status='scheduled', solo partite gironi rimaste
- setEditingTournament({ ...tournament, status: 'scheduled' as const });
- } catch (error) {
- console.error('Cascade reset failed:', error);
- showHIGAlert('Errore nel reset del torneo. Riprova.');
- }
- return;
- }
+        if (isMultiPhase) {
+            if (isBeatTheBox) {
+                // Beat the Box: use player-set grouping (order-independent)
+                const { phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
+                phaseMatchIds = phaseMatches.map(m => m.id);
+            } else if (isGironiFaseFinale || isRoundRobinFinali) {
+                // Gironi e Round Robin: le fasi conclusive sono identificate dalla fase persistita, mai dalla posizione.
+                phaseMatchIds = tournamentMatches
+                    .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
+                    .map(match => match.id);
+            }
+        }
 
- setEditingTournament(tournament);
- return;
- }
+        if (phaseMatchIds.length > 0) {
+            try {
+                await cascadeResetTournament(tournament.id, phaseMatchIds);
+                openRegularEditor({ ...tournament, status: 'scheduled' as const });
+            } catch (error) {
+                console.error('Cascade reset failed:', error);
+                showHIGAlert('Errore nel reset del torneo. Riprova.');
+            }
+            return;
+        }
 
-  const { boxes, phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
+        openRegularEditor(tournament);
+        return;
+    }
 
-  const phaseMatchIdSet = new Set(
-    tournamentMatches
-      .filter(m => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
-      .map(m => m.id)
-  );
-  // Only add groupMatchesByPlayerSets results for BeatTheBox (not Gironi — that function
-  // may misclassify group-stage matches as phase matches, polluting phaseMatchIdSet).
-  if (!isGironiFaseFinale && phaseMatches && phaseMatches.length > 0) {
-    phaseMatches.forEach(m => phaseMatchIdSet.add(m.id));
-  }
+    const { boxes, phaseMatches } = isBeatTheBox
+        ? groupMatchesByPlayerSets(tournamentMatches)
+        : { boxes: new Map<number, Match[]>(), phaseMatches: [] };
 
-  // For Gironi + Fase Finale, always use the phase field to separate group matches from playoffs.
-  const initialPhaseMatches = isGironiFaseFinale
-    ? tournamentMatches.filter(m => !['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
-    : (boxes.size > 0 
-        ? Array.from(boxes.values()).flat() 
-        : tournamentMatches.filter(m => !phaseMatchIdSet.has(m.id)));
+    const phaseMatchIdSet = new Set(
+        tournamentMatches
+            .filter(m => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
+            .map(m => m.id)
+    );
+    if (isBeatTheBox && phaseMatches && phaseMatches.length > 0) {
+        phaseMatches.forEach(m => phaseMatchIdSet.add(m.id));
+    }
 
-  // Controlla se le partite della fase iniziale (box/gironi) sono tutte completate
-  const initialPhaseCompleted = initialPhaseMatches.length > 0 &&
-  initialPhaseMatches.every(m => m.winner && m.sets.length > 0 &&
-  !(m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
+    // For Gironi and Round Robin, always use the phase field to separate group matches from playoffs.
+    const initialPhaseMatches = (isGironiFaseFinale || isRoundRobinFinali)
+        ? tournamentMatches.filter(m => !['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || '')))
+        : (boxes.size > 0 
+            ? Array.from(boxes.values()).flat() 
+            : tournamentMatches.filter(m => !phaseMatchIdSet.has(m.id)));
 
-   const playoffMatches = tournamentMatches.filter(m => phaseMatchIdSet.has(m.id));
-   const playoffMatchesActive = playoffMatches.some(m =>
-     (m.winner && m.winner !== 'draw') ||
-     (m.sets && m.sets.length > 0 && !(m.sets.length === 1 && Number(m.sets[0]?.team1 || 0) === 0 && Number(m.sets[0]?.team2 || 0) === 0)) ||
-     (Array.isArray(m.team1) && m.team1.length > 0)
-   );
+    // Controlla se le partite della fase iniziale (box/gironi/round-robin) sono tutte completate
+    const initialPhaseCompleted = initialPhaseMatches.length > 0 &&
+        initialPhaseMatches.every(m => m.winner && m.sets.length > 0 &&
+        !(m.sets.length === 1 && m.sets[0].team1 === 0 && m.sets[0].team2 === 0));
 
-   // Non-Gironi: se la fase iniziale non è completata, apri l'editor gironi/box standard.
-   if (!initialPhaseCompleted && !isGironiFaseFinale) {
-     setEditingTournament(tournament);
-     return;
-   }
-   // Gironi: usa il campo phase direttamente per decidere se aprire l'editor dei gironi.
-   // Non usare phaseMatchIdSet.size (potrebbe essere contaminato da groupMatchesByPlayerSets).
-   if (isGironiFaseFinale) {
-     const gironiPlayoffInDb = tournamentMatches.filter(m =>
-       ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || ''))
-     );
-     if (!initialPhaseCompleted && gironiPlayoffInDb.length === 0) {
-       // Group stage not done yet, no playoffs → open regular group stage editor
-       setEditingTournament(tournament);
-       return;
-     }
-   }
+    const playoffMatches = tournamentMatches.filter(m => phaseMatchIdSet.has(m.id));
+    const playoffMatchesActive = playoffMatches.some(m =>
+        (m.winner && m.winner !== 'draw') ||
+        (m.sets && m.sets.length > 0 && !(m.sets.length === 1 && Number(m.sets[0]?.team1 || 0) === 0 && Number(m.sets[0]?.team2 || 0) === 0)) ||
+        (Array.isArray(m.team1) && m.team1.length > 0)
+    );
 
+    // Se la fase iniziale non è completata e non ci sono playoff attivi nel DB, apri l'editor regolare
+    if (!initialPhaseCompleted) {
+        const hasPlayoffsInDb = tournamentMatches.some(m =>
+            ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(m.phase || ''))
+        );
+        if (!hasPlayoffsInDb) {
+            openRegularEditor(tournament);
+            return;
+        }
+    }
 
  // ===== BEAT THE BOX RESUME =====
  if (isBeatTheBox) {
@@ -1425,16 +1412,13 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  // Beat the Box: use player-set grouping (order-independent)
  const { phaseMatches } = groupMatchesByPlayerSets(allTournamentMatches);
  phaseMatchIds = phaseMatches.map(m => m.id);
- } else if (isGironiFaseFinale) {
- // Gironi: le fasi conclusive sono identificate dalla fase persistita, mai dalla posizione.
- phaseMatchIds = allTournamentMatches
- .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
- .map(match => match.id);
- } else if (isRoundRobinFinali && allTournamentMatches.length > 2) {
- // RR+Finali: finals are last 2 matches (relies on created_at ordering from DB)
- phaseMatchIds = allTournamentMatches.slice(allTournamentMatches.length - 2).map(m => m.id);
- }
- }
+        } else if (isGironiFaseFinale || isRoundRobinFinali) {
+            // Gironi e Round Robin: le fasi conclusive sono identificate dalla fase persistita, mai dalla posizione.
+            phaseMatchIds = allTournamentMatches
+                .filter(match => ['quarterfinal', 'semifinal', 'final_1_2', 'final_3_4', 'finalina', 'consolation', 'consolation_final'].includes(String(match.phase || '')))
+                .map(match => match.id);
+        }
+    }
 
  const cascadeTriggered = phaseMatchIds.length > 0;
  const phaseMatchIdSet = new Set(phaseMatchIds);
