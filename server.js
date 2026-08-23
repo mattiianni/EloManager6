@@ -2282,31 +2282,34 @@ app.post('/api/matches', async (req, res) => {
             kFactor: 20
         });
         
-        // Update player ELOs
+        // Update player ELOs atomically
+        const eloQueries = [];
         for (const playerId of team1) {
-            const playerResult = await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-            const oldElo = playerResult[0].current_elo;
+            const oldElo = playersData[playerId] ?? 1500;
             const newElo = oldElo + delta1;
 
             logger.eloChange(playerId, oldElo, newElo, delta1, 'friendly match - team1');
-            await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-            await sql`
+            eloQueries.push(sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+            eloQueries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
                 VALUES (${matchId}, ${playerId}, ${oldElo}, ${newElo}, ${delta1}, ${date}, 'match', ${req.workspaceId})
-            `;
+            `);
         }
 
         for (const playerId of team2) {
-            const playerResult = await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-            const oldElo = playerResult[0].current_elo;
+            const oldElo = playersData[playerId] ?? 1500;
             const newElo = oldElo + delta2;
 
             logger.eloChange(playerId, oldElo, newElo, delta2, 'friendly match - team2');
-            await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-            await sql`
+            eloQueries.push(sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+            eloQueries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
                 VALUES (${matchId}, ${playerId}, ${oldElo}, ${newElo}, ${delta2}, ${date}, 'match', ${req.workspaceId})
-            `;
+            `);
+        }
+
+        if (eloQueries.length > 0) {
+            await sql.transaction(eloQueries);
         }
 
         res.json({ message: 'Match added and ELO updated successfully', matchId });
@@ -2419,31 +2422,24 @@ app.delete('/api/matches', async (req, res) => {
         
         logger.debug('ELO history records found', { matchId: id, count: eloHistoryResult.length });
         
-        // Revert ELO changes for each player
+        // Revert ELO changes for each player and delete match atomically
+        const deleteQueries = [];
         for (const history of eloHistoryResult) {
-            // Get current ELO of the player
-            const currentPlayerResult = await sql`
-                SELECT current_elo FROM players WHERE id = ${history.player_id}
-            `;
-            const currentElo = currentPlayerResult[0].current_elo;
-            
-            // Calculate new ELO by subtracting the delta from this match
-            const newElo = currentElo - history.delta;
-            
-            logger.eloChange(history.player_id, currentElo, newElo, -history.delta, 'match deletion (revert)');
-            
-            await sql`
+            const oldElo = Number(history.elo_after);
+            const newElo = Number(history.elo_before);
+            logger.eloChange(history.player_id, oldElo, newElo, -history.delta, 'match deletion (revert)');
+            deleteQueries.push(sql`
                 UPDATE players
-                SET current_elo = ${newElo}
+                SET current_elo = current_elo - ${history.delta}
                 WHERE id = ${history.player_id} AND workspace_id = ${req.workspaceId}
-            `;
+            `);
         }
 
-        // Delete ELO history associated with this match
-        await sql`DELETE FROM elo_history WHERE event_id = ${id} AND workspace_id = ${req.workspaceId}`;
+        // Delete ELO history and match in the same transaction
+        deleteQueries.push(sql`DELETE FROM elo_history WHERE event_id = ${id} AND workspace_id = ${req.workspaceId}`);
+        deleteQueries.push(sql`DELETE FROM matches WHERE id = ${id} AND workspace_id = ${req.workspaceId}`);
 
-        // Delete the match itself
-        await sql`DELETE FROM matches WHERE id = ${id} AND workspace_id = ${req.workspaceId}`;
+        await sql.transaction(deleteQueries);
 
         logger.match('delete', id, { revertedPlayers: eloHistoryResult.length, status: 'completed' });
         res.json({ 
@@ -3892,33 +3888,67 @@ const calculateTeamTournamentStandingsServer = (teams, matchdays, scoringType) =
         return rows.get(n);
     };
 
+    const isScoreBlank = (sets) => !sets || sets.length === 0 || (sets.length === 1 && Number(sets[0].team1 || 0) === 0 && Number(sets[0].team2 || 0) === 0);
+
     (matchdays || [])
         // Standings are based on Round Robin only.
         .filter(md => (md.phase || 'round_robin') === 'round_robin')
-        .filter(md => md.status === 'completed' && md.summary_json)
         .forEach(md => {
             const t1 = ensure(md.team1_number);
             const t2 = ensure(md.team2_number);
-            t1.played += 1;
-            t2.played += 1;
 
-            const s = md.summary_json || {};
-            const t1Points = safeNum(s.team1Points);
-            const t2Points = safeNum(s.team2Points);
-            const t1Games = safeNum(s.team1Games);
-            const t2Games = safeNum(s.team2Games);
+            if (md.status === 'completed' && md.summary_json) {
+                t1.played += 1;
+                t2.played += 1;
 
-            t1.points += t1Points;
-            t2.points += t2Points;
+                const s = md.summary_json || {};
+                const t1Points = safeNum(s.team1Points);
+                const t2Points = safeNum(s.team2Points);
+                const t1Games = safeNum(s.team1Games);
+                const t2Games = safeNum(s.team2Games);
 
-            t1.gamesFor += t1Games;
-            t1.gamesAgainst += t2Games;
-            t2.gamesFor += t2Games;
-            t2.gamesAgainst += t1Games;
+                t1.points += t1Points;
+                t2.points += t2Points;
 
-            const winner = s.winner || null;
-            if (winner === 'team1') { t1.won += 1; t2.lost += 1; }
-            if (winner === 'team2') { t2.won += 1; t1.lost += 1; }
+                t1.gamesFor += t1Games;
+                t1.gamesAgainst += t2Games;
+                t2.gamesFor += t2Games;
+                t2.gamesAgainst += t1Games;
+
+                const winner = s.winner || null;
+                if (winner === 'team1') { t1.won += 1; t2.lost += 1; }
+                if (winner === 'team2') { t2.won += 1; t1.lost += 1; }
+            } else if (md.subMatches && md.subMatches.length > 0) {
+                const validSubs = md.subMatches.filter(sm => !sm.cancelled && Array.isArray(sm.sets) && !isScoreBlank(sm.sets));
+                if (validSubs.length > 0) {
+                    let subT1Games = 0;
+                    let subT2Games = 0;
+                    let subT1Wins = 0;
+                    let subT2Wins = 0;
+
+                    validSubs.forEach(sm => {
+                        (sm.sets || []).forEach(set => {
+                            subT1Games += safeNum(set.team1);
+                            subT2Games += safeNum(set.team2);
+                        });
+                        if (sm.winner === 'team1') subT1Wins += 1;
+                        else if (sm.winner === 'team2') subT2Wins += 1;
+                    });
+
+                    t1.gamesFor += subT1Games;
+                    t1.gamesAgainst += subT2Games;
+                    t2.gamesFor += subT2Games;
+                    t2.gamesAgainst += subT1Games;
+
+                    if (scoringType === 'Partite Vinte') {
+                        t1.points += subT1Wins;
+                        t2.points += subT2Wins;
+                    } else if (scoringType === 'Differenza Games') {
+                        t1.points += (subT1Games - subT2Games);
+                        t2.points += (subT2Games - subT1Games);
+                    }
+                }
+            }
         });
 
     (teams || []).forEach(t => ensure(t.teamNumber));

@@ -1,12 +1,12 @@
-import { Match, Tournament, Player, TournamentType, TournamentStandingEntry } from '../../types';
-import { TournamentEngine, PlayoffGenerationResult, ResumeStateResult } from '../types';
+import { Match, Tournament, Player, TournamentType } from '../../types';
+import { TournamentEngine, PlayoffGenerationResult, ResumeStateResult, StandingsEntry } from '../types';
 
 export const calculateAmericanoStandings = (
     matches: Match[],
     tournament: Tournament,
     getPlayerById: (id: string) => Player | undefined
-): TournamentStandingEntry[] => {
-    const scoringType = (tournament as any)?.americanoScoringType || 'games-diff';
+): StandingsEntry[] => {
+    const scoringType = tournament.americanoScoringType || 'games-diff';
 
     const playerStats = new Map<string, {
         player: Player;
@@ -68,7 +68,7 @@ export const calculateAmericanoStandings = (
     });
 
     // Convert map to standings list
-    const standingsList: TournamentStandingEntry[] = Array.from(playerStats.values()).map(s => {
+    const standingsList: StandingsEntry[] = Array.from(playerStats.values()).map(s => {
         const gameDiff = s.totalGamesWon - s.totalGamesLost;
         const pts = scoringType === 'points' ? s.totalGamesWon : s.totalPoints;
         return {
@@ -99,7 +99,7 @@ export const AmericanoEngine: TournamentEngine = {
     type: TournamentType.Americano,
     calculateStandings: calculateAmericanoStandings,
     generatePlayoffs: (): PlayoffGenerationResult => {
-        return { quarterfinals: [], semifinals: [], finals: [], matchesToSave: [] };
+        return { quarters: [], semifinals: [], finals: [], matchesToSave: [] };
     },
     resumeState: (matches: Match[], tournament: Tournament, getPlayerById: (id: string) => Player | undefined): ResumeStateResult => {
         const standings = calculateAmericanoStandings(matches, tournament, getPlayerById);

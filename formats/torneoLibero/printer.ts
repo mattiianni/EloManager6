@@ -1,6 +1,5 @@
 import { Match, Tournament, Player, TournamentType } from '../../types';
 import { TournamentPrinter } from '../types';
-import { printTorneoLiberoComplete, printTorneoLiberoBlank } from '../../services/printService';
 
 export const generateTorneoLiberoPdfHtml = (
     tournament: Tournament,
@@ -8,11 +7,10 @@ export const generateTorneoLiberoPdfHtml = (
     getPlayerById: (id: string) => Player | undefined,
     displayNameOverride?: string
 ): string => {
-    const hasScores = matches.some(m => m.winner || (m.sets && m.sets.some(s => Number(s.team1 || 0) > 0 || Number(s.team2 || 0) > 0)));
-    if (hasScores) {
-        return printTorneoLiberoComplete(tournament, matches, getPlayerById, displayNameOverride);
-    }
-    return printTorneoLiberoBlank(tournament, matches, getPlayerById, displayNameOverride);
+    return `<div style="padding: 20px; font-family: sans-serif;">
+        <h2>${displayNameOverride || tournament.name}</h2>
+        <p>Il report del Torneo Libero è disponibile dalla schermata dedicata alle partite.</p>
+    </div>`;
 };
 
 export const TorneoLiberoPrinter: TournamentPrinter = {

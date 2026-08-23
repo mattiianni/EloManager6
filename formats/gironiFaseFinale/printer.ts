@@ -8,7 +8,7 @@ export const generateGironiPdfHtml = (
     getPlayerById: (id: string) => Player | undefined,
     displayNameOverride?: string
 ): string => {
-    return printGironiTournament(tournament, matches, getPlayerById, displayNameOverride);
+    return printGironiTournament(tournament, matches, getPlayerById, displayNameOverride) as any as string;
 };
 
 export const GironiPrinter: TournamentPrinter = {

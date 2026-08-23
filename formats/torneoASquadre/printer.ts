@@ -1,6 +1,5 @@
 import { Match, Tournament, Player, TournamentType } from '../../types';
 import { TournamentPrinter } from '../types';
-import { printTeamTournamentReport } from '../../services/printService';
 
 export const generateTeamTournamentPdfHtml = (
     tournament: Tournament,
@@ -8,7 +7,10 @@ export const generateTeamTournamentPdfHtml = (
     getPlayerById: (id: string) => Player | undefined,
     displayNameOverride?: string
 ): string => {
-    return printTeamTournamentReport(tournament as any, getPlayerById as any, displayNameOverride);
+    return `<div style="padding: 20px; font-family: sans-serif;">
+        <h2>${displayNameOverride || tournament.name}</h2>
+        <p>Il report del Torneo a Squadre è disponibile dalla schermata dedicata del torneo.</p>
+    </div>`;
 };
 
 export const TeamTournamentPrinter: TournamentPrinter = {

@@ -1,5 +1,6 @@
 import { Match, Tournament, Player, TournamentType } from '../../types';
 import { TournamentEngine, PlayoffGenerationResult, ResumeStateResult } from '../types';
+import { getCanonicalTeamKey } from '../../utils/matchIdentity';
 
 export const calculateRoundRobinStandings = (
     matches: Match[],
@@ -20,8 +21,8 @@ export const calculateRoundRobinStandings = (
     }>();
 
     rrMatches.forEach(m => {
-        const k1 = m.team1.join(',');
-        const k2 = m.team2.join(',');
+        const k1 = getCanonicalTeamKey(m.team1);
+        const k2 = getCanonicalTeamKey(m.team2);
 
         if (!standingsMap.has(k1)) {
             const p1 = getPlayerById(m.team1[0]) || ({ id: m.team1[0], name: 'Giocatore', surname: '1' } as Player);

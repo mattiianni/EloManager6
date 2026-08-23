@@ -34,7 +34,7 @@ interface RankingChartProps {
 const CHART_CONTAINER_ID = 'elo-chart-container';
 
 const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey }) => {
-    const { players, eloHistory, tournaments } = usePadelStore();
+    const { players, eloHistory, tournaments, matches } = usePadelStore();
     const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
     const [isCollapsed, setIsCollapsed] = useState(true);
     const chartDataRef = useRef<any[]>([]);
@@ -279,7 +279,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             // eslint-disable-next-line no-console
             console.table(seriesForLog);
             // eslint-disable-next-line no-console
-            console.debug('selectedSeriesKey:', selectedSeriesKey, 'events:', orderedEventIds);
+            console.debug('selectedSeriesKey:', selectedSeriesKey);
         } catch {}
 
         return data;

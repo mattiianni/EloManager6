@@ -1203,6 +1203,9 @@ export const printTournamentReport = (
 ) => {
     const printer = TournamentRegistry.getPrinter(tournament.type);
     const content = printer.generatePdfHtml(tournament, matches, getPlayerById, displayNameOverride);
+    if (typeof content !== 'string' || content === 'true' || content === 'false') {
+        return true;
+    }
     const displayName = displayNameOverride || tournament.name;
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Torneo, ${tournament.date}`, content);
 };
@@ -1598,6 +1601,148 @@ const renderTeamTournamentStandingsTable = (
                 ${rows}
             </tbody>
         </table>
+        </div>
+    `;
+};
+
+const renderTeamTournamentPlayerStandingsTable = (
+    teams: TeamTournamentTeam[],
+    matchdays: TeamTournamentMatchday[],
+    provisional: boolean = false
+): string => {
+    const normalize = (s: string) => (s || '').trim().toLowerCase();
+    const playerKey = (p: { name?: string; surname?: string }) => `${normalize(p.name || '')}|${normalize(p.surname || '')}`;
+
+    const playerTeamMap = new Map<string, string>();
+    teams.forEach(t => {
+        (t.players || []).forEach(p => {
+            playerTeamMap.set(playerKey(p), t.name || `Squadra ${t.teamNumber}`);
+        });
+    });
+
+    type PlayerStats = {
+        name: string;
+        surname: string;
+        teamName: string;
+        matchesPlayed: number;
+        matchesWon: number;
+        matchesLost: number;
+        gamesWon: number;
+        gamesLost: number;
+        gamesDiff: number;
+        winPercentage: number;
+    };
+
+    const statsMap = new Map<string, PlayerStats>();
+    const getStats = (p: { name?: string; surname?: string }) => {
+        const key = playerKey(p);
+        let s = statsMap.get(key);
+        if (!s) {
+            s = {
+                name: p.name || '',
+                surname: p.surname || '',
+                teamName: playerTeamMap.get(key) || '—',
+                matchesPlayed: 0,
+                matchesWon: 0,
+                matchesLost: 0,
+                gamesWon: 0,
+                gamesLost: 0,
+                gamesDiff: 0,
+                winPercentage: 0,
+            };
+            statsMap.set(key, s);
+        }
+        return s;
+    };
+
+    matchdays.forEach(md => {
+        (md.subMatches || [])
+            .filter(sm => !sm.cancelled && Array.isArray(sm.sets) && !teamTournamentScoreIsBlank(sm.sets))
+            .forEach(sm => {
+                const t1Games = (sm.sets || []).reduce((sum, set) => sum + Number(set.team1 || 0), 0);
+                const t2Games = (sm.sets || []).reduce((sum, set) => sum + Number(set.team2 || 0), 0);
+                const winner = (sm.winner && sm.winner !== 'draw')
+                    ? sm.winner
+                    : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
+
+                (sm.team1Players || []).forEach(p => {
+                    const s = getStats(p);
+                    s.matchesPlayed += 1;
+                    s.gamesWon += t1Games;
+                    s.gamesLost += t2Games;
+                    if (winner === 'team1') s.matchesWon += 1;
+                    else if (winner === 'team2') s.matchesLost += 1;
+                });
+
+                (sm.team2Players || []).forEach(p => {
+                    const s = getStats(p);
+                    s.matchesPlayed += 1;
+                    s.gamesWon += t2Games;
+                    s.gamesLost += t1Games;
+                    if (winner === 'team2') s.matchesWon += 1;
+                    else if (winner === 'team1') s.matchesLost += 1;
+                });
+            });
+    });
+
+    const sortedPlayers = Array.from(statsMap.values())
+        .filter(p => p.matchesPlayed > 0)
+        .map(p => {
+            const diff = p.gamesWon - p.gamesLost;
+            const pct = p.matchesPlayed > 0 ? Math.round((p.matchesWon / p.matchesPlayed) * 100) : 0;
+            return { ...p, gamesDiff: diff, winPercentage: pct };
+        })
+        .sort((a, b) => {
+            if (b.matchesWon !== a.matchesWon) return b.matchesWon - a.matchesWon;
+            if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
+            if (b.gamesDiff !== a.gamesDiff) return b.gamesDiff - a.gamesDiff;
+            return b.gamesWon - a.gamesWon;
+        });
+
+    if (sortedPlayers.length === 0) return '';
+
+    const thStyle = 'background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb;';
+    const header = `<tr>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 36px;">Pos</th>
+        <th style="${thStyle} text-align:left; font-size: 10px; padding: 6px 6px;">Giocatore</th>
+        <th style="${thStyle} text-align:left; font-size: 10px; padding: 6px 6px;">Squadra</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 32px;">G</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 32px;">V</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 32px;">P</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 42px;">%</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 36px;">GF</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 36px;">GS</th>
+        <th style="${thStyle} text-align:center; font-size: 10px; padding: 6px 6px; width: 42px;">Diff</th>
+    </tr>`;
+
+    const rows = sortedPlayers.map((p, idx) => `
+        <tr style="height: 20px;">
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${idx + 1}</td>
+            <td style="font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700;">${p.name} ${p.surname}</td>
+            <td style="font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; color: #4b5563;">${p.teamName}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${p.matchesPlayed}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700; color: #16a34a;">${p.matchesWon}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; color: #dc2626;">${p.matchesLost}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700;">${p.winPercentage}%</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${p.gamesWon}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${p.gamesLost}</td>
+            <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700; color: ${p.gamesDiff > 0 ? '#16a34a' : p.gamesDiff < 0 ? '#dc2626' : '#374151'};">${p.gamesDiff >= 0 ? `+${p.gamesDiff}` : p.gamesDiff}</td>
+        </tr>
+    `).join('');
+
+    const title = provisional ? 'Classifica Singola Giocatori (Provvisoria)' : 'Classifica Singola Giocatori';
+
+    return `
+        <div class="section-block avoid-break" style="margin-top: 20px;">
+            <h3 style="font-size: 13px; font-weight: bold; margin: 0 0 6px 0;">${title}</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    ${header}
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
         </div>
     `;
 };
@@ -2020,6 +2165,7 @@ export const printTeamTournamentMatchdayReport = (
             .filter(md => (md.phase ?? 'round_robin') === 'round_robin')
             .filter(md => md.status === 'completed' && md.summary).length;
         return {
+            slice,
             standings: calculateTeamTournamentStandings(teams, slice, config.scoringType),
             playedRoundRobin,
             totalRoundRobin,
@@ -2040,6 +2186,12 @@ export const printTeamTournamentMatchdayReport = (
         standingsCtx.playedRoundRobin >= standingsCtx.totalRoundRobin
             ? standingsCtx.standings.slice(0, getQualifiedTeamCount(config)).map(r => r.teamNumber)
             : []
+    );
+
+    const playerStandingsHtml = renderTeamTournamentPlayerStandingsTable(
+        teams,
+        standingsCtx.slice,
+        standingsCtx.playedRoundRobin < standingsCtx.totalRoundRobin
     );
 
 		    const content = `
@@ -2100,6 +2252,7 @@ export const printTeamTournamentMatchdayReport = (
 	        ${finalLine ? `<div class="avoid-break"><div class="separator" style="margin: 12px 0 12px 0;"></div>${finalLine}<div class="separator" style="margin: 12px 0 12px 0;"></div></div>` : ''}
 	        <div class="avoid-break">
 	            ${standingsHtml}
+	            ${playerStandingsHtml}
 	        </div>
             <div class="footer">
                 <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
@@ -2331,6 +2484,12 @@ export const printTeamTournamentReport = (
 
     const isReportCompleted = (playedRoundRobin >= totalRoundRobin) && isFinalStageCompleted;
 
+    const playerStandingsHtml = renderTeamTournamentPlayerStandingsTable(
+        teams,
+        matchdays,
+        !isReportCompleted
+    );
+
     const matchdayByPair = new Map<string, TeamTournamentMatchday>();
     matchdays.forEach(md => {
         const a = Math.min(md.team1Number, md.team2Number);
@@ -2346,7 +2505,7 @@ export const printTeamTournamentReport = (
     const pairKey = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`;
 
 	    const renderCompletedSubMatches = (md: TeamTournamentMatchday | null, swap: boolean = false) => {
-	        if (!md || md.status !== 'completed') return '';
+	        if (!md) return '';
 	        const visible = (md.subMatches || [])
 	            .filter(sm => !sm.cancelled)
 	            .filter(sm => Array.isArray(sm.sets) && !teamTournamentScoreIsBlank(sm.sets));
@@ -2414,19 +2573,31 @@ export const printTeamTournamentReport = (
             const leftName = teamNameByNumber(m.team1Number);
             const rightName = teamNameByNumber(m.team2Number);
 
-	            const overall = (md?.status === 'completed' && md?.summary)
-	                ? (() => {
+	            const overall = (() => {
+	                if (md?.summary) {
 	                    const swap = (md.team1Number !== m.team1Number);
 	                    const s = md.summary;
 	                    const t1w = Number.isFinite(Number(s[swap ? 'team2Wins' : 'team1Wins'])) ? Number(s[swap ? 'team2Wins' : 'team1Wins']) : '';
 	                    const t2w = Number.isFinite(Number(s[swap ? 'team1Wins' : 'team2Wins'])) ? Number(s[swap ? 'team1Wins' : 'team2Wins']) : '';
-                    return `<div style="display: inline-flex; align-items: center; justify-content: center;"><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t1w}</span><span style="margin: 0 4px; font-weight: bold; color: #4b5563;">-</span><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t2w}</span></div>`;
-	                })()
-	                : '';
+                        if (t1w !== '' || t2w !== '') {
+                            return `<div style="display: inline-flex; align-items: center; justify-content: center;"><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t1w}</span><span style="margin: 0 4px; font-weight: bold; color: #4b5563;">-</span><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t2w}</span></div>`;
+                        }
+	                }
+                    if (md?.subMatches && md.subMatches.length > 0) {
+                        const played = md.subMatches.filter(sm => !sm.cancelled && Array.isArray(sm.sets) && !teamTournamentScoreIsBlank(sm.sets) && sm.winner);
+                        if (played.length > 0) {
+                            const swap = (md.team1Number !== m.team1Number);
+                            const t1w = played.filter(sm => sm.winner === (swap ? 'team2' : 'team1')).length;
+                            const t2w = played.filter(sm => sm.winner === (swap ? 'team1' : 'team2')).length;
+                            return `<div style="display: inline-flex; align-items: center; justify-content: center;"><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t1w}</span><span style="margin: 0 4px; font-weight: bold; color: #4b5563;">-</span><span style="background-color: #FF9500; color: white; padding: 4px 8px; font-weight: 900; font-size: 12px; display: inline-block; line-height: 1; border-radius: 3px; min-width: 20px; text-align: center;">${t2w}</span></div>`;
+                        }
+                    }
+                    return '';
+	            })();
 
             const isSwapped = md ? (md.team1Number !== m.team1Number) : false;
             const subTable = renderCompletedSubMatches(md, isSwapped);
-            const dateChip = (md?.status === 'completed' && md?.date)
+            const dateChip = (md?.date)
                 ? `<span style="margin-left: 8px; font-size: 10px; color:#6b7280; font-weight: 600;">${new Date(md.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</span>`
                 : '';
 
@@ -2783,23 +2954,30 @@ export const printTeamTournamentReport = (
                 </div>
                 ` : ''}
 	        <div class="separator"></div>
-            <div class="section-block">
-                ${isReportCompleted ? completedHeaderBlock : ''}
-                ${standingsHtml}
-            </div>
-            ${(playedRoundRobin >= totalRoundRobin) ? phaseFixturesHtml : ''}
-            ${isReportCompleted ? finalStandingsHtml : ''}
             ${isReportCompleted ? `
                 <div class="section-block">
-                <div style="border-bottom: 3px solid #1e3a6e; margin: 30px 0 22px 0;"></div>
-                <h3 style="font-size: 13px; font-weight: 900; margin: 0 0 12px 0; padding: 7px 10px; background: #1e3a6e; color: #ffffff; text-align: center;">
-                    Riepilogo Round Robin
-                </h3>
-                ${firstDaySection}
+                    ${completedHeaderBlock}
+                    ${standingsHtml}
+                </div>
+                ${(playedRoundRobin >= totalRoundRobin) ? phaseFixturesHtml : ''}
+                ${finalStandingsHtml}
+                <div class="section-block">
+                    <div style="border-bottom: 3px solid #1e3a6e; margin: 30px 0 22px 0;"></div>
+                    <h3 style="font-size: 13px; font-weight: 900; margin: 0 0 12px 0; padding: 7px 10px; background: #1e3a6e; color: #ffffff; text-align: center;">
+                        Riepilogo Round Robin
+                    </h3>
+                    ${firstDaySection}
                 </div>
                 ${remainingDaySections}
-            ` : ''}
-            ${isReportCompleted ? '' : daysHtml}
+                ${playerStandingsHtml}
+            ` : `
+                ${daysHtml}
+                <div class="section-block" style="margin-top: 20px;">
+                    <div style="border-bottom: 3px solid #1e3a6e; margin: 24px 0 16px 0;"></div>
+                    ${standingsHtml}
+                    ${playerStandingsHtml}
+                </div>
+            `}
             ${appendedStatisticsHtml}
             <div class="footer">
                 <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
@@ -5883,10 +6061,10 @@ export const printBeatTheBoxComplete = (
         ];
     } else if (semifinalMatches.length === 0 && finalMatches.length === 0) {
         // Se non ci sono semifinali e mancano le finali, mettiamo 2 vuote (1/2, 3/4)
-        if (tournament.type !== 'torneo_libero') { // TODO check
+        if (tournament.type !== TournamentType.TorneoLibero) {
            displayFinalMatches = [
-               { team1: [], team2: [], sets: [], winner: null } as any as Match,
-               { team1: [], team2: [], sets: [], winner: null } as any as Match
+               { team1: ['', ''], team2: ['', ''], sets: [], winner: null } as any as Match,
+               { team1: ['', ''], team2: ['', ''], sets: [], winner: null } as any as Match
            ];
         }
     }
@@ -5906,7 +6084,7 @@ export const printBeatTheBoxComplete = (
             bgColor = '#f5f5f5';
         }
 
-        const matchRowHtml = (match.team1.length === 0) ? `
+        const matchRowHtml = (!match.team1 || !match.team1[0]) ? `
             <tr style="height: 24px;">
                 <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3;">
                     <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%;">&nbsp;</span>

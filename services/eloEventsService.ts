@@ -163,13 +163,20 @@ export function buildPlayerEloTimeline(
 
         const dateKey = new Date(dateOfDay).toISOString().split('T')[0];
         
-        // 3. Define unique grouping key per tournament/giornata: eventId or dayLabel + date
+        // 3. Define unique grouping key per tournament/giornata
         let typePrefix = 'friendly';
         if (entry.type === 'manual') typePrefix = 'manual';
         else if (isTeamTournament) typePrefix = 'team';
         else if (parentTournamentName) typePrefix = parentTournamentName;
 
-        const eventIdentifier = entry.eventId || dayLabel || 'default';
+        let eventIdentifier = entry.eventId || dayLabel || 'default';
+        if (entry.type === 'match') {
+            const match = matches.find(m => m.id === entry.eventId);
+            if (match && match.tournamentId) {
+                eventIdentifier = match.tournamentId;
+            }
+        }
+
         const key = `${typePrefix}|${eventIdentifier}|${dateKey}`;
 
         if (!groupedMap.has(key)) {

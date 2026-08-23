@@ -17,7 +17,8 @@ import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { MATCH_OUTCOME, outcomeErrorMessage, validateMatchOutcome } from '../utils/matchOutcome.js';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
-import { buildQuarterfinalPairings, GironiPlayoffType, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
+import { buildQuarterfinalPairings, buildSemifinalPairings, GironiPlayoffType, GironiStandingLike, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
+import { getCanonicalTeamKey } from '../utils/matchIdentity.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -703,7 +704,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  setGironiStandings(standings);
 
- const qualifiers: any[] = selectGironiQualifiers<any>(standings, gironiPlayoffType);
+ const qualifiers = selectGironiQualifiers<GironiStandingLike<[Player, Player]>>(standings as any, gironiPlayoffType);
  if (qualifiers.length !== (gironiPlayoffType === 'quarterfinals' ? 8 : 4)) {
  setResultValidationError('Non ci sono abbastanza coppie qualificate per la fase conclusiva selezionata.');
  return;
@@ -726,30 +727,20 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return;
  }
 
- const semifinalisti = qualifiers.map(qualifier => qualifier.entry);
+ const semifinals = buildSemifinalPairings(qualifiers).map(([first, second], index) => ({
+    id: `temp-gironi-semifinal-${index + 1}`,
+    team1: [first.entry.pair[0].id, first.entry.pair[1].id] as [string, string],
+    team2: [second.entry.pair[0].id, second.entry.pair[1].id] as [string, string],
+    sets: [{ team1: 0, team2: 0 }],
+    winner: null as 'team1' | 'team2' | null,
+    phase: 'semifinal' as const,
+    roundNumber: 2,
+    date: tournamentDate,
+  }));
 
- // Crea le semifinali
- // Semi 1: 1°A vs migliore 2ª (o 2ª seconda)
- // Semi 2: 1°B vs 1°C (o 1°D se 4 gironi)
- const semi1 = {
- team1: [semifinalisti[0].pair[0].id, semifinalisti[0].pair[1].id] as [string, string],
- team2: [semifinalisti[3].pair[0].id, semifinalisti[3].pair[1].id] as [string, string],
- sets: [{ team1: 0, team2: 0 }],
- winner: null as 'team1' | 'team2' | null,
- date: tournamentDate
- };
-
- const semi2 = {
- team1: [semifinalisti[1].pair[0].id, semifinalisti[1].pair[1].id] as [string, string],
- team2: [semifinalisti[2].pair[0].id, semifinalisti[2].pair[1].id] as [string, string],
- sets: [{ team1: 0, team2: 0 }],
- winner: null as 'team1' | 'team2' | null,
- date: tournamentDate
- };
-
- setGironiSemifinalsMatches([semi1, semi2]);
- setStep('gironi-standings-intro');
- };
+  setGironiSemifinalsMatches(semifinals);
+  setStep('gironi-standings-intro');
+  };
 
  const handleQuarterfinalsComplete = () => {
  const outcomes = gironiQuarterfinalsMatches.map(match => validateMatchOutcome({
@@ -3164,8 +3155,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
                   roundRobinMatches.forEach(m => {
                     const t1 = getTeamPlayers(m.team1);
                     const t2 = getTeamPlayers(m.team2);
-                    if (t1) allTeamsMap.set(m.team1.join(','), t1);
-                    if (t2) allTeamsMap.set(m.team2.join(','), t2);
+                    if (t1) allTeamsMap.set(getCanonicalTeamKey(m.team1), t1);
+                    if (t2) allTeamsMap.set(getCanonicalTeamKey(m.team2), t2);
                   });
 
                   return Array.from(roundsMap.entries()).sort((a, b) => a[0] - b[0]).map(([roundNum, roundItems]) => {
@@ -3181,8 +3172,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
                     const activeTeamKeys = new Set<string>();
                     roundItems.forEach(({ match }) => {
-                      activeTeamKeys.add(match.team1.join(','));
-                      activeTeamKeys.add(match.team2.join(','));
+                      activeTeamKeys.add(getCanonicalTeamKey(match.team1));
+                      activeTeamKeys.add(getCanonicalTeamKey(match.team2));
                     });
 
                     const restingTeams: [Player, Player][] = [];

@@ -10,7 +10,7 @@ import { HIGAlert } from '../components/ui/HIGAlert';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
-import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
+import { buildQuarterfinalPairings, buildSemifinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
@@ -618,39 +618,22 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  const generateGironiSemifinalMatches = (gironiStandings: any[], tournamentOverride?: Tournament): Match[] => {
  const t = tournamentOverride || editingTournament;
- const semifinalisti = selectGironiQualifiers<any>(gironiStandings.map(group => group.standings), 'semifinals').map(qualifier => qualifier.entry);
+ const qualifiers = selectGironiQualifiers<any>(gironiStandings.map(group => group.standings), 'semifinals');
+ const pairings = buildSemifinalPairings(qualifiers);
 
- // Genera semifinali
- const semifinals: Match[] = [];
- const generateMatchId = () => `temp_semifinal_${Date.now()}_${Math.random()}`;
+ const generateMatchId = (index: number) => `temp_semifinal_${Date.now()}_${index}_${Math.random()}`;
 
- if (semifinalisti.length >= 4) {
-  semifinals.push({
-  id: generateMatchId(),
-  date: t?.date || new Date().toISOString(),
-  team1: [semifinalisti[0].pair[0].id, semifinalisti[0].pair[1].id] as [string, string],
-  team2: [semifinalisti[3].pair[0].id, semifinalisti[3].pair[1].id] as [string, string],
-  sets: [{ team1: 0, team2: 0 }],
-  winner: null,
-  tournamentId: t?.id,
-  phase: 'semifinal',
-  roundNumber: 2,
-  });
-
-  semifinals.push({
-  id: generateMatchId(),
-  date: t?.date || new Date().toISOString(),
-  team1: [semifinalisti[1].pair[0].id, semifinalisti[1].pair[1].id] as [string, string],
-  team2: [semifinalisti[2].pair[0].id, semifinalisti[2].pair[1].id] as [string, string],
-  sets: [{ team1: 0, team2: 0 }],
-  winner: null,
-  tournamentId: t?.id,
-  phase: 'semifinal',
-  roundNumber: 2,
-  });
-  }
-
- return semifinals;
+ return pairings.map(([first, second], index) => ({
+   id: generateMatchId(index),
+   date: t?.date || new Date().toISOString(),
+   team1: [first.entry.pair[0].id, first.entry.pair[1].id] as [string, string],
+   team2: [second.entry.pair[0].id, second.entry.pair[1].id] as [string, string],
+   sets: [{ team1: 0, team2: 0 }],
+   winner: null,
+   tournamentId: t?.id,
+   phase: 'semifinal',
+   roundNumber: 2,
+ }));
  };
 
  const generateGironiQuarterfinalMatches = (standings: any[], tournamentOverride?: Tournament): Match[] => {
@@ -962,7 +945,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const hasAllExpectedFinalMatches = existingFinalsMatches.length >= totalExpectedFinalMatches;
  const allFinalsCompleted = hasAllExpectedFinalMatches && existingFinalsMatches.every(m => m.winner && m.sets.length > 0);
 
- if (allFinalsCompleted && tournament.status === 'completed') {
+ if (allFinalsCompleted && (tournament.status as string) === 'completed') {
  setEditingTournament(tournament);
  } else if (is4OrMoreBoxes && existingFinalsMatches.length >= 2) {
  const semiMatches = existingFinalsMatches.slice(0, 2);
@@ -1612,7 +1595,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
       const effectivePlayoffType = (effectiveTournament.roundRobinPlayoffType || (effectiveTournament as any).round_robin_playoff_type) || 'finals_only';
 
       if (effectivePlayoffType === 'quarterfinals' && qMatches.length > 0) {
-        if (!qMatches[0].team1 || qMatches[0].team1.length === 0) {
+        if (!qMatches[0].team1 || !qMatches[0].team1[0]) {
           const top8 = standings.slice(0, 8);
           if (top8.length >= 8) {
             const quarterPairs = [
@@ -1637,7 +1620,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         }
 
         if (sMatches.length > 0) {
-          if (!sMatches[0].team1 || sMatches[0].team1.length === 0) {
+          if (!sMatches[0].team1 || !sMatches[0].team1[0]) {
             const winners = qMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
             sMatches = sMatches.map((m, idx) => ({
               ...m,
@@ -1654,7 +1637,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
           }
 
           if (fMatches.length > 0) {
-            if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+            if (!fMatches[0].team1 || !fMatches[0].team1[0]) {
               const winners = sMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
               const losers = sMatches.map(m => m.winner === 'team1' ? m.team2 : m.team1);
               fMatches = fMatches.map(m => {
@@ -1669,7 +1652,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
           }
         }
       } else if (effectivePlayoffType === 'semifinals' && sMatches.length > 0) {
-        if (!sMatches[0].team1 || sMatches[0].team1.length === 0) {
+        if (!sMatches[0].team1 || !sMatches[0].team1[0]) {
           const top4 = standings.slice(0, 4);
           if (top4.length >= 4) {
             sMatches = sMatches.map((m, idx) => ({
@@ -1688,7 +1671,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         }
 
         if (fMatches.length > 0) {
-          if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+          if (!fMatches[0].team1 || !fMatches[0].team1[0]) {
             const winners = sMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
             const losers = sMatches.map(m => m.winner === 'team1' ? m.team2 : m.team1);
             fMatches = fMatches.map(m => {
@@ -1702,7 +1685,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
           return;
         }
       } else if (effectivePlayoffType === 'finals_only' && fMatches.length > 0) {
-        if (!fMatches[0].team1 || fMatches[0].team1.length === 0) {
+        if (!fMatches[0].team1 || !fMatches[0].team1[0]) {
           const top4 = standings.slice(0, 4);
           if (top4.length >= 4) {
             fMatches = fMatches.map(m => {
@@ -3479,7 +3462,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(beatBoxSemifinalMatches, (finalsFlowTournament || editingTournament)!.id, setBeatBoxSemifinalMatches, beatBoxSemifinalScores)}
+ onClick={() => savePhaseMatches(beatBoxSemifinalMatches, (finalsFlowTournament || editingTournament)!.id, setBeatBoxSemifinalMatches)}
  disabled={isSubmitting}
  variant="success"
  className="flex-1"

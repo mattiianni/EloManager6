@@ -40,38 +40,72 @@ export const calculateTeamTournamentStandings = (
         return rows.get(teamNumber)!;
     };
 
+    const isScoreBlank = (sets: any[]) => !sets || sets.length === 0 || (sets.length === 1 && Number(sets[0].team1 || 0) === 0 && Number(sets[0].team2 || 0) === 0);
+
     matchdays
         // Standings are based on the Round Robin phase only (finals must not affect the table).
         .filter(md => (md.phase ?? 'round_robin') === 'round_robin')
-        .filter(md => md.status === 'completed' && md.summary)
         .forEach(md => {
             const t1 = ensure(md.team1Number);
             const t2 = ensure(md.team2Number);
 
-            t1.played += 1;
-            t2.played += 1;
+            if (md.status === 'completed' && md.summary) {
+                t1.played += 1;
+                t2.played += 1;
 
-            const s = md.summary || {};
-            const t1Points = safeNum(s.team1Points);
-            const t2Points = safeNum(s.team2Points);
-            const t1Games = safeNum(s.team1Games);
-            const t2Games = safeNum(s.team2Games);
+                const s = md.summary || {};
+                const t1Points = safeNum(s.team1Points);
+                const t2Points = safeNum(s.team2Points);
+                const t1Games = safeNum(s.team1Games);
+                const t2Games = safeNum(s.team2Games);
 
-            t1.points += t1Points;
-            t2.points += t2Points;
+                t1.points += t1Points;
+                t2.points += t2Points;
 
-            t1.gamesFor += t1Games;
-            t1.gamesAgainst += t2Games;
-            t2.gamesFor += t2Games;
-            t2.gamesAgainst += t1Games;
+                t1.gamesFor += t1Games;
+                t1.gamesAgainst += t2Games;
+                t2.gamesFor += t2Games;
+                t2.gamesAgainst += t1Games;
 
-            const winner = s.winner || null;
-            if (winner === 'team1') {
-                t1.won += 1;
-                t2.lost += 1;
-            } else if (winner === 'team2') {
-                t2.won += 1;
-                t1.lost += 1;
+                const winner = s.winner || null;
+                if (winner === 'team1') {
+                    t1.won += 1;
+                    t2.lost += 1;
+                } else if (winner === 'team2') {
+                    t2.won += 1;
+                    t1.lost += 1;
+                }
+            } else if (md.subMatches && md.subMatches.length > 0) {
+                // Parziale: raccoglie i dati delle partite giocate nella giornata in corso
+                const validSubs = md.subMatches.filter(sm => !sm.cancelled && Array.isArray(sm.sets) && !isScoreBlank(sm.sets));
+                if (validSubs.length > 0) {
+                    let subT1Games = 0;
+                    let subT2Games = 0;
+                    let subT1Wins = 0;
+                    let subT2Wins = 0;
+
+                    validSubs.forEach(sm => {
+                        (sm.sets || []).forEach(set => {
+                            subT1Games += safeNum(set.team1);
+                            subT2Games += safeNum(set.team2);
+                        });
+                        if (sm.winner === 'team1') subT1Wins += 1;
+                        else if (sm.winner === 'team2') subT2Wins += 1;
+                    });
+
+                    t1.gamesFor += subT1Games;
+                    t1.gamesAgainst += subT2Games;
+                    t2.gamesFor += subT2Games;
+                    t2.gamesAgainst += subT1Games;
+
+                    if (scoringType === 'Differenza Games') {
+                        t1.points += (subT1Games - subT2Games);
+                        t2.points += (subT2Games - subT1Games);
+                    } else {
+                        t1.points += subT1Wins;
+                        t2.points += subT2Wins;
+                    }
+                }
             }
         });
 

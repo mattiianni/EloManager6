@@ -1,5 +1,5 @@
 
-import { Player, Match, TournamentStandingEntry, SetScore } from '../types.ts';
+import { Player, Match, TournamentStandingEntry, SetScore, FieldPosition } from '../types.ts';
 
 const getTeamId = (team: [Player, Player]): string => {
     return team.map(p => p.id).sort().join('-');
@@ -129,7 +129,7 @@ export function calculateFinalStandingsForRoundRobinFinali(
     };
     
     const safeGetPlayer = (id: string): Player => {
-        return getPlayerById(id) || { id, name: 'Giocatore', surname: '', currentElo: 1500 };
+        return getPlayerById(id) || { id, name: 'Giocatore', surname: '', currentElo: 1500, initialElo: 1500, position: FieldPosition.Indifferente };
     };
 
     // Build standings in correct order based on finals

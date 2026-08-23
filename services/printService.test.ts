@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Match } from '../types.ts';
 import {
-    INTER_PRINT_STYLESHEET,
+    MANROPE_PRINT_STYLESHEET,
     escapeHtml,
     formatScoreBoxes,
     getPrintStyles,
@@ -21,12 +21,12 @@ const match = (id: string, phase?: string): Match => ({
 } as Match);
 
 describe('printService document helpers', () => {
-    it('include realmente Inter e prepara l’attesa dei pesi usati', () => {
+    it('include realmente Manrope e prepara l’attesa dei pesi usati', () => {
         const styles = getPrintStyles(true);
-        expect(styles).toContain(INTER_PRINT_STYLESHEET);
-        expect(styles).toContain("font-family: 'Inter'");
-        expect(waitForPrintFontsScript).toContain("document.fonts.load('400 12px Inter')");
-        expect(waitForPrintFontsScript).toContain("document.fonts.load('700 12px Inter')");
+        expect(styles).toContain(MANROPE_PRINT_STYLESHEET);
+        expect(styles).toContain("font-family: 'Manrope'");
+        expect(waitForPrintFontsScript).toContain("document.fonts.load('400 12px Manrope')");
+        expect(waitForPrintFontsScript).toContain("document.fonts.load('700 12px Manrope')");
     });
 
     it('non rende indivisibili tutte le card e le sezioni lunghe', () => {

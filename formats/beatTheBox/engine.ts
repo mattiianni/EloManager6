@@ -32,18 +32,21 @@ export const BeatTheBoxEngine: TournamentEngine = {
     calculateStandings: calculateBeatBoxStandings,
     generatePlayoffs: (standings: any[], tournament: Tournament, currentPhase?: string, sfResults?: any): PlayoffGenerationResult => {
         const numBoxes = standings.length;
-        const playoffType = (tournament.playoffType as any) || 'semifinals';
+        const playoffType = (tournament.playoffType as 'semifinals' | 'finals_only') || 'semifinals';
         const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date, sfResults, playoffType);
+        const semiMatches: Match[] = (semifinals || []).map((m, i) => ({ ...m, id: `temp-sf-${i}`, tournamentId: tournament.id } as Match));
+        const finalMatchesList: Match[] = (finals || []).map((m, i) => ({ ...m, id: `temp-final-${i}`, tournamentId: tournament.id } as Match));
         return {
-            semifinals,
-            finals,
-            matchesToSave: [...(semifinals || []), ...(finals || [])]
+            semifinals: semiMatches,
+            finals: finalMatchesList,
+            matchesToSave: [...semiMatches, ...finalMatchesList]
         };
     },
     resumeState: (matches: Match[], tournament: Tournament, getPlayerById: (id: string) => Player | undefined): ResumeStateResult => {
         const standings = calculateBeatBoxStandings(matches, tournament, getPlayerById);
         const semifinalMatches = matches.filter(m => m.phase === 'semifinal');
-        const finalMatches = matches.filter(m => m.phase && m.phase !== 'semifinal');
+        const BTB_FINAL_PHASES = ['final_1_2', 'final_3_4', 'consolation', 'consolation_final'];
+        const finalMatches = matches.filter(m => m.phase && BTB_FINAL_PHASES.includes(m.phase));
 
         const isMatchDone = (m: Match) => !!m.winner && m.sets && m.sets.length > 0 && !(m.sets.length === 1 && Number(m.sets[0].team1 || 0) === 0 && Number(m.sets[0].team2 || 0) === 0);
 

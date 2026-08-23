@@ -8,7 +8,7 @@ export const generateEliminazioneDirettaPdfHtml = (
     getPlayerById: (id: string) => Player | undefined,
     displayNameOverride?: string
 ): string => {
-    return printTpraTournamentReport(tournament, matches, getPlayerById, displayNameOverride);
+    return printTpraTournamentReport(tournament, matches, getPlayerById, displayNameOverride) as any as string;
 };
 
 export const EliminazioneDirettaPrinter: TournamentPrinter = {

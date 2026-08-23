@@ -3,6 +3,7 @@ import { TournamentPrinter } from '../types';
 import { calculateRoundRobinStandings } from './engine';
 import { formatScoreBoxes, MANROPE_PRINT_STYLESHEET, printableTeamName, escapeHtml } from '../../services/printService';
 import { normalizeTournamentRounds } from '../../utils/tournamentRounds';
+import { getCanonicalTeamKey } from '../../utils/matchIdentity';
 import { APP_MONTH, APP_VERSION } from '../../constants';
 
 export const generateRoundRobinPdfHtml = (
@@ -32,15 +33,15 @@ export const generateRoundRobinPdfHtml = (
     // Build Round Robin HTML
     const roundsMap = new Map<number, Match[]>();
     roundRobinMatches.forEach((m, idx) => {
-        const r = m.roundNumber || (fieldsCount > 0 ? Math.floor(idx / fieldsCount) + 1 : 1);
+        const r = m.roundNumber ?? (fieldsCount > 0 ? Math.floor(idx / fieldsCount) + 1 : 1);
         if (!roundsMap.has(r)) roundsMap.set(r, []);
         roundsMap.get(r)!.push(m);
     });
 
     const allTeamsMap = new Map<string, [Player, Player]>();
     roundRobinMatches.forEach(m => {
-        const k1 = m.team1.join(',');
-        const k2 = m.team2.join(',');
+        const k1 = getCanonicalTeamKey(m.team1);
+        const k2 = getCanonicalTeamKey(m.team2);
         if (!allTeamsMap.has(k1)) {
             allTeamsMap.set(k1, [
                 getPlayerById(m.team1[0]) || ({ id: m.team1[0], name: 'Giocatore', surname: '1' } as Player),
@@ -107,7 +108,7 @@ export const generateRoundRobinPdfHtml = (
 
     let currentRound = 0;
     const roundRobinContentHtml = orderedRoundRobinMatches.map((match, index) => {
-        const r = match.roundNumber || (fieldsCount > 0 ? Math.floor(index / fieldsCount) + 1 : 1);
+        const r = match.roundNumber ?? (fieldsCount > 0 ? Math.floor(index / fieldsCount) + 1 : 1);
         let rowHtml = '';
 
         if (r !== currentRound) {
@@ -116,7 +117,7 @@ export const generateRoundRobinPdfHtml = (
             const matchesInRound = roundsMap.get(currentRound) || [];
             let restingText = '';
 
-            const teamsInRoundKeys = new Set(matchesInRound.flatMap(m => [m.team1.join(','), m.team2.join(',')]));
+            const teamsInRoundKeys = new Set(matchesInRound.flatMap(m => [getCanonicalTeamKey(m.team1), getCanonicalTeamKey(m.team2)]));
             const restingTeams: string[] = [];
             allTeamsMap.forEach((pair, key) => {
                 if (!teamsInRoundKeys.has(key)) {
@@ -148,10 +149,10 @@ export const generateRoundRobinPdfHtml = (
     let displayQuarterfinalMatches = [...quarterfinalMatches];
     if (displayQuarterfinalMatches.length === 0 && playoffType === 'quarterfinals') {
         displayQuarterfinalMatches = [
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { id: 'ph-q1', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
+            { id: 'ph-q2', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
+            { id: 'ph-q3', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
+            { id: 'ph-q4', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
         ];
     }
 
@@ -166,8 +167,8 @@ export const generateRoundRobinPdfHtml = (
                 <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse;">
                     <tbody>
                         ${displayQuarterfinalMatches.map((match, idx) => {
-                            const title = (!match.team1 || match.team1.length === 0) ? qLabels[idx] : `Quarto ${idx + 1}`;
-                            const matchRowHtml = (!match.team1 || match.team1.length === 0)
+                            const title = (!match.team1 || !match.team1[0]) ? qLabels[idx] : `Quarto ${idx + 1}`;
+                            const matchRowHtml = (!match.team1 || !match.team1[0])
                                 ? generateEmptyMatchRow(`Campo ${(idx % fieldsCount) + 1}`)
                                 : generateMatchRow(match, `Campo ${(idx % fieldsCount) + 1}`);
                             return `
@@ -188,8 +189,8 @@ export const generateRoundRobinPdfHtml = (
     let displaySemifinalMatches = [...semifinalMatches];
     if (displaySemifinalMatches.length === 0 && (playoffType === 'quarterfinals' || playoffType === 'semifinals')) {
         displaySemifinalMatches = [
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { id: 'ph-sf1', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
+            { id: 'ph-sf2', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
         ];
     }
 
@@ -207,8 +208,8 @@ export const generateRoundRobinPdfHtml = (
                 <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse;">
                     <tbody>
                         ${displaySemifinalMatches.map((match, idx) => {
-                            const title = (!match.team1 || match.team1.length === 0) ? sfLabels[idx] : `Semifinale ${idx + 1}`;
-                            const matchRowHtml = (!match.team1 || match.team1.length === 0)
+                            const title = (!match.team1 || !match.team1[0]) ? sfLabels[idx] : `Semifinale ${idx + 1}`;
+                            const matchRowHtml = (!match.team1 || !match.team1[0])
                                 ? generateEmptyMatchRow(`Campo ${(idx % fieldsCount) + 1}`)
                                 : generateMatchRow(match, `Campo ${(idx % fieldsCount) + 1}`);
                             return `
@@ -229,8 +230,8 @@ export const generateRoundRobinPdfHtml = (
     let displayFinalMatches = [...finalMatches];
     if (displayFinalMatches.length === 0 && playoffType !== 'no_finals') {
         displayFinalMatches = [
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
-            { team1: [], team2: [], sets: [], winner: null } as any as Match,
+            { id: 'ph-f1', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
+            { id: 'ph-f2', date: '', team1: ['', ''], team2: ['', ''], sets: [], winner: null },
         ];
     }
 
@@ -251,7 +252,7 @@ export const generateRoundRobinPdfHtml = (
                 bgColor = '#f5f5f5';
             }
 
-            const matchRowHtml = (!match.team1 || match.team1.length === 0)
+            const matchRowHtml = (!match.team1 || !match.team1[0])
                 ? generateEmptyMatchRow(`Campo ${(idx % fieldsCount) + 1}`)
                 : generateMatchRow(match, `Campo ${(idx % fieldsCount) + 1}`);
 
@@ -285,14 +286,14 @@ export const generateRoundRobinPdfHtml = (
     const finale3_4 = finalMatches.find(m => m.phase === 'final_3_4');
 
     if (finale1_2 && finale1_2.winner) {
-        const winnerTeam = finale1_2.winner === 'team1' ? finale1_2.team1.join(',') : finale1_2.team2.join(',');
-        const loserTeam = finale1_2.winner === 'team1' ? finale1_2.team2.join(',') : finale1_2.team1.join(',');
+        const winnerTeam = finale1_2.winner === 'team1' ? getCanonicalTeamKey(finale1_2.team1) : getCanonicalTeamKey(finale1_2.team2);
+        const loserTeam = finale1_2.winner === 'team1' ? getCanonicalTeamKey(finale1_2.team2) : getCanonicalTeamKey(finale1_2.team1);
 
         let winner3_4Team = '';
         let loser3_4Team = '';
         if (finale3_4 && finale3_4.winner) {
-            winner3_4Team = finale3_4.winner === 'team1' ? finale3_4.team1.join(',') : finale3_4.team2.join(',');
-            loser3_4Team = finale3_4.winner === 'team1' ? finale3_4.team2.join(',') : finale3_4.team1.join(',');
+            winner3_4Team = finale3_4.winner === 'team1' ? getCanonicalTeamKey(finale3_4.team1) : getCanonicalTeamKey(finale3_4.team2);
+            loser3_4Team = finale3_4.winner === 'team1' ? getCanonicalTeamKey(finale3_4.team2) : getCanonicalTeamKey(finale3_4.team1);
         }
 
         const podiumTeamsMap = new Map<string, number>();
@@ -302,8 +303,8 @@ export const generateRoundRobinPdfHtml = (
         if (loser3_4Team) podiumTeamsMap.set(loser3_4Team, 4);
 
         finalOrderedStandings.sort((a, b) => {
-            const keyA = a.pair.map(p => p.id).join(',');
-            const keyB = b.pair.map(p => p.id).join(',');
+            const keyA = getCanonicalTeamKey(a.pair.map(p => p.id));
+            const keyB = getCanonicalTeamKey(b.pair.map(p => p.id));
             const rankA = podiumTeamsMap.get(keyA) || 100;
             const rankB = podiumTeamsMap.get(keyB) || 100;
             if (rankA !== rankB) return rankA - rankB;
@@ -311,7 +312,19 @@ export const generateRoundRobinPdfHtml = (
         });
     }
 
-    // Standings HTML at the end of report
+    // Round Robin Phase Standings HTML (before playoffs)
+    const roundRobinStandingsRowsHtml = standings.map((entry, idx) => `
+        <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold;">${idx + 1}°</td>
+            <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
+            <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0284c7;">${entry.points}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
+        </tr>
+    `).join('');
+
+    // Standings HTML at the end of report (Podium / Definitive)
     const standingsRowsHtml = finalOrderedStandings.map((entry, idx) => {
         let medal = '';
         if (idx === 0) medal = '🥇 ';
@@ -378,6 +391,28 @@ export const generateRoundRobinPdfHtml = (
                     </thead>
                     <tbody>
                         ${roundRobinContentHtml}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CLASSIFICA FASE ROUND ROBIN -->
+            <div class="section-block" style="margin-top: 16px;">
+                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #f0f4f8; border-left: 4px solid #1e3a6e; color: #1e3a6e;">
+                    📊 CLASSIFICA ROUND ROBIN
+                </h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: center; width: 10%;">Pos</th>
+                            <th style="width: 55%;">Squadra</th>
+                            <th style="text-align: center; width: 15%;">Punti</th>
+                            <th style="text-align: center; width: 10%;">GV</th>
+                            <th style="text-align: center; width: 10%;">GP</th>
+                            <th style="text-align: center; width: 10%;">Diff</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${roundRobinStandingsRowsHtml}
                     </tbody>
                 </table>
             </div>

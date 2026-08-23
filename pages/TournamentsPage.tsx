@@ -431,7 +431,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
 
             setIsSingleMatchModalOpen(false);
             setSelectedSingleMatch(null);
-            showHIGAlert('Risultato salvato con successo!', 'Successo');
+            showHIGAlert('Risultato salvato con successo!', { title: 'Successo' });
         } catch (err) {
             console.error('Error saving single match:', err);
             setSingleMatchError('Errore durante il salvataggio. Riprova più tardi.');
@@ -1890,10 +1890,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                         }
                                                                                         if (day.type === TournamentType.BeatTheBox) {
                                                                                             if (!m.groupNumber) {
-                                                                                                // Playoff match senza groupNumber - etichetta basata su phase
-                                                                                                if (m.phase === 'semifinal') return `Semifinale ${phaseMatchIdx}`;
-                                                                                                if (m.phase === 'final_1_2') return 'Finale 1°-2° Posto';
-                                                                                                if (m.phase === 'final_3_4') return 'Finale 3°-4° Posto';
+                                                                                                // Playoff match senza groupNumber
                                                                                                 return `Playoff - Partita ${phaseMatchIdx}`;
                                                                                             }
                                                                                             // Indice corretto dentro il box specifico

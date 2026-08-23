@@ -2,7 +2,12 @@ import { Match, SetScore } from '../types.ts';
 
 type TeamIds = readonly [string, string];
 
-const teamKey = (team: readonly string[]): string => [...team].sort().join(',');
+export const getCanonicalTeamKey = (team?: readonly string[] | null): string => {
+    if (!team || team.length === 0) return '';
+    return [...team].sort().join(',');
+};
+
+export const teamKey = getCanonicalTeamKey;
 
 export const findMatchBetweenTeams = <TMatch extends Pick<Match, 'team1' | 'team2'>>(
     matches: readonly TMatch[],

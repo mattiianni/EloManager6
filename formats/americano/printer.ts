@@ -17,7 +17,7 @@ export const generateAmericanoPdfHtml = (
 
     const standings = calculateAmericanoStandings(matches, tournament, getPlayerById);
     const fieldsCount = tournament.americanoFields || 2;
-    const americanoScoringType = (tournament as any).americanoScoringType || 'games-diff';
+    const americanoScoringType = tournament.americanoScoringType || 'games-diff';
 
     const allPlayersIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]));
     const normalizedRounds = normalizeTournamentRounds(matches, tournament.type, {
@@ -97,7 +97,7 @@ export const generateAmericanoPdfHtml = (
 
     // Standings HTML
     const standingsRowsHtml = standings.map((entry, idx) => {
-        const player = entry.team[0];
+        const player = (entry as any).team?.[0] || entry.player || entry.pair?.[0];
         const playerName = player ? `${player.name} ${player.surname}` : 'Giocatore';
         let medal = '';
         if (idx === 0) medal = '🥇 ';

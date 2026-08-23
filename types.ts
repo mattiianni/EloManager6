@@ -71,6 +71,8 @@ export interface Tournament {
     roundRobinFields?: number; // Numero di campi per Round Robin
     roundRobinHomeAway?: boolean; // Andata e Ritorno
     roundRobinPlayoffType?: 'no_finals' | 'finals_only' | 'semifinals' | 'quarterfinals'; // Tipo di fase finale per Round Robin
+    round_robin_playoff_type?: 'no_finals' | 'finals_only' | 'semifinals' | 'quarterfinals';
+    playoffType?: 'no_finals' | 'finals_only' | 'semifinals' | 'quarterfinals' | string;
     giornataName?: string; // Nome della giornata per Torneo Libero
     finalStandings?: any; // Classifiche finali salvate (per Beat the Box e altri tornei)
     numGironi?: number; // Numero di gironi per Gironi + Fase Finale
@@ -81,7 +83,6 @@ export interface Tournament {
     teamTournamentTotalDays?: number | null; // For Torneo a Squadre: total schedule days (Round Robin)
     teamTournamentTeam1Number?: number | null; // For Torneo a Squadre giornate: team1 number for the fixture
     teamTournamentTeam2Number?: number | null; // For Torneo a Squadre giornate: team2 number for the fixture
-    playoffType?: string;
     teamTournamentPhase?: 'round_robin' | TeamTournamentPlayoffPhase | null;
     isBye?: boolean; // Se la partita del tabellone a eliminazione diretta è un BYE
     parentTournamentName?: string | null; // Nome torneo padre (per tornei figlio di un TorneOtto)

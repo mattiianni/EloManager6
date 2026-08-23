@@ -105,6 +105,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => window.removeEventListener('auth:expired', handleExpired);
     }, [logout]);
 
+    // Listen for cross-tab storage changes (logout or login in another tab)
+    useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === TOKEN_KEY) {
+                if (!e.newValue) {
+                    logout();
+                } else if (e.newValue !== token) {
+                    verifyToken(e.newValue);
+                }
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [logout, token]);
+
     return (
         <AuthContext.Provider value={{
             isAuthenticated,

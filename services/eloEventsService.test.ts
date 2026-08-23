@@ -57,12 +57,13 @@ describe('eloEventsService Tests', () => {
             rootTournamentId: 'team-root',
             tournamentDayId: 'team-day-1',
             date: '2026-06-10T18:00:00Z',
-            team1_number: 1,
-            team2_number: 2,
-            round_number: 1,
-            phase: 'round_robin',
-            matches_per_day: 3,
-            status: 'completed'
+            team1Number: 1,
+            team2Number: 2,
+            roundNumber: 1,
+            matchesPerDay: 3,
+            status: 'completed',
+            summary: null,
+            subMatches: []
         }
     ];
 

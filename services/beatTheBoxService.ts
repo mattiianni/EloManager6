@@ -266,8 +266,8 @@ export function createSemifinalsAndFinalsFor3Boxes(
     const partnerForWorstThird = fourthsOtherBoxes[randomIndex] || fourthsOtherBoxes[0];
     const remainingFourth = fourthsOtherBoxes[1 - randomIndex] || fourthsOtherBoxes[0];
     
-    const consolationTeam1 = [worstThird.id, partnerForWorstThird.id];
-    const consolationTeam2 = [fourthSameBox.id, remainingFourth.id];
+    const consolationTeam1: [string, string] = [worstThird.id, partnerForWorstThird.id];
+    const consolationTeam2: [string, string] = [fourthSameBox.id, remainingFourth.id];
 
     if (!semifinalResults) {
         finals.push({

@@ -71,7 +71,7 @@ interface PadelStore {
     updateTournamentSeriesName: (oldName: string, newName: string) => Promise<void>;
     deleteTournament: (tournamentId: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
     deleteTournamentSeries: (giornataName: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
-    getPlayerById: (id: string) => Player | { id: string; name: string; surname: string; isDeleted: true } | undefined;
+    getPlayerById: (id: string) => Player | undefined;
 }
 
 const PadelStoreContext = createContext<PadelStore | null>(null);
@@ -109,7 +109,7 @@ async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T>
 
 export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [players, setPlayers] = useState<Player[]>([]);
-    const [ghostPlayers, setGhostPlayers] = useState<{id:string;name:string;surname:string;isDeleted:true}[]>([]);
+    const [ghostPlayers, setGhostPlayers] = useState<(Player & { isDeleted?: boolean })[]>([]);
     const [matches, setMatches] = useState<Match[]>([]);
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
@@ -122,13 +122,25 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Fetch all data from a single bootstrap endpoint
             const data = await apiRequest<{
                 players: Player[];
+                ghostPlayers?: any[];
                 matches: Match[];
                 tournaments: Tournament[];
                 eloHistory: EloHistoryEntry[];
             }>('/api/data');
             
             setPlayers(data.players);
-            if (data.ghostPlayers) setGhostPlayers(data.ghostPlayers);
+            if (data.ghostPlayers) {
+                const normalizedGhosts: (Player & { isDeleted?: boolean })[] = data.ghostPlayers.map(gp => ({
+                    id: gp.id,
+                    name: gp.name || 'Giocatore',
+                    surname: gp.surname || 'Eliminato',
+                    currentElo: Number(gp.currentElo ?? gp.current_elo ?? 1500),
+                    initialElo: Number(gp.initialElo ?? gp.initial_elo ?? 1500),
+                    position: gp.position || FieldPosition.Indifferente,
+                    isDeleted: true,
+                }));
+                setGhostPlayers(normalizedGhosts);
+            }
             setMatches(data.matches);
             setTournaments(data.tournaments);
             setEloHistory(data.eloHistory);
@@ -178,12 +190,18 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
     
     const addMultipleMatches = async (matchDataList: Omit<Match, 'id'>[], newTournamentData: Omit<Tournament, 'id'>): Promise<void> => {
-        console.log('🔄 addMultipleMatches called with:', { matchesCount: matchDataList.length, tournament: newTournamentData.name });
+        const sortedMatches = matchDataList.map(match => ({
+            groupNumber: match.groupNumber ?? null,
+            phase: match.phase ?? null,
+            roundNumber: match.roundNumber ?? null,
+            team1: [...(match.team1 || [])].sort(),
+            team2: [...(match.team2 || [])].sort(),
+        }));
         const signature = JSON.stringify({
-            name: newTournamentData.name,
             date: newTournamentData.date,
+            matches: sortedMatches,
+            name: newTournamentData.name,
             type: newTournamentData.type,
-            matches: matchDataList.map(match => ({ team1: match.team1, team2: match.team2, roundNumber: match.roundNumber, groupNumber: match.groupNumber, phase: match.phase })),
         });
         const pending = bulkSaveInFlightRef.current.get(signature);
         if (pending) return pending;
@@ -191,16 +209,14 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const requestId = globalThis.crypto?.randomUUID?.() || `save-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         const operation = (async () => {
             try {
-                const response = await apiRequest('/api/tournaments/bulk-matches', {
+                await apiRequest('/api/tournaments/bulk-matches', {
                     method: 'POST',
                     headers: { 'Idempotency-Key': requestId },
                     body: JSON.stringify({ matches: matchDataList, tournament: newTournamentData, requestId }),
                 });
-                console.log('✅ addMultipleMatches API response:', response);
                 await fetchData();
-                console.log('✅ addMultipleMatches completed successfully');
             } catch (error) {
-                console.error('❌ addMultipleMatches failed:', error);
+                console.error('Failed to add multiple matches:', error);
                 throw error;
             } finally {
                 bulkSaveInFlightRef.current.delete(signature);
@@ -401,7 +417,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await fetchData();
     };
 
-    const getPlayerById = (id: string) => players.find(p => p.id === id) || ghostPlayers.find(p => p.id === id);
+    const getPlayerById = (id: string): Player | undefined => players.find(p => p.id === id) || ghostPlayers.find(p => p.id === id);
 
     return (
         <PadelStoreContext.Provider value={{

@@ -1,3 +1,13 @@
+## v6.9.0 — 2026-08-23
+- **Piano di Refactoring Modulare & Hardening Architetturale**:
+  - **Modulo 1 (Core Integrity & Pairing Canoniche)**: Normalizzazione deterministica chiavi di coppia (`getCanonicalTeamKey`), whitelist delle fasi Beat the Box, aggiunta tabella classifica girone prima delle semifinali nel PDF Round Robin.
+  - **Modulo 2 (Unified PDF Engine)**: Allineamento contratti di stampa su interfaccia unificata, eliminazione popup duplicati, refactoring styling Apple HIG con font Manrope.
+  - **Modulo 3 (Transazionalità Atomica ELO)**: Aggiornamento e revert ELO transazionali tramite `sql.transaction` su Neon, azzerando rischi di stato incoerente.
+  - **Modulo 4 (Stato Autorevole & Abbinamenti Gironi)**: Implementazione `deriveTournamentState` server-side, correzione rigorosa logica di abbinamento playoff Gironi (top 2 per girone a incrocio 1°A-2°B e 1°B-2°A per 2 gironi, 3 prime + migliore seconda per 3 gironi).
+  - **Modulo 5 (Frontend Store, Ghost Players & Auth Sync)**: Tipizzazione solida giocatori eliminati (`ghostPlayers`), sincronizzazione multi-tab cross-storage token auth, payload di salvataggio massivo deterministico.
+  - **Modulo 6 (Zero TypeScript Errors & Test Suite 100% Green)**: Azzerati tutti i 124 errori TS (`tsc --noEmit`), suite Vitest con 56/56 test passati, compilazione Vite pulita.
+  - **Classifica Singola Giocatori Torneo a Squadre**: Aggiunta la classifica individuale isolata specifica del torneo a squadre in fondo al report PDF sia parziale che finale.
+
 ## v6.8.2 — 2026-08-21
 - **Fix Round Robin + Finali Save & Resume**: Eliminato il taglio per array position (`slice`) in fase di salvataggio ed allineato il riconoscimento fasi al tag esplicito `match.phase`. Risolto il problema della cancellazione a cascata e della perdita di partite del girone.
 - **Isolamento Beat the Box**: Rimosso l'uso improprio di `groupMatchesByPlayerSets` sui formati Round Robin e Gironi.

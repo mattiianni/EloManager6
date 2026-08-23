@@ -26,11 +26,9 @@ class TournamentRegistryImpl {
         this.registerEngine(BeatTheBoxEngine);
         this.registerPrinter(BeatTheBoxPrinter);
 
-        // Americano & Serie
+        // Americano
         this.registerEngine(AmericanoEngine);
         this.registerPrinter(AmericanoPrinter);
-        this.engines.set(TournamentType.Serie, AmericanoEngine);
-        this.printers.set(TournamentType.Serie, AmericanoPrinter);
 
         // Gironi + Fase Finale
         this.registerPrinter(GironiPrinter);
@@ -56,6 +54,10 @@ class TournamentRegistryImpl {
     public getEngine(type: TournamentType): TournamentEngine {
         const engine = this.engines.get(type);
         if (!engine) {
+            const msg = `[TournamentRegistry] Engine non registrato per tipo: ${type}`;
+            if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+                console.warn(msg);
+            }
             return RoundRobinEngine;
         }
         return engine;
@@ -64,6 +66,10 @@ class TournamentRegistryImpl {
     public getPrinter(type: TournamentType): TournamentPrinter {
         const printer = this.printers.get(type);
         if (!printer) {
+            const msg = `[TournamentRegistry] Printer non registrato per tipo: ${type}`;
+            if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+                console.warn(msg);
+            }
             return RoundRobinPrinter;
         }
         return printer;
