@@ -2573,7 +2573,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  </div>
  <div className="flex items-center space-x-2" onClick={e => e.stopPropagation()}>
- <Button variant="secondary" size="sm" onClick={() => handleOpenTournament(day)} className="!p-1.5 !bg-green-600 hover:!bg-green-700 !text-white [&_svg]:h-4 [&_svg]:w-4"><PencilIcon /></Button>
+ <Button variant="success" size="sm" onClick={() => handleOpenTournament(day)} className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><PencilIcon /></Button>
  <Button variant="danger" size="sm" onClick={() => handleDeleteTournament(day.id)} className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><TrashIcon /></Button>
  </div>
  </div>
@@ -2928,23 +2928,23 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
  })()}
  </div>
- <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-      <Button type="button" variant="secondary" onClick={() => {
+ <div className="flex gap-2.5 pt-3 mt-3 border-t border-slate-200/80 dark:border-white/10">
+      <Button type="button" variant="secondary" size="sm" onClick={() => {
           setEditingTournament(null);
           setIsInFinalsPhase(false);
           setShowGironiStandingsModal(false);
           setIsInGironiQuarterfinalsPhase(false);
           setIsInGironiSemifinalsPhase(false);
           setIsInGironiFinalsPhase(false);
-      }} className="flex-1" disabled={isSubmitting}>Annulla</Button>
+      }} className="flex-1 font-bold" disabled={isSubmitting}>Annulla</Button>
 
       {editingTournament?.status === 'scheduled' && (
-          <Button type="button" variant="success" onClick={() => submitEditScores(null, true)} disabled={isSubmitting} className="flex-1">
+          <Button type="button" variant="success" size="sm" onClick={() => submitEditScores(null, true)} disabled={isSubmitting} className="flex-1 font-bold">
               {isSubmitting ? 'Salvataggio...' : 'Salva'}
           </Button>
       )}
 
-      <Button type="button" onClick={() => {
+      <Button type="button" size="sm" className="flex-1 font-bold" onClick={() => {
           if (editingTournament?.status === 'completed') {
               if (editingTournament.type === TournamentType.GironiFaseFinale) {
                   const tournamentMatches = matches.filter(match => match.tournamentId === editingTournament.id);
@@ -2995,7 +2995,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
               actionText,
               onConfirm: () => submitEditScores(null, false)
           });
-      }} disabled={isSubmitting} variant={editingTournament?.status === 'completed' ? 'success' : 'primary'} className="flex-1">
+      }} disabled={isSubmitting} variant={editingTournament?.status === 'completed' ? 'success' : 'primary'}>
           {isSubmitting ? 'Salvataggio...' : (
               editingTournament?.status === 'scheduled' && (
                   editingTournament?.type === TournamentType.RoundRobinFinali ||
@@ -3286,14 +3286,15 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   })}
   </div>
   </div>
-  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+  <div className="flex gap-2.5 pt-3 border-t border-slate-200/80 dark:border-white/10">
   <Button
   onClick={() => {
   setIsInFinalsPhase(false);
   setEditingTournament(null);
   }}
   variant="secondary"
-  className="flex-1"
+  size="sm"
+  className="flex-1 font-bold"
   disabled={isSubmitting}
   >
   Annulla
@@ -3302,14 +3303,16 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id, setFinalsMatches, finalsScores)}
   disabled={isSubmitting}
   variant="success"
-  className="flex-1"
+  size="sm"
+  className="flex-1 font-bold"
   >
   {isSubmitting ? 'Salvataggio...' : 'Salva'}
   </Button>
   {finalsMatches.some(m => m.phase === 'quarterfinal') ? (
   <Button
   onClick={handleSaveRoundRobinQuartersAndGenerateSemis}
-  className="flex-1"
+  className="flex-1 font-bold"
+  size="sm"
   disabled={isSubmitting}
   >
   {isSubmitting ? 'Salvataggio...' : 'Salva e Genera Semifinali'}
@@ -3317,7 +3320,8 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   ) : finalsMatches.some(m => m.phase === 'semifinal') ? (
   <Button
   onClick={handleSaveRoundRobinSemisAndGenerateFinals}
-  className="flex-1"
+  className="flex-1 font-bold"
+  size="sm"
   disabled={isSubmitting}
   >
   {isSubmitting ? 'Salvataggio...' : 'Salva e Genera Finali'}
@@ -3325,10 +3329,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   ) : (
   <Button
   onClick={handleCompleteTournamentWithFinals}
-  className="flex-1"
+  className="flex-1 font-bold"
+  size="sm"
   disabled={isSubmitting || Object.keys(finalsScores).length !== finalsMatches.length}
   >
-  {isSubmitting ? 'Finalizzando...' : 'Finalizza Torneo'}
+  {isSubmitting ? 'Completamento...' : 'Salva e Calcola Classifica Finale'}
   </Button>
   )}
   </div>

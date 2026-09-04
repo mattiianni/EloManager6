@@ -9,36 +9,36 @@ export const getPlayerInitials = (name?: string, surname?: string): string => {
 export const getAvatarGradientByElo = (elo?: number, seed?: string): string => {
     if (elo === undefined || elo === null) {
         // Fallback to hash if elo is not provided
-        const AVATAR_GRADIENTS = [
-            'from-sky-400 to-blue-600',
-            'from-emerald-400 to-teal-600',
-            'from-amber-400 to-orange-500',
-            'from-rose-400 to-pink-600',
-            'from-indigo-500 to-purple-600',
+        const AVATAR_COLORS = [
+            'bg-[#0055D4] text-white',
+            'bg-emerald-600 text-white',
+            'bg-amber-500 text-white',
+            'bg-rose-500 text-white',
+            'bg-indigo-600 text-white',
         ];
         let hash = 0;
         const s = seed || 'default';
         for (let i = 0; i < s.length; i++) {
             hash = s.charCodeAt(i) + ((hash << 5) - hash);
         }
-        return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
+        return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
     }
 
     if (elo >= 1530) {
-        // Top ranking - Vibrant Emerald / Teal Green
-        return 'from-emerald-500 to-teal-600 text-white';
+        // Top ranking - Vibrant Emerald Green
+        return 'bg-emerald-500 text-white';
     } else if (elo >= 1510) {
-        // Above average - Teal / Cyan Green
-        return 'from-teal-400 to-cyan-500 text-white';
+        // Above average - Teal
+        return 'bg-teal-500 text-white';
     } else if (elo >= 1490) {
-        // Neutral around 1500 - Sky / Royal Blue
-        return 'from-sky-400 to-blue-600 text-white';
+        // Neutral around 1500 - Royal Blue
+        return 'bg-[#0055D4] text-white';
     } else if (elo >= 1460) {
-        // Below average - Warm Amber / Light Orange
-        return 'from-amber-400 to-orange-500 text-white';
+        // Below average - Warm Amber
+        return 'bg-amber-500 text-white';
     } else {
-        // Bottom ranking - Deep Orange / Rose
-        return 'from-orange-500 to-rose-600 text-white';
+        // Bottom ranking - Rose
+        return 'bg-rose-500 text-white';
     }
 };
 
@@ -60,7 +60,7 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
     className = ''
 }) => {
     const initials = getPlayerInitials(name, surname);
-    const gradient = getAvatarGradientByElo(elo, id || `${name}${surname}`);
+    const colorClass = getAvatarGradientByElo(elo, id || `${name}${surname}`);
 
     const sizeClasses = {
         sm: 'w-7 h-7 text-[11px]',
@@ -71,7 +71,7 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
 
     return (
         <div 
-            className={`${sizeClasses} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center font-black text-white shadow-md border border-white/20 shrink-0 select-none ${className}`}
+            className={`${sizeClasses} rounded-full ${colorClass} flex items-center justify-center font-black shadow-sm border border-white/20 shrink-0 select-none ${className}`}
         >
             {initials}
         </div>

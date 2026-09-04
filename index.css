@@ -6,21 +6,21 @@
   :root {
     color-scheme: light;
     /* === Existing app variables === */
-    --app-bg: #eef4fb;
-    --app-bg-muted: #dfe9f6;
-    --app-surface: rgba(255, 255, 255, 0.72);
-    --app-surface-strong: rgba(255, 255, 255, 0.92);
-    --app-surface-soft: rgba(255, 255, 255, 0.58);
-    --app-border: rgba(148, 163, 184, 0.22);
-    --app-border-strong: rgba(148, 163, 184, 0.35);
-    --app-text: #1a2c4a;
-    --app-text-soft: #2d4a6e;
-    --app-text-muted: #4a6a8a;
-    --app-accent: #89ceff;
-    --app-accent-strong: #c9e6ff;
-    --app-accent-ink: #00344d;
-    --app-shadow: 0 24px 60px rgba(11, 19, 38, 0.16);
-    --app-shadow-soft: 0 12px 32px rgba(11, 19, 38, 0.08);
+    --app-bg: #F8F8F6;
+    --app-bg-muted: #F2F2EE;
+    --app-surface: #FFFFFF;
+    --app-surface-strong: #FFFFFF;
+    --app-surface-soft: #FAF9F6;
+    --app-border: #E8E8E3;
+    --app-border-strong: #D8D8D1;
+    --app-text: #111827;
+    --app-text-soft: #4B5563;
+    --app-text-muted: #6B7280;
+    --app-accent: #0055D4;
+    --app-accent-strong: #EBF2FF;
+    --app-accent-ink: #002B7A;
+    --app-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    --app-shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.03);
 
     /* === Apple HIG Semantic Colors (Light Mode) === */
     /* Backgrounds */
@@ -44,21 +44,21 @@
     --ios-quaternarySystemFill: rgba(116, 116, 128, 0.08);
 
     /* System Colors (Apple HIG — Light) */
-    --ios-systemBlue: #007AFF;
-    --ios-systemGreen: #34C759;
-    --ios-systemRed: #FF3B30;
-    --ios-systemOrange: #FF9500;
-    --ios-systemYellow: #FFCC00;
-    --ios-systemPurple: #AF52DE;
-    --ios-systemPink: #FF2D55;
-    --ios-systemTeal: #5AC8FA;
-    --ios-systemIndigo: #5856D6;
+    --ios-systemBlue: #0055D4;
+    --ios-systemGreen: #10B981;
+    --ios-systemRed: #EF4444;
+    --ios-systemOrange: #F59E0B;
+    --ios-systemYellow: #EAB308;
+    --ios-systemPurple: #8B5CF6;
+    --ios-systemPink: #EC4899;
+    --ios-systemTeal: #06B6D4;
+    --ios-systemIndigo: #6366F1;
     --ios-systemGray: #8E8E93;
 
     /* Tinted backgrounds for buttons */
-    --ios-systemBlue-tint: rgba(0, 122, 255, 0.15);
-    --ios-systemRed-tint: rgba(255, 59, 48, 0.15);
-    --ios-systemGreen-tint: rgba(52, 199, 89, 0.15);
+    --ios-systemBlue-tint: rgba(0, 85, 212, 0.12);
+    --ios-systemRed-tint: rgba(239, 68, 68, 0.12);
+    --ios-systemGreen-tint: rgba(16, 185, 129, 0.12);
 
     /* Separators */
     --ios-separator: rgba(60, 60, 67, 0.29);
@@ -82,35 +82,35 @@
   .dark {
     color-scheme: dark;
     /* === Existing app variables === */
-    --app-bg: #0b1326;
-    --app-bg-muted: #131b2e;
-    --app-surface: rgba(23, 31, 51, 0.76);
-    --app-surface-strong: rgba(19, 31, 50, 0.92);
-    --app-surface-soft: rgba(19, 34, 55, 0.56);
+    --app-bg: #111827;
+    --app-bg-muted: #1a2233;
+    --app-surface: #1E293B;
+    --app-surface-strong: #1A2233;
+    --app-surface-soft: #161F30;
     --app-border: rgba(255, 255, 255, 0.08);
-    --app-border-strong: rgba(137, 206, 255, 0.16);
-    --app-text: #dae2fd;
-    --app-text-soft: #bec8d2;
-    --app-text-muted: #88929b;
-    --app-accent: #89ceff;
-    --app-accent-strong: #c9e6ff;
-    --app-accent-ink: #00344d;
-    --app-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
-    --app-shadow-soft: 0 16px 44px rgba(0, 0, 0, 0.32);
+    --app-border-strong: rgba(255, 255, 255, 0.16);
+    --app-text: #F9FAFB;
+    --app-text-soft: #9CA3AF;
+    --app-text-muted: #6B7280;
+    --app-accent: #3B82F6;
+    --app-accent-strong: #60A5FA;
+    --app-accent-ink: #1D4ED8;
+    --app-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --app-shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.2);
 
     /* === Apple HIG Semantic Colors (Dark Mode) === */
     /* Backgrounds */
-    --ios-systemBackground: #000000;
-    --ios-secondarySystemBackground: #1C1C1E;
-    --ios-tertiarySystemBackground: #2C2C2E;
-    --ios-systemGroupedBackground: #000000;
-    --ios-secondarySystemGroupedBackground: #1C1C1E;
-    --ios-tertiarySystemGroupedBackground: #2C2C2E;
+    --ios-systemBackground: #111827;
+    --ios-secondarySystemBackground: #1E293B;
+    --ios-tertiarySystemBackground: #1A2233;
+    --ios-systemGroupedBackground: #111827;
+    --ios-secondarySystemGroupedBackground: #1E293B;
+    --ios-tertiarySystemGroupedBackground: #1A2233;
 
     /* Labels */
-    --ios-label: rgba(255, 255, 255, 0.85);
-    --ios-secondaryLabel: rgba(235, 235, 245, 0.6);
-    --ios-tertiaryLabel: rgba(235, 235, 245, 0.3);
+    --ios-label: rgba(255, 255, 255, 0.92);
+    --ios-secondaryLabel: rgba(235, 235, 245, 0.65);
+    --ios-tertiaryLabel: rgba(235, 235, 245, 0.35);
     --ios-quaternaryLabel: rgba(235, 235, 245, 0.18);
 
     /* Fills */
@@ -120,21 +120,21 @@
     --ios-quaternarySystemFill: rgba(116, 116, 128, 0.18);
 
     /* System Colors (Apple HIG — Dark) */
-    --ios-systemBlue: #0A84FF;
-    --ios-systemGreen: #30D158;
-    --ios-systemRed: #FF453A;
-    --ios-systemOrange: #FF9F0A;
-    --ios-systemYellow: #FFD60A;
-    --ios-systemPurple: #BF5AF2;
-    --ios-systemPink: #FF375F;
-    --ios-systemTeal: #64D2FF;
-    --ios-systemIndigo: #5E5CE6;
+    --ios-systemBlue: #0055D4;
+    --ios-systemGreen: #10B981;
+    --ios-systemRed: #EF4444;
+    --ios-systemOrange: #F59E0B;
+    --ios-systemYellow: #EAB308;
+    --ios-systemPurple: #8B5CF6;
+    --ios-systemPink: #EC4899;
+    --ios-systemTeal: #06B6D4;
+    --ios-systemIndigo: #6366F1;
     --ios-systemGray: #98989D;
 
     /* Tinted backgrounds for buttons */
-    --ios-systemBlue-tint: rgba(10, 132, 255, 0.18);
-    --ios-systemRed-tint: rgba(255, 69, 58, 0.18);
-    --ios-systemGreen-tint: rgba(48, 209, 88, 0.18);
+    --ios-systemBlue-tint: rgba(0, 85, 212, 0.22);
+    --ios-systemRed-tint: rgba(239, 68, 68, 0.22);
+    --ios-systemGreen-tint: rgba(16, 185, 129, 0.22);
 
     /* Separators */
     --ios-separator: rgba(84, 84, 88, 0.65);
@@ -160,10 +160,6 @@
   body {
     font-family: inherit;
     background-color: var(--app-bg);
-    background:
-      radial-gradient(circle at top right, rgba(137, 206, 255, 0.12), transparent 30%),
-      radial-gradient(circle at bottom left, rgba(157, 223, 46, 0.05), transparent 28%),
-      linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-muted) 100%);
     color: var(--app-text);
     min-height: 100vh;
     padding-right: env(safe-area-inset-right);
@@ -213,26 +209,21 @@
 
 @layer components {
   .app-shell {
-    background:
-      radial-gradient(circle at top right, rgba(137, 206, 255, 0.09), transparent 30%),
-      radial-gradient(circle at bottom left, rgba(157, 223, 46, 0.05), transparent 26%),
-      linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-muted) 100%);
+    background-color: var(--app-bg);
   }
 
   .app-panel {
     background: var(--app-surface);
     border: 1px solid var(--app-border);
     box-shadow: var(--app-shadow-soft);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    border-radius: 22px;
   }
 
   .app-panel-strong {
     background: var(--app-surface-strong);
     border: 1px solid var(--app-border-strong);
     box-shadow: var(--app-shadow);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    border-radius: 22px;
   }
 
   .stitch-card {
@@ -241,34 +232,23 @@
   }
 
   .stitch-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(circle at top right, rgba(137, 206, 255, 0.12), transparent 26%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%);
+    display: none;
   }
 
   /* Reusable "row card" style used for Top5 and other inner list rows. */
   .stitch-row {
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(241, 245, 251, 0.55) 42%, rgba(255, 255, 255, 0.14));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.25),
-      0 10px 24px rgba(15, 23, 42, 0.06);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid #EBEBE6;
+    background: #FFFFFF;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
   }
 
   .dark .stitch-row {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03) 45%, rgba(0, 0, 0, 0.10));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
-      0 12px 28px rgba(2, 6, 23, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #1E293B;
+    border-radius: 18px;
+    box-shadow: none;
   }
 
   .stitch-row-hover {
@@ -276,17 +256,13 @@
   }
 
   .stitch-row-hover:hover {
-    border-color: rgba(137, 206, 255, 0.35);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      0 16px 34px rgba(137, 206, 255, 0.12);
+    border-color: #0055D4;
+    box-shadow: 0 4px 14px rgba(0, 85, 212, 0.08);
   }
 
   .dark .stitch-row-hover:hover {
-    border-color: rgba(137, 206, 255, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 18px 40px rgba(14, 165, 233, 0.10);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   }
 
   .app-grid {
@@ -294,15 +270,7 @@
   }
 
   .app-grid::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(137, 206, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(137, 206, 255, 0.05) 1px, transparent 1px);
-    background-size: 28px 28px;
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 80%);
+    display: none;
   }
 
   .mobile-date-input {

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth.tsx';
 import { APP_VERSION } from '../../constants.ts';
-import { MaterialIcon } from '../ui/Icons.tsx';
+import Button from '../ui/Button.tsx';
 
 const SplashScreen: React.FC = () => {
     const { login } = useAuth();
@@ -82,27 +82,27 @@ const SplashScreen: React.FC = () => {
     const isComplete = code.length === 6;
 
     return (
-        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--ios-systemGroupedBackground)] p-4 text-[var(--ios-label)]">
-            <div className="relative z-10 w-full max-w-[400px]">
-                <div className="fade-in rounded-3xl bg-[var(--ios-secondarySystemGroupedBackground)] p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-                    <div className="mb-8 flex flex-col items-center text-center">
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-slate-900 dark:text-white">
+            <div className="relative z-10 w-full max-w-[390px]">
+                <div className="fade-in rounded-[28px] bg-white dark:bg-[#1a2233] border border-slate-200/80 dark:border-white/10 p-7 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-none">
+                    <div className="mb-7 flex flex-col items-center text-center">
                         <img 
                             src="/elomanager_w.png" 
                             alt="Padel Elo Manager" 
-                            className="w-96 max-w-full h-auto object-contain block dark:hidden" 
+                            className="w-56 max-w-full h-auto object-contain block dark:hidden" 
                         />
                         <img 
                             src="/elomanager.png" 
                             alt="Padel Elo Manager" 
-                            className="w-96 max-w-full h-auto object-contain hidden dark:block" 
+                            className="w-56 max-w-full h-auto object-contain hidden dark:block" 
                         />
                     </div>
 
-                    <div className="mb-4 text-center text-sm font-medium text-[var(--ios-secondaryLabel)]">
+                    <div className="mb-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Inserisci il codice di accesso
                     </div>
 
-                    <div className="flex justify-center gap-2" onPaste={handlePaste}>
+                    <div className="flex justify-center gap-2 sm:gap-2.5" onPaste={handlePaste}>
                         {digits.map((digit, index) => (
                             <input
                                 key={index}
@@ -115,13 +115,13 @@ const SplashScreen: React.FC = () => {
                                 onKeyDown={e => handleKeyDown(index, e)}
                                 disabled={isLoading}
                                 style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' } as React.CSSProperties}
-                                className={`h-14 w-12 rounded-[14px] text-center text-2xl font-bold tracking-widest
+                                className={`h-12 w-10 sm:h-13 sm:w-11 rounded-2xl text-center text-xl sm:text-2xl font-black
                                     ${error
-                                        ? 'border-2 border-[var(--ios-systemRed)] bg-red-50 dark:bg-red-900/20 text-[var(--ios-systemRed)]'
-                                        : 'border border-[var(--ios-separator)] focus:border-2 focus:border-[var(--ios-systemBlue)] bg-[var(--ios-systemBackground)] text-[var(--ios-label)]'
+                                        ? 'border-2 border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                        : 'border border-slate-200 dark:border-white/10 focus:border-[#0055D4] focus:ring-2 focus:ring-[#0055D4]/20 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white'
                                     }
                                     outline-none transition-all duration-200
-                                    placeholder:text-[var(--ios-tertiaryLabel)] ${isLoading ? 'opacity-50' : ''}
+                                    placeholder:text-slate-400 ${isLoading ? 'opacity-50' : ''}
                                 `}
                                 aria-label={`Cifra ${index + 1}`}
                                 placeholder=""
@@ -131,39 +131,35 @@ const SplashScreen: React.FC = () => {
 
                     {error && (
                         <div className="mt-4 text-center">
-                            <p className="text-sm font-medium text-[var(--ios-systemRed)]">
+                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 px-3 py-2 rounded-xl">
                                 {error}
                             </p>
                         </div>
                     )}
 
-                    <button
+                    <Button
+                        type="button"
+                        variant="primary"
+                        size="lg"
                         onClick={() => isComplete && handleSubmit(code)}
                         disabled={!isComplete || isLoading}
-                        className={`mt-8 flex h-[50px] w-full items-center justify-center gap-2 rounded-xl px-4 font-semibold text-[17px] transition-all duration-200
-                            ${isComplete && !isLoading
-                                ? 'bg-[var(--ios-systemBlue)] text-white hover:opacity-90 active:scale-[0.98]'
-                                : 'cursor-not-allowed bg-[var(--ios-systemFill)] text-[var(--ios-tertiaryLabel)]'
-                            }
-                        `}
+                        className="mt-7 w-full !h-11 !rounded-full !bg-[#0055D4] hover:!bg-[#0047B3] !font-bold !text-sm !text-white shadow-sm flex items-center justify-center gap-2"
                     >
                         {isLoading ? (
                             <span className="flex items-center justify-center gap-2">
-                                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
+                                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
                                 Verifica in corso...
                             </span>
                         ) : (
-                            <>
-                                <span>Accedi</span>
-                            </>
+                            <span>Accedi</span>
                         )}
-                    </button>
+                    </Button>
                 </div>
 
-                <p className="mt-8 text-center text-xs font-medium text-[var(--ios-tertiaryLabel)]">
+                <p className="mt-6 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
                     Padel ELO Manager v{APP_VERSION}
                 </p>
             </div>

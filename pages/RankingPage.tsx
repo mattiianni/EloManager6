@@ -375,13 +375,13 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
     const presenceLabels = ['Tutti', '50%', '60%', '70%', '80%', '90%'];
 
     return (
-        <div className="px-0 py-2 space-y-6">
+        <div className="px-0 py-2 space-y-5 md:space-y-6">
             
             {/* Header / Actions */}
             <div className="flex justify-between items-center mb-1">
                 <div>
-                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Classifica ELO</h2>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Ranking ufficiale dei giocatori di Padel</p>
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">Classifica ELO</h2>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Ranking ufficiale dei giocatori di Padel</p>
                 </div>
                 <HIGButton 
                     variant="gray"
@@ -397,7 +397,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         teamMatchdaysCache
                     )}
                     disabled={loading || rankingData.length === 0}
-                    className="!rounded-2xl border border-slate-200/60 dark:border-white/10"
+                    className="border border-slate-200/80 dark:border-white/10"
                 >
                     <SFIcon name="printer" size={18} />
                 </HIGButton>
@@ -447,7 +447,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
             {/* PODIO 3D (Se ci sono almeno 3 giocatori) */}
             {rankingData.length >= 3 && !selectedTournamentId && (
-                <div className="grid grid-cols-3 gap-2 pt-2 items-end">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto pt-2 items-end">
                     {/* 2° Posto */}
                     <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[1])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[1]); } }} role="button" tabIndex={0}>
                         <div className="w-12 h-12 rounded-full border-2 border-slate-300 bg-slate-100 dark:bg-slate-800 dark:border-slate-500 flex items-center justify-center text-lg font-black shadow-md mb-2">
@@ -463,7 +463,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         <div className="w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center text-2xl font-black shadow-xl mb-2 animate-bounce">
                             🥇
                         </div>
-                        <div className="w-full bg-gradient-to-b from-amber-500/20 to-sky-500/10 backdrop-blur-xl border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-lg">
+                        <div className="w-full bg-amber-500/15 border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-sm">
                             <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{formatPlayerShortName(rankingData[0])}</p>
                             <span className="text-base font-black text-amber-600 dark:text-amber-400 bg-amber-500/20 py-1 px-2.5 rounded-full border border-amber-500/30">{rankingData[0].currentElo.toFixed(0)}</span>
                         </div>
@@ -535,8 +535,8 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                                 </div>
                                                 <span className="font-semibold text-slate-900 dark:text-white text-[15px] truncate">{player.name} {player.surname}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <span className="font-extrabold text-sky-600 dark:text-sky-400 text-[15px] bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20">{player.currentElo.toFixed(0)}</span>
+                                            <div className="flex items-center gap-2.5 shrink-0">
+                                                <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2.5 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
                                                 {getTrendIcon(player.lastDelta)}
                                                 <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 p-1 hover:bg-sky-500/10 rounded-lg transition-colors" aria-label="Info">
                                                     <SFIcon name="info.circle" size={16} />
@@ -575,7 +575,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
             {!showAllPlayers && rankingData.length > 10 && (
                 <div className="mt-2">
-                    <HIGButton variant="gray" fullWidth onClick={() => setShowAllPlayers(true)} className="!rounded-2xl border border-slate-200/60 dark:border-white/10">
+                    <HIGButton variant="gray" fullWidth onClick={() => setShowAllPlayers(true)} className="border border-slate-200/80 dark:border-white/10 font-bold">
                         Mostra tutti i {rankingData.length} giocatori
                     </HIGButton>
                 </div>

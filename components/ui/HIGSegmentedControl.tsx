@@ -62,7 +62,7 @@ export const HIGSegmentedControl: React.FC<HIGSegmentedControlProps> = ({
     display: 'flex',
     position: 'relative',
     alignItems: 'center',
-    height: CONTROL_HEIGHT,
+    height: 'var(--hig-seg-height, 32px)',
     padding: CONTROL_PADDING,
     borderRadius: CONTROL_RADIUS,
     backgroundColor: 'var(--ios-tertiarySystemFill)',
@@ -102,7 +102,7 @@ export const HIGSegmentedControl: React.FC<HIGSegmentedControlProps> = ({
     background: 'none',
     padding: 0,
     fontFamily: "'Manrope', sans-serif",
-    fontSize: 13,
+    fontSize: 'var(--hig-seg-font, 13px)' as any,
     fontWeight: 500,
     lineHeight: '18px',
     transition: 'color 220ms ease-out',
@@ -112,14 +112,24 @@ export const HIGSegmentedControl: React.FC<HIGSegmentedControlProps> = ({
 
   return (
     <>
-      {/* Inject scoped dark / light mode styles for the highlight background */}
+      {/* Inject scoped dark / light mode styles and responsive heights */}
       <style>{`
+        .hig-seg-container {
+          --hig-seg-height: 32px;
+          --hig-seg-font: 13px;
+        }
+        @media (min-width: 768px) {
+          .hig-seg-container {
+            --hig-seg-height: 36px;
+            --hig-seg-font: 14px;
+          }
+        }
         .${HIGHLIGHT_CLASS} {
           background-color: var(--ios-segmentedSelected);
         }
       `}</style>
 
-      <div className={className} style={containerStyle} role="tablist">
+      <div className={`hig-seg-container ${className}`.trim()} style={containerStyle} role="tablist">
         {/* Sliding highlight */}
         <div className={HIGHLIGHT_CLASS} style={highlightStyle} />
 

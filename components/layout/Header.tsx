@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
 
     return (
          <header 
-             className="sticky top-0 z-20 flex items-center justify-between px-4 bg-white/70 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 transition-all"
+             className="sticky top-0 z-20 flex items-center justify-between px-4 bg-white dark:bg-[#111827] border-b border-slate-200/80 dark:border-white/10 transition-all"
              style={{
                  height: 'calc(70px + env(safe-area-inset-top, 0px))',
                  paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -26,12 +26,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
               <div className="flex flex-[2] md:flex-1 items-center justify-start overflow-hidden gap-1.5 md:gap-0">
                   <button
                       onClick={toggleSidebar}
-                      className="hig-focus-ring flex items-center justify-center text-sky-500 dark:text-sky-400 md:hidden w-[44px] h-[44px] -ml-2 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                      className="hig-focus-ring flex items-center justify-center text-slate-800 dark:text-white md:hidden w-[40px] h-[40px] -ml-1 shrink-0 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                       aria-label={isSidebarOpen ? 'Chiudi menu' : 'Apri menu'}
                       aria-expanded={isSidebarOpen}
                       aria-controls="app-sidebar"
                   >
-                      <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'wght' 400" }}>menu</span>
+                      <span className="material-symbols-outlined text-[24px]">menu</span>
                   </button>
                   
                   {/* Mobile Title (Hidden on Desktop) */}
@@ -86,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
                               logout();
                           }
                       }}
-                      className="hig-focus-ring flex min-h-[44px] min-w-[44px] items-center justify-center text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-500/10 transition-colors"
+                      className="hig-focus-ring flex min-h-[44px] min-w-[44px] items-center justify-center text-rose-500 hover:text-rose-600 rounded-full hover:bg-rose-500/10 transition-colors"
                       title="Esci"
                       aria-label="Esci"
                   >

@@ -32,9 +32,9 @@ interface SizePreset {
 }
 
 const SIZE_MAP: Record<NonNullable<HIGButtonProps['size']>, SizePreset> = {
-  large: { height: 50, paddingH: 20, fontSize: 17, fontWeight: 600 },
-  regular: { height: 44, paddingH: 16, fontSize: 17, fontWeight: 400 },
-  small: { height: 44, paddingH: 12, fontSize: 15, fontWeight: 400 },
+  large: { height: 44, paddingH: 18, fontSize: 15, fontWeight: 600 },
+  regular: { height: 34, paddingH: 14, fontSize: 13, fontWeight: 600 },
+  small: { height: 28, paddingH: 10, fontSize: 12, fontWeight: 500 },
 };
 
 /* ─── Variant style builders ──────────────────────────────────────────── */
@@ -51,39 +51,39 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
   switch (variant) {
     case 'filled':
       return {
-        backgroundColor: 'var(--ios-systemBlue)',
+        backgroundColor: '#0055D4',
         color: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 9999,
       };
     case 'tinted':
       return {
-        backgroundColor: 'var(--hig-btn-tint-bg, rgba(0, 122, 255, 0.15))',
-        color: 'var(--ios-systemBlue)',
-        borderRadius: 12,
+        backgroundColor: 'var(--hig-btn-tint-bg, rgba(0, 85, 212, 0.12))',
+        color: '#0055D4',
+        borderRadius: 9999,
       };
     case 'gray':
       return {
         backgroundColor: 'var(--ios-systemFill)',
         color: 'var(--ios-label)',
-        borderRadius: 12,
+        borderRadius: 9999,
       };
     case 'plain':
       return {
         backgroundColor: 'transparent',
-        color: 'var(--ios-systemBlue)',
-        borderRadius: 0,
+        color: '#0055D4',
+        borderRadius: 9999,
       };
     case 'destructive':
       return {
-        backgroundColor: 'var(--ios-systemRed)',
+        backgroundColor: '#EF4444',
         color: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 9999,
       };
     case 'success':
       return {
-        backgroundColor: 'var(--ios-systemGreen)',
+        backgroundColor: '#10B981',
         color: '#ffffff',
-        borderRadius: 12,
+        borderRadius: 9999,
       };
   }
 }
@@ -155,11 +155,11 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    minHeight: variant === 'plain' ? 44 : sizePreset.height,
+    minHeight: variant === 'plain' ? 36 : sizePreset.height,
     padding:
       variant === 'plain'
         ? '4px 8px'
-        : `8px ${sizePreset.paddingH}px`,
+        : `6px ${sizePreset.paddingH}px`,
     width: fullWidth ? '100%' : undefined,
     boxSizing: 'border-box',
 
@@ -185,22 +185,30 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
 
   return (
     <>
+      {/* Responsive button sizing for desktop */}
+      <style>{`
+        @media (min-width: 768px) {
+          .hig-btn-responsive-large   { min-height: 48px !important; font-size: 16px !important; padding-left: 22px !important; padding-right: 22px !important; }
+          .hig-btn-responsive-regular { min-height: 38px !important; font-size: 14px !important; padding-left: 18px !important; padding-right: 18px !important; }
+          .hig-btn-responsive-small   { min-height: 32px !important; font-size: 13px !important; padding-left: 14px !important; padding-right: 14px !important; }
+        }
+      `}</style>
       {/* Inject tint-background CSS custom property scoped to dark / light */}
       {variant === 'tinted' && (
         <style>{`
           .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 122, 255, 0.15);
+            --hig-btn-tint-bg: rgba(0, 85, 212, 0.12);
           }
           @media (prefers-color-scheme: dark) {
             .${TINT_SCOPE_CLASS} {
-              --hig-btn-tint-bg: rgba(10, 132, 255, 0.15);
+              --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
             }
           }
           [data-theme="dark"] .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(10, 132, 255, 0.15);
+            --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
           }
           [data-theme="light"] .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 122, 255, 0.15);
+            --hig-btn-tint-bg: rgba(0, 85, 212, 0.12);
           }
         `}</style>
       )}
@@ -208,7 +216,7 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
       <button
         {...buttonProps}
         type={type}
-        className={`hig-focus-ring ${variant === 'tinted' ? TINT_SCOPE_CLASS : ''} ${className}`.trim()}
+        className={`hig-focus-ring hig-btn-responsive-${size} ${variant === 'tinted' ? TINT_SCOPE_CLASS : ''} ${className}`.trim()}
         style={buttonStyle}
         disabled={disabled}
         onClick={onClick}

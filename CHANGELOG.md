@@ -1,3 +1,15 @@
+## v6.9.1 — 2026-09-04
+- **Restyling UI Clubio-Inspired (Apple HIG & Flat Design)**:
+  - Rimozione completa di gradienti e backdrop-blur a favore di un'estetica moderna, nitida e minimale.
+  - Nuova palette Dark Mode "Midnight" (`#111827` background, `#1a2233` card container, `#1f2937` bordi).
+  - Unificazione globale del verde di successo sul token Emerald 500 (`#10B981` / `variant="success"`) per tutti i pulsanti di inserimento giornata, salvataggio risultati e modifica.
+  - Schermata di accesso rinnovata con pulsante a pillola (`rounded-full`), PIN box compatti e feedback visivo allineato.
+  - Riorganizzazione bilanciata a due colonne della Dashboard desktop (Home) con header "Panoramica" e azioni rapide ergonomiche.
+- **Hardening Salvataggio & Fasi Playoff**:
+  - Allineamento deterministico dei tag `phase` per semifinali e finali dei tornei per prevenire sovrascritture di stato.
+- **Aggiornamento Testi Promozionali & Strategia Beta**:
+  - Nuovi testi promozionali e brochure con struttura narrativa incentrata sull'accesso multiutente con codice unico per il circolo, sull'hype generato dalla classifica ELO e statistiche per i giocatori, sulla fase beta gratuita e sul modello Value for Value.
+
 ## v6.9.0 — 2026-08-23
 - **Piano di Refactoring Modulare & Hardening Architetturale**:
   - **Modulo 1 (Core Integrity & Pairing Canoniche)**: Normalizzazione deterministica chiavi di coppia (`getCanonicalTeamKey`), whitelist delle fasi Beat the Box, aggiunta tabella classifica girone prima delle semifinali nel PDF Round Robin.

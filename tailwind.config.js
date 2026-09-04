@@ -132,6 +132,8 @@ export default {
         DEFAULT: '0.25rem',
         'lg':    '0.5rem',
         'xl':    '0.75rem',
+        '2xl':   '1rem',
+        '3xl':   '1.5rem',
         'full':  '9999px',
         // iOS radii
         'ios-sm': 'var(--ios-radius-sm)',

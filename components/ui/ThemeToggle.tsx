@@ -11,7 +11,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onToggle }) => {
     return (
         <button
             onClick={onToggle}
-            className="hig-focus-ring flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+            className="hig-focus-ring flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full border border-slate-200/80 dark:border-white/10 bg-slate-100/70 dark:bg-white/5 text-slate-700 dark:text-slate-300 transition-colors hover:bg-slate-200/60 dark:hover:bg-white/10"
             aria-label={theme === 'light' ? 'Attiva tema scuro' : 'Attiva tema chiaro'}
         >
             <span className="flex h-[1.125rem] w-[1.125rem] items-center justify-center">

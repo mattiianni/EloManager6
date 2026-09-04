@@ -1105,9 +1105,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         {drawnPairs.map((pair, index) => {
                             const pairAvgElo = ((pair[0].currentElo + pair[1].currentElo) / 2).toFixed(0);
                             return (
-                                <div key={index} className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-600/5 border border-slate-200/70 dark:border-white/10 shadow-md hover:shadow-xl hover:border-sky-500/50 backdrop-blur-2xl transition-all duration-300">
+                                <div key={index} className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 shadow-sm hover:shadow-md transition-all duration-300">
                                     <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60 dark:border-white/10">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sm">
+                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0055D4] text-white shadow-sm">
                                             Coppia {index + 1}
                                         </span>
                                         <div className="flex items-center gap-1.5 bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20">
@@ -1152,17 +1152,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 </div>
 
                 {/* Fixed Floating Bottom Action Bar */}
-                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl p-3.5 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl z-40 flex items-stretch gap-3">
+                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xl z-40 flex items-stretch gap-2.5">
                     <Button 
                         variant="secondary" 
                         onClick={() => setDrawnPairs(null)}
-                        className="flex-1 min-h-12 h-auto text-center font-bold rounded-2xl"
+                        className="flex-1 min-h-11 h-auto text-center font-bold !rounded-full"
                     >
                         {mode === 'Manual' ? 'Modifica Coppie' : 'Ripeti Sorteggio'}
                     </Button>
                     <Button 
                         onClick={() => setShowTournamentFlow(true)}
-                        className="flex-1 min-h-12 h-auto text-center font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-sky-500/25"
+                        className="flex-1 min-h-11 h-auto text-center font-bold !bg-[#0055D4] hover:!bg-[#0047B3] text-white !rounded-full shadow-sm"
                     >
                         {selectedFormatForNewFlow ? 'Avanti - Impostazioni Torneo' : 'Avanti - Scelta Torneo'}
                     </Button>
@@ -1183,10 +1183,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 1: Multi Giornata */}
                     <div
                         onClick={openPairsFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-sky-500/10 via-transparent to-blue-600/5 border border-slate-200/70 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 shadow-md hover:shadow-xl hover:shadow-sky-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/30">
+                            <div className="p-3 rounded-2xl bg-[#0055D4] text-white shadow-sm">
                                 <CalendarIcon className="w-6 h-6" />
                             </div>
                             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
@@ -1202,10 +1202,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 2: Torneo Squadre */}
                     <div
                         onClick={openTeamFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-600/5 border border-slate-200/70 dark:border-white/10 hover:border-indigo-500/80 dark:hover:border-indigo-400/80 shadow-md hover:shadow-xl hover:shadow-indigo-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-indigo-500/80 dark:hover:border-indigo-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30">
+                            <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-sm">
                                 <UsersIcon className="w-6 h-6" />
                             </div>
                             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
@@ -1221,10 +1221,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 3: Torneo Singolo */}
                     <div
                         onClick={() => { setEntryChoice('pairs'); setSelectedFormatForNewFlow(null); setActiveFlow('single-tournament-format-first'); }}
-                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-600/5 border border-slate-200/70 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-md hover:shadow-xl hover:shadow-amber-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/30">
+                            <div className="p-3 rounded-2xl bg-amber-500 text-white shadow-sm">
                                 <TrophyIcon className="w-6 h-6" />
                             </div>
                             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
@@ -1240,10 +1240,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 4: Nuova Giornata */}
                     <div
                         onClick={openExistingTournamentDayFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br from-emerald-500/10 via-transparent to-teal-600/5 border border-slate-200/70 dark:border-white/10 hover:border-emerald-500/80 dark:hover:border-emerald-400/80 shadow-md hover:shadow-xl hover:shadow-emerald-500/10 backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-emerald-500/80 dark:hover:border-emerald-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30">
+                            <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-sm">
                                 <PlusIcon className="w-6 h-6" />
                             </div>
                             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">

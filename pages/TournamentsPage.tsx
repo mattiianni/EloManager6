@@ -462,11 +462,11 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     const [teamTournamentTeamsByRoot, setTeamTournamentTeamsByRoot] = useState<Record<string, TeamTournamentTeam[]>>({});
     const [teamTournamentMatchdaysByRoot, setTeamTournamentMatchdaysByRoot] = useState<Record<string, TeamTournamentMatchday[]>>({});
     const [teamTournamentConfigByRoot, setTeamTournamentConfigByRoot] = useState<Record<string, any>>({});
-    const teamTournamentMetaPillClass = 'inline-flex items-center self-start rounded-md border px-3 py-1 text-[11px] font-bold uppercase tracking-wide';
+    const teamTournamentMetaPillClass = 'inline-flex items-center self-start rounded-full border px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider';
     const teamTournamentInfoPillClass = `${teamTournamentMetaPillClass} bg-slate-100 text-slate-700 border-slate-300/70 dark:bg-white/15 dark:text-white/90 dark:border-white/15`;
     const roundRobinDayPillClass = `${teamTournamentMetaPillClass} bg-sky-100 text-sky-800 border-sky-300/60 dark:bg-white/10 dark:text-white/80 dark:border-white/10`;
     const playoffDayPillClass = `${teamTournamentMetaPillClass} bg-orange-100 text-orange-800 border-orange-300/60 dark:bg-orange-500/20 dark:text-orange-100 dark:border-orange-300/20`;
-    const tournamentActionButtonClass = '!p-1.5';
+    const tournamentActionButtonClass = '!p-1.5 !rounded-full';
     const tournamentActionButtonOnDarkClass = `${tournamentActionButtonClass} !bg-slate-100 hover:!bg-slate-200 !text-slate-700 border border-slate-300/70 dark:!bg-white/15 dark:hover:!bg-white/25 dark:!text-white dark:border-white/20`;
 
     useEffect(() => {
@@ -1102,7 +1102,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                 Organizza un nuovo torneo, inserisci una giornata, sorteggia le coppie e memorizza i risultati
                             </p>
                         </div>
-                        <Button onClick={onOpenDrawLauncher} size="lg" className="w-full flex-shrink-0 !bg-gradient-to-r !from-sky-500 !to-blue-600 !text-white shadow-md shadow-sky-500/25 !font-bold sm:w-auto">
+                        <Button onClick={onOpenDrawLauncher} size="lg" variant="primary" className="w-full flex-shrink-0 !bg-[#0055D4] hover:!bg-[#0047B3] !text-white shadow-sm !font-bold sm:w-auto">
                             Nuovo Torneo / Nuova Giornata
                         </Button>
                     </div>
@@ -1233,6 +1233,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                             <div className="flex items-center gap-2 ml-4">
                                                 <Button
                                                     size="sm"
+                                                    variant={groupRepresentsTeamTournament && isTeamTournamentCompleted ? 'secondary' : 'success'}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         if (groupRepresentsTeamTournament) {
@@ -1253,7 +1254,11 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             onNavigateToNewGiornata?.(displayName);
                                                         }
                                                     }}
-                                                    className="!px-3 !py-1.5 !text-sm"
+                                                    className={`!px-3.5 !py-1.5 !text-sm !font-bold ${
+                                                        groupRepresentsTeamTournament && isTeamTournamentCompleted
+                                                            ? ''
+                                                            : '!bg-[#10B981] hover:!bg-[#059669] !text-white shadow-sm'
+                                                    }`}
                                                 >
                                                     {groupRepresentsTeamTournament && isTeamTournamentCompleted
                                                         ? 'Riepilogo'
@@ -1269,7 +1274,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                 {!teamTournamentNeedsConfiguration && isExpanded && (
                                     <div className="space-y-3">
                                         {groupRepresentsTeamTournament && teamTournamentRoot && (
-                                            <div className="rounded-2xl border border-slate-200/45 bg-[linear-gradient(135deg,rgba(137,206,255,0.16),rgba(241,245,251,0.92))] p-3 shadow-sm dark:border-white/6 dark:bg-[linear-gradient(135deg,rgba(137,206,255,0.10),rgba(255,255,255,0.03))] dark:text-white sm:p-4">
+                                            <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-800/60 dark:text-white sm:p-4">
                                                 <div>
                                                     <div className="mb-1.5 flex items-start justify-between gap-2 sm:mb-2 sm:items-center sm:gap-3">
                                                         <span className={teamTournamentInfoPillClass}>
@@ -1413,7 +1418,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                         )}
 
                                         {(!groupRepresentsTeamTournament && (tournamentDays.length > 1 || !!tournamentDays[0].giornataName)) && (
-                                            <div className="rounded-2xl border border-slate-200/45 bg-[linear-gradient(135deg,rgba(137,206,255,0.16),rgba(241,245,251,0.92))] p-3 shadow-sm dark:border-white/6 dark:bg-[linear-gradient(135deg,rgba(137,206,255,0.10),rgba(255,255,255,0.03))] dark:text-white sm:p-4">
+                                            <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-800/60 dark:text-white sm:p-4">
                                                 <div className="flex items-start justify-between gap-2 sm:items-center sm:gap-3">
                                                     <span className={teamTournamentInfoPillClass}>
                                                         Gestione torneo

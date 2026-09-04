@@ -79,7 +79,7 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                         ))}
                     </div>
                     <div className="pt-2 flex justify-center">
-                        <Button variant="outline" onClick={onBack} className="!rounded-2xl border border-slate-200/60 dark:border-white/10">
+                        <Button variant="outline" onClick={onBack} className="border border-slate-200/60 dark:border-white/10 font-medium">
                             Torna indietro
                         </Button>
                     </div>

@@ -132,43 +132,46 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             label: 'Giocatori', 
             value: stats.activePlayers, 
             icon: 'person.2.fill',
-            bgGradient: 'from-indigo-500/10 via-transparent to-purple-600/5',
             borderColor: 'hover:border-indigo-500/80 dark:hover:border-indigo-400/80 hover:shadow-indigo-500/10',
-            iconBadge: 'from-indigo-500 to-purple-600 shadow-indigo-500/30',
+            iconBadge: 'bg-indigo-600',
             targetPage: 'Ranking' as const,
         },
         { 
             label: 'Partite', 
             value: stats.totalMatches, 
             icon: 'sportscourt',
-            bgGradient: 'from-sky-500/10 via-transparent to-blue-600/5',
             borderColor: 'hover:border-sky-500/80 dark:hover:border-sky-400/80 hover:shadow-sky-500/10',
-            iconBadge: 'from-sky-500 to-blue-600 shadow-sky-500/30',
+            iconBadge: 'bg-[#0055D4]',
             targetPage: 'Statistiche' as const,
         },
         { 
             label: 'Giornate', 
             value: stats.completedTournaments, 
             icon: 'calendar',
-            bgGradient: 'from-emerald-500/10 via-transparent to-teal-600/5',
             borderColor: 'hover:border-emerald-500/80 dark:hover:border-emerald-400/80 hover:shadow-emerald-500/10',
-            iconBadge: 'from-emerald-500 to-teal-600 shadow-emerald-500/30',
+            iconBadge: 'bg-emerald-600',
             targetPage: 'Statistiche' as const,
         },
     ];
 
     return (
         <div className="px-0 py-2 space-y-6">
-            <div className="flex justify-end items-center gap-3">
+            {/* Header Pagina con Titolo a sinistra e CTA a destra */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Panoramica</h1>
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Gestione tornei, classifiche e ranking ELO</p>
+                </div>
                 <Button
                     onClick={onOpenDrawLauncher}
-                    className="!bg-gradient-to-r !from-sky-500 !to-blue-600 !text-white shadow-md shadow-sky-500/25 !font-bold shrink-0"
+                    variant="primary"
+                    className="!bg-[#0055D4] !text-white shadow-sm hover:!bg-[#0047B3] !font-bold shrink-0 self-start sm:self-auto"
                 >
                     + Nuovo Torneo / Nuova Giornata
                 </Button>
             </div>
 
-            {/* KPI Grid - 3 cards affiancate sia su Mobile che su Desktop */}
+            {/* KPI Grid - 3 cards affiancate */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
                 {kpiItems.map((kpi, idx) => (
                     <div 
@@ -177,110 +180,187 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToPage?.(kpi.targetPage); } }}
                         role="button"
                         tabIndex={0}
-                        className={`cursor-pointer group relative flex flex-col justify-between p-2.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-slate-900/80 bg-gradient-to-br ${kpi.bgGradient} border border-slate-200/70 dark:border-white/10 ${kpi.borderColor} shadow-md hover:shadow-xl backdrop-blur-2xl transition-all duration-300 active:scale-95`}
+                        className={`cursor-pointer group relative flex flex-col justify-between p-3 sm:p-4.5 rounded-[20px] sm:rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 ${kpi.borderColor} shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none hover:shadow-md transition-all duration-300 active:scale-95`}
                     >
                         <div className="flex items-center justify-between gap-1 mb-1 sm:mb-2">
-                            <div className={`p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-br ${kpi.iconBadge} text-white shadow-md shrink-0`}>
+                            <div className={`p-1.5 sm:p-2 rounded-xl sm:rounded-2xl ${kpi.iconBadge} text-white shadow-sm shrink-0`}>
                                 <SFIcon name={kpi.icon} size={16} color="#FFFFFF" />
                             </div>
-                            <span className="text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{kpi.label}</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{kpi.label}</span>
                         </div>
-                        <div className="text-xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5 text-right">{kpi.value}</div>
+                        <div className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5 text-right">{kpi.value}</div>
                     </div>
                 ))}
             </div>
 
-            {/* TOP 5 */}
-            <Card
-                title={
-                    <div className="flex justify-between items-center w-full">
-                        <span className="font-bold text-sm tracking-wide text-slate-900 dark:text-white">Top 5 Giocatori</span>
-                        <button
-                            onClick={() => setIsPrintModalOpen(true)}
-                            disabled={players.length === 0}
-                            className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 flex items-center gap-1.5 bg-sky-500/10 hover:bg-sky-500/20 px-3 py-1.5 rounded-full border border-sky-500/20 transition-all"
-                        >
-                            <SFIcon name="printer" size={13} color="var(--ios-systemBlue)" />
-                            Stampa Profilo
-                        </button>
-                    </div>
-                }
-            >
-                <div className="divide-y divide-slate-200/60 dark:divide-white/10">
-                    {top5.length === 0 ? (
-                        <div className="py-4 text-center text-slate-400 text-sm">Nessun giocatore registrato</div>
-                    ) : (
-                        top5.map((p, i) => (
-                            <div key={p.id} className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => setProfilePlayer(p)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(p); } }} role="button" tabIndex={0}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                                        {getMedalIcon(i)}
+            {/* Desktop: 2 colonne bilanciate / Mobile: colonna singola */}
+            <div className="md:grid md:grid-cols-2 md:gap-6 space-y-5 md:space-y-0 items-start">
+                {/* COLONNA SINISTRA: Top 5 + Azioni Rapide */}
+                <div className="space-y-5">
+                    {/* TOP 5 */}
+                    <Card
+                        title={
+                            <div className="flex justify-between items-center w-full">
+                                <span className="font-bold text-sm tracking-wide text-slate-900 dark:text-white">Top 5 Giocatori</span>
+                                <button
+                                    onClick={() => setIsPrintModalOpen(true)}
+                                    disabled={players.length === 0}
+                                    className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 flex items-center gap-1.5 bg-sky-500/10 hover:bg-sky-500/20 px-2.5 py-1 rounded-full border border-sky-500/20 transition-all"
+                                >
+                                    <SFIcon name="printer" size={12} color="var(--ios-systemBlue)" />
+                                    Stampa Profilo
+                                </button>
+                            </div>
+                        }
+                    >
+                        <div className="divide-y divide-slate-200/60 dark:divide-white/10">
+                            {top5.length === 0 ? (
+                                <div className="py-4 text-center text-slate-400 text-sm">Nessun giocatore registrato</div>
+                            ) : (
+                                top5.map((p, i) => (
+                                    <div key={p.id} className="flex justify-between items-center py-2.5 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => setProfilePlayer(p)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(p); } }} role="button" tabIndex={0}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                                                {getMedalIcon(i)}
+                                            </div>
+                                            <span className="font-semibold text-slate-900 dark:text-white text-[15px]">{p.name} {p.surname}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="font-bold text-sky-600 dark:text-sky-400 text-[12px] bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20 tracking-tight">{p.currentElo.toFixed(0)}</span>
+                                            {getTrendIcon(p.lastDelta)}
+                                            <SFIcon name="chevron.right" size={12} color="var(--ios-label-tertiary)" />
+                                        </div>
                                     </div>
-                                    <span className="font-semibold text-slate-900 dark:text-white text-[15px]">{p.name} {p.surname}</span>
+                                ))
+                            )}
+                        </div>
+                        {players.length > 5 && (
+                            <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 text-center">
+                                <button
+                                    onClick={() => onNavigateToPage?.('Ranking')}
+                                    className="text-xs font-semibold text-[#0055D4] dark:text-sky-400 hover:underline inline-flex items-center gap-1"
+                                >
+                                    Visualizza classifica completa ({players.length} giocatori)
+                                    <SFIcon name="chevron.right" size={11} color="currentColor" />
+                                </button>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* AZIONI RAPIDE */}
+                    <Card title="Azioni Rapide">
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <button
+                                onClick={() => onNavigateToPage?.('Draw')}
+                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/10 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                                    <SFIcon name="shuffle" size={16} color="#8B5CF6" />
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="font-extrabold text-sky-600 dark:text-sky-400 text-[15px] bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20">{p.currentElo.toFixed(0)}</span>
-                                    {getTrendIcon(p.lastDelta)}
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">Sorteggi</div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Genera coppie</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => onNavigateToPage?.('Tournaments')}
+                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/10 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                                    <SFIcon name="trophy" size={16} color="#F59E0B" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">Tornei</div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Tabelloni & fasi</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => onNavigateToPage?.('Players')}
+                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/10 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                    <SFIcon name="person.2" size={16} color="#6366F1" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">Giocatori</div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Anagrafica & ELO</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => onNavigateToPage?.('Statistiche')}
+                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/10 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                    <SFIcon name="chart.bar" size={16} color="#10B981" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">Statistiche</div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Grafici e trend</div>
+                                </div>
+                            </button>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* COLONNA DESTRA: Ultima Giornata + Ultime Partite */}
+                <div className="space-y-5">
+                    {/* ULTIMA GIORNATA */}
+                    <Card title="Ultima Giornata completata">
+                        {!lastGiornata ? (
+                            <div className="py-4 text-center text-slate-400 text-sm">Nessuna giornata completata</div>
+                        ) : (
+                            <div className="divide-y divide-slate-200/60 dark:divide-white/10">
+                                <div className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => onNavigateToTournaments?.(lastGiornata.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToTournaments?.(lastGiornata.id); } }} role="button" tabIndex={0}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-9 h-9 bg-amber-500 rounded-xl shadow-sm text-white shrink-0">
+                                            <SFIcon name="trophy" size={18} color="white" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-[15px] text-slate-900 dark:text-white">{getTournamentDisplayName(lastGiornata as any, tournaments)}</div>
+                                            <div className="text-[12px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{lastGiornata.type} • {new Date(lastGiornata.date).toLocaleDateString('it-IT')}</div>
+                                        </div>
+                                    </div>
                                     <SFIcon name="chevron.right" size={12} color="var(--ios-label-tertiary)" />
                                 </div>
+                                {lastGiornata.top3.map((entry, i) => (
+                                    <div key={i} className="flex items-center gap-3 py-2.5 px-1">
+                                        <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                                            {getMedalIcon(i)}
+                                        </div>
+                                        <span className="text-[14px] font-medium text-slate-800 dark:text-slate-200">{entry.label}</span>
+                                    </div>
+                                ))}
                             </div>
-                        ))
-                    )}
+                        )}
+                    </Card>
+
+                    {/* ULTIME PARTITE */}
+                    <Card title="Ultime Partite">
+                        {recentMatches.length === 0 ? (
+                            <div className="py-4 text-center text-slate-400 text-sm">Nessuna partita registrata</div>
+                        ) : (
+                            <div className="divide-y divide-slate-200/60 dark:divide-white/10">
+                                {recentMatches.map((m, i) => (
+                                    <div key={i} className="flex justify-between items-center py-2.5 px-1">
+                                        <div className="min-w-0 pr-3">
+                                            <div className={`text-[14px] truncate ${m.winner === 'team1' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t1}</div>
+                                            <div className={`text-[14px] truncate mt-0.5 ${m.winner === 'team2' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t2}</div>
+                                            <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1">{m.date}</div>
+                                        </div>
+                                        <div className="text-right shrink-0 font-mono text-[13px] font-bold flex flex-col gap-0.5 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-white/10">
+                                            <div className={m.winner === 'team1' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}>{m.t1Score}</div>
+                                            <div className={m.winner === 'team2' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}>{m.t2Score}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
                 </div>
-            </Card>
-
-            {/* ULTIMA GIORNATA */}
-            <Card title="Ultima Giornata completata">
-                {!lastGiornata ? (
-                    <div className="py-4 text-center text-slate-400 text-sm">Nessuna giornata completata</div>
-                ) : (
-                    <div className="divide-y divide-slate-200/60 dark:divide-white/10">
-                        <div className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => onNavigateToTournaments?.(lastGiornata.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToTournaments?.(lastGiornata.id); } }} role="button" tabIndex={0}>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-md text-white shrink-0">
-                                    <SFIcon name="trophy.fill" size={18} color="white" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-[15px] text-slate-900 dark:text-white">{getTournamentDisplayName(lastGiornata as any, tournaments)}</div>
-                                    <div className="text-[12px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{lastGiornata.type} • {new Date(lastGiornata.date).toLocaleDateString('it-IT')}</div>
-                                </div>
-                            </div>
-                            <SFIcon name="chevron.right" size={12} color="var(--ios-label-tertiary)" />
-                        </div>
-                        {lastGiornata.top3.map((entry, i) => (
-                            <div key={i} className="flex items-center gap-3 py-2.5 px-1">
-                                <div className="w-7 h-7 flex items-center justify-center shrink-0">
-                                    {getMedalIcon(i)}
-                                </div>
-                                <span className="text-[14px] font-medium text-slate-800 dark:text-slate-200">{entry.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Card>
-
-            {/* ULTIME PARTITE */}
-            <Card title="Ultime Partite">
-                {recentMatches.length === 0 ? (
-                    <div className="py-4 text-center text-slate-400 text-sm">Nessuna partita registrata</div>
-                ) : (
-                    <div className="divide-y divide-slate-200/60 dark:divide-white/10">
-                        {recentMatches.map((m, i) => (
-                            <div key={i} className="flex justify-between items-center py-3 px-1">
-                                <div className="min-w-0 pr-3">
-                                    <div className={`text-[14px] truncate ${m.winner === 'team1' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t1}</div>
-                                    <div className={`text-[14px] truncate mt-0.5 ${m.winner === 'team2' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t2}</div>
-                                    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1">{m.date}</div>
-                                </div>
-                                <div className="text-right shrink-0 font-mono text-[14px] font-bold flex flex-col gap-0.5 bg-slate-100/70 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/10">
-                                    <div className={m.winner === 'team1' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}>{m.t1Score}</div>
-                                    <div className={m.winner === 'team2' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}>{m.t2Score}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Card>
+            </div>
 
             <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
             <PlayerPrintModal

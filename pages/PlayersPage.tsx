@@ -210,7 +210,15 @@ const PlayersPage: React.FC = () => {
     }, [players, sortIndex]);
 
     return (
-        <div className="px-0 py-4 space-y-5">
+        <div className="px-0 py-2 sm:py-4 space-y-4 sm:space-y-5">
+            {/* Header Title */}
+            <div className="flex justify-between items-center mb-1">
+                <div>
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">Giocatori</h2>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Gestione anagrafica e punteggi ELO</p>
+                </div>
+            </div>
+
             {/* Header Actions */}
             <div style={{ padding: '0 0', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }} className="sm:flex-row sm:justify-between sm:items-center">
                 <HIGSegmentedControl 
@@ -258,8 +266,8 @@ const PlayersPage: React.FC = () => {
                                         <div className="text-[12px] text-ios-label-secondary mt-0.5">{player.position}</div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="font-bold text-ios-blue text-[15px]">{player.currentElo.toFixed(0)}</span>
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                    <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
                                     <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green p-1" aria-label="Profilo"><SFIcon name="info.circle" size={16}/></button>
                                     <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue p-1" aria-label="Modifica"><SFIcon name="pencil" size={16}/></button>
                                     <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red p-1" aria-label="Elimina"><SFIcon name="trash" size={16}/></button>
