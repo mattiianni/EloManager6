@@ -10,6 +10,8 @@ import { GironiPrinter } from './gironiFaseFinale/printer';
 import { EliminazioneDirettaPrinter } from './eliminazioneDiretta/printer';
 import { TorneoLiberoPrinter } from './torneoLibero/printer';
 import { TeamTournamentPrinter } from './torneoASquadre/printer';
+import { TorneoPersonaleEngine } from './torneoPersonale/engine';
+import { TorneoPersonalePrinter } from './torneoPersonale/printer';
 
 class TournamentRegistryImpl {
     private engines = new Map<TournamentType, TournamentEngine>();
@@ -41,6 +43,10 @@ class TournamentRegistryImpl {
 
         // Torneo a Squadre
         this.registerPrinter(TeamTournamentPrinter);
+
+        // Torneo Personale (costruttore dinamico a fasi)
+        this.registerEngine(TorneoPersonaleEngine);
+        this.registerPrinter(TorneoPersonalePrinter);
     }
 
     public registerEngine(engine: TournamentEngine) {

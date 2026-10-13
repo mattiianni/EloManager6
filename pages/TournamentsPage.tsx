@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { calculateTeamTournamentStandings } from '../services/teamTournamentService.ts';
-import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport, printTournamentStatistics } from '../services/printService.ts';
+import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printCustomTournamentBlank, printCustomTournamentComplete, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport, printTournamentStatistics } from '../services/printService.ts';
 import { calculateAllBoxStandings, createFinalsMatches, groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, TeamTournamentFixture, TeamTournamentTeam, TeamTournamentMatchday } from '../types.ts';
 import Card from '../components/ui/Card.tsx';
@@ -749,7 +749,42 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             }
             return;
         }
-        
+
+        // Handle Torneo Personale (Custom Tournament)
+        if (tournament.type === TournamentType.TorneoPersonale) {
+            const hasAnyResults = tournamentMatches.some(m => m.winner || (m.sets && m.sets.some(s => Number(s.team1 || 0) > 0 || Number(s.team2 || 0) > 0)));
+            const customConfig: any = (tournament as any).customFlowConfig || {
+                phases: ['box', 'finali'],
+                playerMode: (tournament as any).playerMode || 'pairs',
+                numCampi: (tournament as any).numCampi || 1,
+            };
+
+            const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById as any, tournament);
+
+            if (!hasAnyResults) {
+                printCustomTournamentBlank(
+                    { name: tournament.name, club: tournament.club, date: tournament.date },
+                    customConfig,
+                    boxes,
+                    getPlayerById as any,
+                    displayName
+                );
+            } else {
+                printCustomTournamentComplete(
+                    tournament,
+                    customConfig,
+                    boxes,
+                    boxStandings,
+                    semifinalMatches,
+                    finalMatches,
+                    individualStandings,
+                    getPlayerById,
+                    displayName
+                );
+            }
+            return;
+        }
+
         // Handle Torneo Libero tournaments
         if (tournament.type === TournamentType.TorneoLibero) {
             // Extract unique pairs from matches

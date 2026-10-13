@@ -1,6 +1,6 @@
 ================================================================
-PADEL ELO MANAGER v6.9.1 - TESTI PROMOZIONALI
-Versione Documento: 6.9.1 (Mese: Set 2026)
+PADEL ELO MANAGER v6.10.0 - TESTI PROMOZIONALI
+Versione Documento: 6.10.0 (Mese: Ott 2026)
 
 ================================================================
 1. MESSAGGIO WHATSAPP (versione completa per circoli / gestori)
@@ -15,7 +15,7 @@ Per risolvere questo problema una volta per tutte ho sviluppato *Padel ELO Manag
 Cosa fa concretamente:
 
 - *Un unico codice per tutto il circolo*: il circolo riceve un solo codice di accesso a 6 cifre. Chi è al desk la mattina e chi arriva la sera possono entrambi entrare e aggiornare i tornei in tempo reale dallo smartphone o dal tablet, senza conflitti di account.
-- *8 formati torneo pronti all'uso*: TorneOtto 30', Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta TPRA, Torneo Libero e Torneo a Squadre. Sorteggi delle coppie automatici e bilanciati per livello.
+- *9 formati torneo pronti all'uso*: Crea Torneo Personale (fasi componibili sia a coppie che singoli), TorneOtto 30', Americano, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta TPRA, Torneo Libero e Torneo a Squadre. Sorteggi delle coppie automatici e bilanciati per livello.
 - *Resoconti chiari e classifiche spettacolari*: basta fogli volanti. I giocatori ricevono resoconti chiari, classifiche ordinate e statistiche evolute (win rate, compagni frequenti, rivali storici, streak di vittorie e premi simbolici come MVP o Miglior Rimonta).
 - *Classifica ELO con corrispondenza Playtomic*: il sistema assegna a ogni giocatore un rating ELO reale basato sui risultati in coppia, convertito direttamente nel livello Playtomic. Finalmente tutti capiscono subito quanto valgono e vedono la propria crescita nel tempo.
 - *Hype e fidelizzazione*: è proprio questo il punto forte. Avere una classifica bella da guardare e statistiche chiare crea quella sana competizione che fa parlare i giocatori nei giorni successivi e li spinge a prenotare e giocare di più.

@@ -15,6 +15,8 @@ import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
 import TournamentFormatSelector, { SingleTournamentFormat } from '../components/TournamentFormatSelector.tsx';
 import PlayerAvatar from '../components/ui/PlayerAvatar.tsx';
+import CustomTournamentBuilder from '../components/CustomTournamentBuilder.tsx';
+import { CustomTournamentFlowConfig, PlayerMode } from '../types/customTournament.ts';
 
 interface DrawPageProps {
     setActivePage: (page: 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments') => void;
@@ -27,7 +29,7 @@ interface DrawPageProps {
     isNavigationOverlayOpen?: boolean;
 }
 
-type DrawFlow = 'pairs' | 'team-tournament' | 'single-tournament-format-first';
+type DrawFlow = 'pairs' | 'team-tournament' | 'single-tournament-format-first' | 'custom-tournament';
 type DrawEntryChoice = 'menu' | 'pairs' | 'team' | 'existing';
 type TeamTournamentFormat = 'ROUND ROBIN' | 'ANDATA E RITORNO' | 'ELIMINAZIONE DIRETTA';
 type TeamTournamentMatchesPerDay = 3 | 5;
@@ -116,7 +118,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [numPairs, setNumPairs] = useState(2);
     const [customNumPairsInput, setCustomNumPairsInput] = useState('9');
     const [isCustomNumPairs, setIsCustomNumPairs] = useState(false);
+    const [playerMode, setPlayerMode] = useState<PlayerMode>('pairs');
     const [selectedFormatForNewFlow, setSelectedFormatForNewFlow] = useState<SingleTournamentFormat | null>(null);
+    const [customTournamentFlowConfig, setCustomTournamentFlowConfig] = useState<CustomTournamentFlowConfig | null>(null);
     const [drawnPairs, setDrawnPairs] = useState<[Player, Player][] | null>(null);
     const [manualPairs, setManualPairs] = useState<[string, string][]>([]);
     const [isShuffling, setIsShuffling] = useState(false);
@@ -178,7 +182,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
         ? tournaments.find(t => t.id === teamTournamentToConfigure) || null
         : null;
 
-    const requiredParticipants = numPairs * 2;
+    const requiredParticipants = playerMode === 'singles' ? numPairs : numPairs * 2;
     const canSelectMore = participants.length < requiredParticipants;
 
     useEffect(() => {
@@ -481,6 +485,23 @@ const DrawPage: React.FC<DrawPageProps> = ({
         
         if (mode !== 'Manual' && participants.length < requiredParticipants) {
             setError(`Partecipanti insufficienti. Richiesti: ${requiredParticipants}, Selezionati: ${participants.length}.`);
+            return;
+        }
+
+        if (playerMode === 'singles') {
+            // Modalità Giocatori Singoli: nessun sorteggio coppie!
+            // Creiamo direttamente le coppie fittizie [p, p] per i singoli giocatori
+            try {
+                const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
+                setDrawnPairs(pairs);
+                if (selectedFormatForNewFlow) {
+                    setShowTournamentFlow(true);
+                } else {
+                    setActiveFlow('single-tournament-format-first');
+                }
+            } catch (e: any) {
+                setError(e.message);
+            }
             return;
         }
 
@@ -1040,13 +1061,59 @@ const DrawPage: React.FC<DrawPageProps> = ({
             clearPreselectedTournament={() => setNewGiornataForTournament(null)}
             forceExistingTournament={entryChoice === 'existing' && !newGiornataForTournament}
             initialFormat={selectedFormatForNewFlow || undefined}
+            customFlowConfig={customTournamentFlowConfig}
         />;
+    }
+
+    if (activeFlow === 'custom-tournament') {
+        const isFromExistingOrDirectDraw = isNewGiornataFlow || drawnPairs !== null;
+        const currentPartecipanti = drawnPairs ? drawnPairs.length : (playerMode === 'singles' ? numPairs : numPairs);
+
+        return (
+            <CustomTournamentBuilder
+                onConfirm={(config) => {
+                    setCustomTournamentFlowConfig(config);
+                    setSelectedFormatForNewFlow('torneo-personale');
+                    // Se non proveniamo da coppie già formate, imposta il numero selezionato nel builder
+                    if (!drawnPairs) {
+                        const targetPartecipanti = config.numPartecipanti || (config.playerMode === 'singles'
+                            ? (config.phases.includes('box') ? config.numCampi * 4 : 8)
+                            : (config.phases.includes('box') ? Math.max(3, config.numCampi * 3) : 4));
+                        setPlayerMode(config.playerMode);
+                        setNumPairs(targetPartecipanti);
+                        setActiveFlow('pairs');
+                    } else {
+                        // Se le coppie o i singoli sono già stati scelti, avvia subito il torneo!
+                        setShowTournamentFlow(true);
+                    }
+                }}
+                onBack={() => {
+                    if (drawnPairs) {
+                        // Se eravamo già dopo la selezione giocatori, torna alla schermata coppie/giocatori
+                        setActiveFlow('pairs');
+                    } else {
+                        setActiveFlow('pairs');
+                        setEntryChoice('menu');
+                    }
+                }}
+                initialPlayerMode={isFromExistingOrDirectDraw ? playerMode : (customTournamentFlowConfig?.playerMode || playerMode)}
+                hidePlayerModeToggle={isFromExistingOrDirectDraw}
+                numPartecipanti={currentPartecipanti}
+                initialCampi={customTournamentFlowConfig?.numCampi || 2}
+                initialPhases={customTournamentFlowConfig?.phases || []}
+            />
+        );
     }
 
     if (activeFlow === 'single-tournament-format-first' && !selectedFormatForNewFlow) {
         return (
             <TournamentFormatSelector
                 onSelectFormat={(format) => {
+                    if (format === 'torneo-personale') {
+                        setActiveFlow('custom-tournament');
+                        return;
+                    }
+
                     const initialPairsByFormat: Record<SingleTournamentFormat, number> = {
                         'torneotto-30': 4,
                         'beat-the-box': 4,
@@ -1055,9 +1122,14 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         'gironi-fase-finale': 6,
                         'eliminazione-diretta': 4,
                         'torneo-libero': 2,
+                        'torneo-personale': 4,
                     };
-                    const initialPairs = initialPairsByFormat[format];
+                    const initialPairs = initialPairsByFormat[format] || 4;
                     setSelectedFormatForNewFlow(format);
+                    if (format !== 'torneo-personale' && format !== 'americano') {
+                        setPlayerMode('pairs');
+                        setDrawnPairs(null);
+                    }
                     setIsCustomNumPairs(false);
                     setNumPairs(initialPairs);
                     setCustomNumPairsInput('9');
@@ -1253,6 +1325,33 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         <div>
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Nuova Giornata</h3>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Aggiungi nuove giornate ai tornei attivi</p>
+                        </div>
+                    </div>
+
+                    {/* Card 5: Crea Torneo Personale — SPECIALE BLU TENUE */}
+                    <div
+                        onClick={() => {
+                            setEntryChoice('pairs');
+                            setSelectedFormatForNewFlow(null);
+                            setActiveFlow('custom-tournament');
+                        }}
+                        className="group relative col-span-2 flex flex-col justify-between p-5 rounded-[22px] bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-300/80 dark:border-blue-400/40 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[140px]"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-sm">
+                                <span className="material-symbols-outlined text-2xl">extension</span>
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-blue-500 group-hover:text-blue-600 group-hover:bg-blue-200/80 transition-colors">
+                                <ArrowUpRightIcon className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="font-black text-lg text-blue-950 dark:text-blue-200 leading-tight group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                                Crea Torneo Personale
+                            </h3>
+                            <p className="text-xs font-medium text-blue-700/80 dark:text-blue-300/80 mt-1.5 leading-relaxed">
+                                Torneo personalizzabile in tutte le sue fasi
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -2122,18 +2221,91 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 ? 'grid grid-cols-1 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] gap-6 items-start'
                 : 'mx-auto w-full max-w-3xl'}>
                 <div className="space-y-6">
-                    <Card title="Opzioni Sorteggio Coppie">
+                    <Card
+                        title={
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+                                <span className="font-semibold text-[11px] sm:text-[12px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {playerMode === 'singles' ? 'Opzioni Partecipanti Singoli' : 'Opzioni Sorteggio Coppie'}
+                                </span>
+                                {!isTeamTournamentFlow && (
+                                    <div className="flex rounded-xl bg-slate-200/80 dark:bg-white/10 p-0.5 self-start sm:self-auto shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPlayerMode('pairs');
+                                                setParticipants([]);
+                                                setSeeds([]);
+                                                setDrawnPairs(null);
+                                            }}
+                                            className={`inline-flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                playerMode === 'pairs'
+                                                    ? 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="material-symbols-outlined text-[16px] leading-none">group</span>
+                                            <span>Coppie Fisse</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPlayerMode('singles');
+                                                setParticipants([]);
+                                                setSeeds([]);
+                                                setDrawnPairs(null);
+                                                // Default a 4 o 8 giocatori
+                                                if (numPairs < 4) {
+                                                    setNumPairs(4);
+                                                }
+                                            }}
+                                            className={`inline-flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                playerMode === 'singles'
+                                                    ? 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="material-symbols-outlined text-[16px] leading-none">person</span>
+                                            <span>Giocatori Singoli</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        }
+                    >
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Numero Coppie da Sorteggiare</label>
+                                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    {playerMode === 'singles' ? 'Numero Giocatori' : 'Numero Coppie da Sorteggiare'}
+                                </label>
                                  <div className="mt-1 flex items-center flex-wrap gap-2">
                                     {(() => {
-                                        let allowedPairs = Array.from({ length: 7 }, (_, i) => i + 2);
+                                        if (playerMode === 'singles') {
+                                            const allowedCounts = selectedFormatForNewFlow === 'americano'
+                                                ? [6, 7, 8, 9, 10, 11, 12, 14, 16]
+                                                : [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16];
+                                            return allowedCounts.map(num => (
+                                                <Button
+                                                    key={num}
+                                                    type="button"
+                                                    variant={numPairs === num && !isCustomNumPairs ? 'primary' : 'secondary'}
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setIsCustomNumPairs(false);
+                                                        setNumPairs(num);
+                                                    }}
+                                                    className="!px-4"
+                                                >
+                                                    {num}
+                                                </Button>
+                                            ));
+                                        }
+
+                                        let allowedPairs = Array.from({ length: 8 }, (_, i) => i + 3); // 3..10
                                         if (selectedFormatForNewFlow === 'torneotto-30') allowedPairs = [4];
-                                        else if (selectedFormatForNewFlow === 'beat-the-box') allowedPairs = [4, 6, 8];
-                                        else if (selectedFormatForNewFlow === 'americano') allowedPairs = [4, 5, 6, 7, 8];
-                                        else if (selectedFormatForNewFlow === 'round-robin-finali') allowedPairs = [4, 5, 6, 7, 8];
-                                        else if (selectedFormatForNewFlow === 'gironi-fase-finale') allowedPairs = [6, 7, 8];
+                                        else if (selectedFormatForNewFlow === 'beat-the-box') allowedPairs = [3, 4, 6, 8, 10];
+                                        else if (selectedFormatForNewFlow === 'americano') allowedPairs = [6, 7, 8, 9, 10, 11, 12];
+                                        else if (selectedFormatForNewFlow === 'round-robin-finali') allowedPairs = [4, 5, 6, 7, 8, 9, 10];
+                                        else if (selectedFormatForNewFlow === 'gironi-fase-finale') allowedPairs = [6, 7, 8, 9, 10, 12];
                                         else if (selectedFormatForNewFlow === 'eliminazione-diretta') allowedPairs = [4, 6, 8];
                                         return allowedPairs.map(num => (
                                             <Button
@@ -2165,17 +2337,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                     handleFlowChange('pairs');
                                                 }
                                                 setIsCustomNumPairs(true);
-                                                let minCustom = 9;
+                                                let minCustom = playerMode === 'singles' ? 17 : 9;
                                                 if (selectedFormatForNewFlow === 'beat-the-box' && numPairs % 2 !== 0) {
                                                     minCustom = 10;
                                                 }
                                                 const nextNumPairs = Math.max(minCustom, numPairs);
-                                                setNumPairs(nextNumPairs); // Assicura che parta dal minimo corretto
+                                                setNumPairs(nextNumPairs);
                                                 setCustomNumPairsInput(String(nextNumPairs));
                                             }}
                                             className="!px-4 font-bold"
                                         >
-                                            9+
+                                            {playerMode === 'singles' ? 'Altro' : '9+'}
                                         </Button>
                                     )}
 
@@ -2183,15 +2355,15 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         <div className="flex items-center gap-2 ml-0 sm:ml-2">
                                             <button
                                                 type="button"
-                                                aria-label="Diminuisci numero di coppie"
+                                                aria-label={playerMode === 'singles' ? 'Diminuisci numero di giocatori' : 'Diminuisci numero di coppie'}
                                                 onClick={() => {
                                                     const step = selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1;
-                                                    const minimum = selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9;
+                                                    const minimum = playerMode === 'singles' ? 4 : (selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9);
                                                     const nextValue = Math.max(minimum, numPairs - step);
                                                     setNumPairs(nextValue);
                                                     setCustomNumPairsInput(String(nextValue));
                                                 }}
-                                                disabled={numPairs <= (selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9)}
+                                                disabled={numPairs <= (playerMode === 'singles' ? 4 : (selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9))}
                                                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                                             >
                                                 −
@@ -2201,7 +2373,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 inputMode="numeric"
                                                 pattern="[0-9]*"
                                                 enterKeyHint="done"
-                                                min={9}
+                                                min={playerMode === 'singles' ? 4 : 9}
                                                 max={64}
                                                 step={selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1}
                                                 value={customNumPairsInput}
@@ -2209,12 +2381,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                     const rawValue = e.target.value.replace(/\D/g, '');
                                                     setCustomNumPairsInput(rawValue);
                                                     const val = parseInt(rawValue, 10);
-                                                    if (!isNaN(val) && val >= 9 && val <= 64) {
+                                                    if (!isNaN(val) && val >= (playerMode === 'singles' ? 4 : 9) && val <= 64) {
                                                         setNumPairs(val);
                                                     }
                                                 }}
                                                 onBlur={() => {
-                                                    const minimum = selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9;
+                                                    const minimum = playerMode === 'singles' ? 4 : (selectedFormatForNewFlow === 'beat-the-box' ? 10 : 9);
                                                     let nextValue = parseInt(customNumPairsInput, 10);
                                                     if (Number.isNaN(nextValue)) nextValue = minimum;
                                                     nextValue = Math.min(64, Math.max(minimum, nextValue));
@@ -2227,12 +2399,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') e.currentTarget.blur();
                                                 }}
-                                                aria-label="Numero personalizzato di coppie"
+                                                aria-label={playerMode === 'singles' ? 'Numero personalizzato di giocatori' : 'Numero personalizzato di coppie'}
                                                 className="h-11 w-20 rounded-md border border-gray-300 bg-white px-2 text-center text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             />
                                             <button
                                                 type="button"
-                                                aria-label="Aumenta numero di coppie"
+                                                aria-label={playerMode === 'singles' ? 'Aumenta numero di giocatori' : 'Aumenta numero di coppie'}
                                                 onClick={() => {
                                                     const step = selectedFormatForNewFlow === 'beat-the-box' ? 2 : 1;
                                                     const nextValue = Math.min(64, numPairs + step);
@@ -2244,11 +2416,13 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                             >
                                                 +
                                             </button>
-                                            <span className="text-sm text-gray-500 dark:text-gray-400">coppie</span>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                {playerMode === 'singles' ? 'giocatori' : 'coppie'}
+                                            </span>
                                         </div>
                                     )}
 
-                                    {!isNewGiornataFlow && !isLauncherContext && entryChoice !== 'existing' && (
+                                    {!isNewGiornataFlow && !isLauncherContext && entryChoice !== 'existing' && playerMode === 'pairs' && (
                                         <Button
                                             type="button"
                                             variant={entryChoice === 'team' ? 'primary' : 'secondary'}
@@ -2261,19 +2435,22 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                     )}
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Modalità di Sorteggio</label>
-                                <select value={mode} onChange={e => setMode(e.target.value as DrawMode)} disabled={isTeamTournamentFlow} className="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <option value="Normal">Casuale</option>
-                                    <option value="Balanced">Bilanciato</option>
-                                    <option value="Seeded">Teste di Serie</option>
-                                    <option value="Manual">Manuale</option>
-                                </select>
-                            </div>
+
+                            {playerMode === 'pairs' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Modalità di Sorteggio</label>
+                                    <select value={mode} onChange={e => setMode(e.target.value as DrawMode)} disabled={isTeamTournamentFlow} className="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <option value="Normal">Casuale</option>
+                                        <option value="Balanced">Bilanciato</option>
+                                        <option value="Seeded">Teste di Serie</option>
+                                        <option value="Manual">Manuale</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </Card>
 
-                    {!isTeamTournamentFlow && mode === 'Seeded' && (
+                    {!isTeamTournamentFlow && playerMode === 'pairs' && mode === 'Seeded' && (
                         <Card title="Seleziona Teste di Serie">
                             <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {participantPlayers.sort((a,b) => b.currentElo - a.currentElo).map(p => (
@@ -2286,7 +2463,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         </Card>
                     )}
 
-                    {!isTeamTournamentFlow && mode !== 'Manual' && (
+                    {!isTeamTournamentFlow && (playerMode === 'singles' || mode !== 'Manual') && (
                         <Card title={participantsTitle}>
                             <div className="space-y-2">
                                  <input
@@ -2313,20 +2490,34 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                     
                     {!isTeamTournamentFlow && !isNavigationOverlayOpen && (
-                        <div className="fixed xl:sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] xl:bottom-6 left-4 right-4 xl:left-auto xl:right-auto z-20 rounded-2xl bg-white/90 p-2 xl:p-4 shadow-lg xl:shadow-2xl backdrop-blur-xl dark:bg-slate-900/90 xl:border xl:border-slate-200 xl:dark:border-slate-700">
+                        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-6 z-20 w-full max-w-3xl mx-auto rounded-2xl bg-white/95 p-2 sm:p-3 shadow-xl backdrop-blur-xl dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80">
                             <Button
                                 onClick={handleDraw}
-                                className="w-full xl:py-4 xl:text-lg"
-                                disabled={isShuffling || (mode !== 'Manual' && !isFull)}
+                                className="w-full py-3.5 sm:py-4 text-base sm:text-lg font-bold"
+                                disabled={isShuffling || ((playerMode === 'pairs' && mode === 'Manual') ? false : !isFull)}
                             >
-                                <ShuffleIcon /> <span className="ml-2">{isShuffling ? 'Sorteggiando...' : (mode === 'Manual' ? 'Conferma Coppie' : 'Sorteggia Coppie')}</span>
+                                {playerMode === 'singles' ? (
+                                    <>
+                                        <span className="material-symbols-outlined mr-2">arrow_forward</span>
+                                        <span>{selectedFormatForNewFlow ? 'Avanti - Configurazione' : 'Avanti - Scelta Torneo'}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShuffleIcon />
+                                        <span className="ml-2">
+                                            {isShuffling
+                                                ? 'Sorteggiando...'
+                                                : (mode === 'Manual' ? 'Conferma Coppie' : 'Sorteggia Coppie')}
+                                        </span>
+                                    </>
+                                )}
                             </Button>
                             {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
                         </div>
                     )}
                 </div>
 
-                {mode === 'Manual' && (
+                {playerMode === 'pairs' && mode === 'Manual' && (
                 <div>
                         <Card title="Selezione Manuale Coppie">
                         <div className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto">

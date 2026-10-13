@@ -3,9 +3,20 @@ export default {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './types/**/*.{js,ts,jsx,tsx}',
     './App.tsx',
     './index.tsx',
     './index.html',
+  ],
+  safelist: [
+    'bg-emerald-500',
+    'bg-amber-500',
+    'bg-sky-500',
+    'bg-indigo-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-yellow-500',
+    'bg-teal-500',
   ],
   darkMode: 'class',
   theme: {

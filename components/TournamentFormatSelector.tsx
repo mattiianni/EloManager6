@@ -9,7 +9,8 @@ export type SingleTournamentFormat =
   | 'torneo-libero'
   | 'gironi-fase-finale'
   | 'beat-the-box'
-  | 'eliminazione-diretta';
+  | 'eliminazione-diretta'
+  | 'torneo-personale';
 
 export const getFormatDisplayName = (format: SingleTournamentFormat): string => {
     switch (format) {
@@ -20,11 +21,13 @@ export const getFormatDisplayName = (format: SingleTournamentFormat): string => 
         case 'gironi-fase-finale': return 'Gironi + Fase Finale';
         case 'beat-the-box': return 'Beat the Box';
         case 'eliminazione-diretta': return 'Eliminazione Diretta';
+        case 'torneo-personale': return 'Crea Torneo Personale';
         default: return '';
     }
 };
 
 const FORMAT_DESCRIPTIONS: Record<SingleTournamentFormat, string> = {
+    'torneo-personale': 'Torneo personalizzabile in tutte le sue fasi.',
     'torneotto-30': "3 coppie si sfidano in 3 partite da 30' ciascuna.",
     'beat-the-box': '4 giocatori si sfidano su un singolo campo, in 3 partite. I migliori procedono alla fase finale.',
     'americano': 'Tutti contro tutti, le coppie ruotano continuamente.',
@@ -35,6 +38,7 @@ const FORMAT_DESCRIPTIONS: Record<SingleTournamentFormat, string> = {
 };
 
 const ALL_FORMATS: SingleTournamentFormat[] = [
+    'torneo-personale',
     'torneotto-30',
     'beat-the-box',
     'americano',
@@ -58,25 +62,40 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                         Scegli la tipologia di formato per la giornata. Ogni formato si adatta al numero di coppie e campi disponibili.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {ALL_FORMATS.map((format) => (
-                            <button
-                                key={format}
-                                onClick={() => onSelectFormat(format)}
-                                className="flex items-center justify-between p-4 rounded-2xl bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 shadow-sm backdrop-blur-xl cursor-pointer text-left active:scale-[0.98]"
-                            >
-                                <span className="min-w-0 flex-1 pr-3">
-                                    <span className="block text-[17px] font-bold text-slate-900 dark:text-white">
-                                        {getFormatDisplayName(format)}
+                        {ALL_FORMATS.map((format) => {
+                            const isPersonale = format === 'torneo-personale';
+                            return (
+                                <button
+                                    key={format}
+                                    onClick={() => onSelectFormat(format)}
+                                    className={`flex items-center justify-between p-4 rounded-2xl shadow-sm backdrop-blur-xl cursor-pointer text-left active:scale-[0.98] transition-all ${
+                                        isPersonale
+                                            ? 'sm:col-span-2 bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-300/80 dark:border-blue-400/40 hover:border-blue-500'
+                                            : 'bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 hover:border-sky-400'
+                                    }`}
+                                >
+                                    <span className="min-w-0 flex-1 pr-3">
+                                        <span className={`block text-[17px] font-bold ${
+                                            isPersonale ? 'text-blue-950 dark:text-blue-200' : 'text-slate-900 dark:text-white'
+                                        }`}>
+                                            {getFormatDisplayName(format)}
+                                        </span>
+                                        <span className={`mt-1 block text-xs font-medium leading-snug ${
+                                            isPersonale ? 'text-blue-700/80 dark:text-blue-300/80' : 'text-slate-500 dark:text-slate-400'
+                                        }`}>
+                                            {FORMAT_DESCRIPTIONS[format]}
+                                        </span>
                                     </span>
-                                    <span className="mt-1 block text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">
-                                        {FORMAT_DESCRIPTIONS[format]}
+                                    <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${
+                                        isPersonale
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                                    }`}>
+                                        →
                                     </span>
-                                </span>
-                                <span className="w-8 h-8 shrink-0 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
-                                    →
-                                </span>
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                     <div className="pt-2 flex justify-center">
                         <Button variant="outline" onClick={onBack} className="border border-slate-200/60 dark:border-white/10 font-medium">

@@ -1,15 +1,15 @@
-# Padel ELO Manager (v6.9.1)
+# Padel ELO Manager (v6.10.0)
 
 Applicazione gestionale completa per tornei di Padel con calcolo dinamico del punteggio ELO, gestione a gironi, fasi finali, esportazione e stampa referti.
 
-Versione documentata: `v6.9.1` (Mese: `Set 2026`)
+Versione documentata: `v6.10.0` (Mese: `Ott 2026`)
 
 ---
 
 ## Panoramica
 
 Padel ELO Manager consente di:
-- Organizzare tornei individuali, a coppie e a squadre (Americano, TorneOtto, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta TPRA).
+- Organizzare tornei individuali, a coppie e a squadre (Americano, TorneOtto, Beat the Box, Round Robin + Finali, Gironi + Fase Finale, Eliminazione Diretta TPRA, Torneo Personale).
 - Gestire il flusso di gioco e la registrazione dei punteggi in tempo reale.
 - Calcolare l'aggiornamento dei punteggi ELO dei giocatori secondo le regole ufficiali.
 - Generare report, classifiche e documenti stampabili in formato PDF.
@@ -17,7 +17,7 @@ Padel ELO Manager consente di:
 ---
 
 ## Stato del Progetto
-- Versione corrente: `6.9.1`
+- Versione corrente: `6.10.0`
 - Routine obbligatoria: documentazione, test/build, guida PDF, backup ZIP, dump TXT, commit e push.
 
 ## Aggiornamenti v6.7.9

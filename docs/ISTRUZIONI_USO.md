@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.9.1)
+# Istruzioni d'Uso (v6.10.0)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.9.1` — `Set 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.0` — `Ott 2026`).
 
 ## Accesso
 
@@ -30,12 +30,13 @@ In `Sorteggi` il flusso guidato ti permette di scegliere la modalità desiderata
 2. **Torneo a Squadre**: Sfide tra team e squadre numerate.
 3. **Torneo Singolo**: Eventi a coppie in un singolo appuntamento con scelta anticipata del formato.
 4. **Nuova Giornata**: Aggancio di giornate ai tornei attivi.
+5. **Crea Torneo Personale**: Torneo personalizzabile in tutte le sue fasi tramite drag & drop (Box, Americano, Gironi, TorneOtto, Semifinali, Finali) sia per Coppie Fisse che per Singoli.
 
 *Nota:* In qualsiasi momento della configurazione del sorteggio puoi cliccare sul pulsante **`← Torna indietro`** in alto per rientrare alla schermata iniziale.
 
-Per il sorteggio coppie puoi:
+Per il sorteggio coppie o singoli puoi:
 
-- selezionare i partecipanti
+- selezionare i partecipanti (o passare a modalità Giocatori Singoli)
 - scegliere la modalita':
   - casuale
   - bilanciato
@@ -58,9 +59,11 @@ Dopo il draw entri nel flow torneo:
 - TorneOtto 30'
 - Round Robin + Finali (Gestione campi, Andata/Ritorno, Riposi equi e 3 opzioni di fase finale: Solo Girone, Solo Finale, Semifinali + Finali)
 - Americano
-- Torneo Libero
-- Gironi + Fase Finale
 - Beat the Box
+- Gironi + Fase Finale
+- Eliminazione Diretta (TPRA)
+- Torneo Libero
+- Torneo Personale (Fasi componibili)
 - Torneo a Squadre (Round Robin)
 
 ## Torneo a Squadre (Round Robin)

@@ -809,9 +809,10 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
     };
 
     const isBeatTheBox = tournament.type === TournamentType.BeatTheBox;
+    const isTorneoPersonale = tournament.type === TournamentType.TorneoPersonale;
     const isGironiFaseFinale = tournament.type === TournamentType.GironiFaseFinale;
     const isRoundRobinFinali = tournament.type === TournamentType.RoundRobinFinali;
-    const isMultiPhase = isBeatTheBox || isGironiFaseFinale || isRoundRobinFinali;
+    const isMultiPhase = isBeatTheBox || isGironiFaseFinale || isRoundRobinFinali || isTorneoPersonale;
 
     // Non-multi-fase: apri sempre il modale semplice
     if (!isMultiPhase) {
@@ -2694,12 +2695,18 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  );
  }
 
- // Se è Beat the Box, raggruppa per box
- if (editingTournament.type === TournamentType.BeatTheBox) {
+ // Se è Beat the Box o Torneo Personale, raggruppa per box
+ if (editingTournament.type === TournamentType.BeatTheBox || editingTournament.type === TournamentType.TorneoPersonale) {
  const boxGroups = new Map<number, Match[]>();
 
- // Raggruppa i match per box (analizzando i giocatori coinvolti)
+ // Raggruppa i match per box (analizzando i giocatori coinvolti o groupNumber)
  tournamentMatches.forEach(match => {
+ if (match.groupNumber) {
+ const existing = boxGroups.get(match.groupNumber) || [];
+ existing.push(match);
+ boxGroups.set(match.groupNumber, existing);
+ return;
+ }
  const allPlayerIds = [...match.team1, ...match.team2];
  let boxNumber = 1;
 

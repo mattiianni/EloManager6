@@ -11,6 +11,7 @@ import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
+import CustomTournamentFlow from './CustomTournamentFlow.tsx';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
@@ -27,6 +28,7 @@ interface TournamentFlowProps {
  clearPreselectedTournament?: () => void;
  forceExistingTournament?: boolean;
  initialFormat?: TournamentFormat;
+ customFlowConfig?: any;
 }
 
 type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-quarterfinals' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
@@ -39,7 +41,8 @@ type TournamentFormat =
  | 'torneo-libero'
  | 'gironi-fase-finale'
  | 'beat-the-box'
- | 'eliminazione-diretta';
+ | 'eliminazione-diretta'
+ | 'torneo-personale';
 
 // Helper function for Beat the Box
 const groupMatchesIntoBoxes = (matches: Match[]) => {
@@ -241,8 +244,8 @@ const generateAmericanoMatches = (
   const players = pairs.flat(); // All individual players
   const n = players.length;
 
-  if (n % 2 !== 0) {
-    throw new Error('Americano requires an even number of players');
+  if (n < 4) {
+    throw new Error('Americano requires at least 4 players');
   }
 
   // Maximum active players per round given available fields
@@ -333,7 +336,7 @@ const generateAmericanoMatches = (
   return matches;
 };
 
-const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false, initialFormat }) => {
+const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, preselectedTournamentName, clearPreselectedTournament, forceExistingTournament = false, initialFormat, customFlowConfig }) => {
   const { tournaments, addMultipleMatches, getPlayerById } = usePadelStore();
   const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | null>(initialFormat || null);
 
@@ -346,6 +349,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
         case 'torneo-libero': return 'torneo-libero-setup';
         case 'gironi-fase-finale': return 'gironi-setup';
         case 'eliminazione-diretta': return 'setup';
+        case 'torneo-personale': return 'setup';
         default: return 'setup';
       }
     }
@@ -1362,27 +1366,23 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
         setStep('tpra-flow');
         return;
     }
-
- // For Beat the Box, render dedicated flow
- if (selectedFormat === 'beat-the-box') {
- // Verifica validità numero coppie
- if (!isBeatTheBoxValid(pairs.length)) {
- showHIGAlert('⚠️ Beat the Box richiede un numero PARI di coppie (4, 6, 8, 10, 12...)');
- setStep('tournament-selection');
- return;
- }
- // Il componente BeatTheBoxFlow verrà renderizzato separatamente
- if (selectedFormat === 'gironi-fase-finale') {
-    if (!gironiMatches || gironiMatches.length === 0) {
-      handleGenerateGironi();
+  // For Beat the Box, render dedicated flow
+  if (selectedFormat === 'beat-the-box') {
+    // Verifica validità numero coppie
+    if (!isBeatTheBoxValid(pairs.length)) {
+      showHIGAlert('⚠️ Beat the Box richiede un numero PARI di coppie (4, 6, 8, 10, 12...)');
+      setStep('tournament-selection');
+      return;
     }
-    setStep('gironi-phase');
+    setStep('scoring');
     return;
   }
 
- setStep('scoring'); // Usa 'scoring' come trigger
- return;
- }
+  // For Torneo Personale, render dedicated flow
+  if (selectedFormat === 'torneo-personale') {
+    setStep('scoring');
+    return;
+  }
 
  // For Round Robin + Finali, generate Round Robin matches
  if (isRoundRobinFinali) {
@@ -1501,6 +1501,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano :
  selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali :
+ selectedFormat === 'torneo-personale' ? TournamentType.TorneoPersonale :
  TournamentType.TorneOtto;
 
  console.log('🎯 Tournament type being saved:', tournamentType);
@@ -1511,7 +1512,10 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  date: new Date(tournamentDate).toISOString(),
  club: clubName,
  matchIds: [],
- status: 'completed'
+ status: 'completed',
+ customFlowConfig: selectedFormat === 'torneo-personale' ? customFlowConfig : undefined,
+ playerMode: selectedFormat === 'torneo-personale' ? customFlowConfig?.playerMode : undefined,
+ numCampi: selectedFormat === 'torneo-personale' ? customFlowConfig?.numCampi : undefined,
  };
 
  const finalMatches: Omit<Match, 'id'>[] = tournamentMatches.map((match, index) => {
@@ -1583,6 +1587,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  try {
  const tournamentType = selectedFormat === 'americano' ? TournamentType.Americano :
  selectedFormat === 'round-robin-finali' ? TournamentType.RoundRobinFinali :
+ selectedFormat === 'torneo-personale' ? TournamentType.TorneoPersonale :
  TournamentType.TorneOtto;
 
  console.log("🎯 Calculated tournament type:", tournamentType);
@@ -1599,6 +1604,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  roundRobinPlayoffType: selectedFormat === 'round-robin-finali' ? roundRobinPlayoffType : undefined,
  roundRobinFields: selectedFormat === 'round-robin-finali' ? roundRobinFields : undefined,
  roundRobinHomeAway: selectedFormat === 'round-robin-finali' ? roundRobinHomeAway : undefined,
+ customFlowConfig: selectedFormat === 'torneo-personale' ? customFlowConfig : undefined,
+ playerMode: selectedFormat === 'torneo-personale' ? customFlowConfig?.playerMode : undefined,
+ numCampi: selectedFormat === 'torneo-personale' ? customFlowConfig?.numCampi : undefined,
  };
 
  const matchesToSave = isRoundRobinFinali ? roundRobinMatches : tournamentMatches;
@@ -3119,6 +3127,21 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
           clubName={clubName}
           tournamentName={isCreatingNew ? tournamentName : selectedTournamentName}
           giornataName={undefined}
+        />
+      );
+    }
+
+    // Render Torneo Personale dedicated flow
+    if (selectedFormat === 'torneo-personale') {
+      return (
+        <CustomTournamentFlow
+          pairs={pairs}
+          config={customFlowConfig}
+          onFinish={onFinish}
+          tournamentDate={tournamentDate}
+          clubName={clubName}
+          tournamentName={(isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || ''}
+          giornataName={preselectedTournamentName || undefined}
         />
       );
     }

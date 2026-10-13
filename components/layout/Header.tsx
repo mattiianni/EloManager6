@@ -18,8 +18,8 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
          <header 
              className="sticky top-0 z-20 flex items-center justify-between px-4 bg-white dark:bg-[#111827] border-b border-slate-200/80 dark:border-white/10 transition-all"
              style={{
-                 height: 'calc(70px + env(safe-area-inset-top, 0px))',
-                 paddingTop: 'env(safe-area-inset-top, 0px)',
+                 height: 'calc(75px + env(safe-area-inset-top, 0px))',
+                 paddingTop: 'calc(5px + env(safe-area-inset-top, 0px))',
              }}
          >
               {/* Left Action & Mobile Title */}

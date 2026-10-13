@@ -1,4 +1,5 @@
 import { RankingEntry, Tournament, TournamentStandingEntry, Match, Player, TournamentType, EloHistoryEntry, TeamTournamentConfig, TeamTournamentTeam, TeamTournamentSchedule, TeamTournamentMatchday, TeamTournamentPlayerEntry, TeamTournamentFixture } from '../types.ts';
+import { CustomTournamentFlowConfig, PhaseBlockId, ALL_PHASE_BLOCKS } from '../types/customTournament.ts';
 import { calculateTeamTournamentStandings, TeamTournamentStandingRow } from './teamTournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { APP_MONTH, APP_VERSION } from '../constants.ts';
@@ -6310,6 +6311,519 @@ export const printBeatTheBoxComplete = (
     `;
 
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Beat the Box, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+};
+
+/**
+ * Stampa il tabellone vuoto per Torneo Personale (senza punteggi)
+ * Rispecchia esattamente le fasi scelte dall'utente (es. AMERICANO, SEMIFINALI, FINALI)
+ * con interruzioni di pagina controllate (break-inside: avoid / page-break-inside: avoid)
+ */
+export const printCustomTournamentBlank = (
+    tournamentDetails: { name: string; club: string; date: string },
+    config: CustomTournamentFlowConfig,
+    boxes: { boxNumber: number; players: Player[]; matches: Omit<Match, 'id' | 'tournamentId'>[] }[],
+    getPlayerById: (id: string) => Player | undefined,
+    displayNameOverride?: string
+) => {
+    const displayName = displayNameOverride || tournamentDetails.name;
+    const isSingles = config.playerMode === 'singles';
+    const phases = config.phases || [];
+    const firstPhase = phases[0] || (isSingles ? 'americano' : 'box');
+    const hasSemifinals = phases.includes('semifinali');
+    const hasFinals = phases.includes('finali');
+    const hasQuarters = phases.includes('quarti');
+
+    // Label dinamica formato
+    const formatLabels = phases.map(p => {
+        const blk = ALL_PHASE_BLOCKS.find(b => b.id === p);
+        return blk ? blk.label : p.toUpperCase();
+    }).join(' + ');
+
+    // 1. Contenuto prima fase (Box, Americano, Girone, Torneotto)
+    const boxesContent = boxes.map((box, bIdx) => {
+        let boxHeaderTitle = '';
+        if (firstPhase === 'americano') {
+            boxHeaderTitle = `🔄 FASE AMERICANO - ${box.players.length} GIOCATORI (${config.numCampi || 1} CAMPI)`;
+        } else if (firstPhase === 'torneotto') {
+            boxHeaderTitle = `🎱 TORNEOTTO - CAMPO ${box.boxNumber}`;
+        } else if (firstPhase === 'girone') {
+            boxHeaderTitle = `📋 GIRONE ALL'ITALIANA - CAMPO ${box.boxNumber}`;
+        } else {
+            boxHeaderTitle = `📦 BOX ${box.boxNumber} - CAMPO ${box.boxNumber}`;
+        }
+
+        const matchesHtml = box.matches.map((match) => {
+            const t1p1 = getPlayerById(match.team1[0]);
+            const t1p2 = getPlayerById(match.team1[1]);
+            const t2p1 = getPlayerById(match.team2[0]);
+            const t2p2 = getPlayerById(match.team2[1]);
+
+            if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+            const team1Name = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+            const team2Name = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+            const roundBadge = match.roundNumber ? `<span style="font-size: 9px; color: #2196f3; font-weight: bold; margin-right: 6px;">[T${match.roundNumber}]</span>` : '';
+
+            return `
+                <tr style="height: 24px;">
+                    <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${roundBadge}${team1Name}
+                    </td>
+                    <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                        <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                    </td>
+                    <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${team2Name}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const playersHtml = box.players.map((player, idx) => `
+            <div style="font-size: 10px; color: #555; margin: 2px 0;">
+                ${idx + 1}. ${player.name} ${player.surname} <span style="color: #999;">(ELO: ${player.currentElo ? player.currentElo.toFixed(2) : '1500.00'})</span>
+            </div>
+        `).join('');
+
+        return `
+            <div class="section-block" style="margin-bottom: 22px; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 13px; font-weight: bold; margin: 12px 0 6px 0; padding: 5px 8px; background: #eff6ff; border-left: 4px solid #2196f3;">
+                    ${boxHeaderTitle}
+                </h3>
+                <div style="background: #f8f9fa; padding: 8px 10px; border-radius: 4px; margin-bottom: 8px;">
+                    ${playersHtml}
+                </div>
+                <table style="margin-bottom: 4px; font-size: 11px; width: 100%;">
+                    <tbody>
+                        ${matchesHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }).join('');
+
+    // 2. Sezione Quarti di finale (se configurati)
+    let quartersHtml = '';
+    if (hasQuarters) {
+        quartersHtml = `
+            <div class="section-block" style="margin: 22px 0; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 13px; font-weight: bold; margin: 14px 0 8px 0; padding: 5px 8px; background: #f3e8ff; border-left: 4px solid #a855f7;">
+                    ⚡ QUARTI DI FINALE
+                </h3>
+                <table style="margin-bottom: 16px; font-size: 11px; width: 100%;">
+                    <tbody>
+                        ${[1, 2, 3, 4].map(qNum => `
+                            <tr style="height: 24px;">
+                                <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">QF${qNum} - Squadra A</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                                </td>
+                                <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div style="font-size: 9px; color: #666; margin-bottom: 2px;">QF${qNum} - Squadra B</div>
+                                    <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // 3. Sezione Semifinali (se configurate)
+    let semifinalsHtml = '';
+    if (hasSemifinals) {
+        semifinalsHtml = `
+            <div class="section-block" style="margin: 22px 0; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 13px; font-weight: bold; margin: 14px 0 8px 0; padding: 5px 8px; background: #ffedd5; border-left: 4px solid #f97316;">
+                    🏆 SEMIFINALI
+                </h3>
+                <table style="margin-bottom: 16px; font-size: 11px; width: 100%;">
+                    <tbody>
+                        <tr style="height: 24px;">
+                            <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1ª Semifinale (Semi A)</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                            <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                            </td>
+                            <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">1ª Semifinale (Semi A)</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                        </tr>
+                        <tr style="height: 24px;">
+                            <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">2ª Semifinale (Semi B)</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                            <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                            </td>
+                            <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">2ª Semifinale (Semi B)</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // 4. Sezione Finali (se configurate)
+    let finalsHtml = '';
+    if (hasFinals) {
+        finalsHtml = `
+            <div class="section-block" style="margin: 22px 0; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 13px; font-weight: bold; margin: 14px 0 8px 0; padding: 5px 8px; background: #fef3c7; border-left: 4px solid #eab308;">
+                    🏆 FINALI
+                </h3>
+                <table style="margin-bottom: 16px; font-size: 11px; width: 100%;">
+                    <tbody>
+                        <tr style="height: 24px;">
+                            <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">FINALE 1°/2° POSTO</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                            <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                            </td>
+                            <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">FINALE 1°/2° POSTO</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                        </tr>
+                        <tr style="height: 24px;">
+                            <td style="width: 37%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">🥉 FINALINA 3°/4° POSTO</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                            <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span> - <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px;">&nbsp;</span>
+                            </td>
+                            <td style="width: 37%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 2px;">🥉 FINALINA 3°/4° POSTO</div>
+                                <span style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; display: inline-block; font-size: 12px; width: 85%; min-width: 120px;">&nbsp;</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    const content = `
+        <style>
+            @page {
+                size: A4;
+                margin: 12mm 10mm;
+            }
+            body {
+                font-family: 'Manrope', sans-serif;
+                font-feature-settings: 'cv11', 'tnum', 'lnum';
+                font-size: 12px;
+                line-height: 1.4;
+                margin: 0;
+                padding: 18px;
+                background: white;
+            }
+            h1 {
+                font-size: 22px;
+                margin: 0 0 6px 0;
+                color: #2196f3;
+                font-weight: bold;
+            }
+            h2 {
+                font-size: 14px;
+                margin: 0 0 4px 0;
+                color: #475569;
+                font-weight: 600;
+            }
+            .section-block {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 6px 0;
+                font-size: 11px;
+            }
+            td {
+                padding: 6px 7px;
+                border-bottom: 1px solid #e5e7eb;
+                vertical-align: middle;
+                font-size: 11px;
+                line-height: 1.3;
+            }
+            tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            .footer {
+                margin-top: 24px;
+                padding-top: 14px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 9px;
+                color: #64748b;
+            }
+        </style>
+
+        <div style="text-align: center; margin-bottom: 16px;">
+            <h1>🛠️ ${displayName} - Scheda Punteggi</h1>
+            <h2>${tournamentDetails.club} - ${formatLabels}</h2>
+            <div style="color: #2196f3; font-size: 13px; font-weight: bold; margin: 4px 0 0 0;">
+                ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
+            </div>
+        </div>
+
+        <div style="border-bottom: 2px solid #2196f3; margin: 12px 0;"></div>
+
+        ${boxesContent}
+
+        ${quartersHtml}
+
+        ${semifinalsHtml}
+
+        ${finalsHtml}
+
+        <div class="footer">
+            <div style="text-align: left; margin-bottom: 4px;">
+                Padel ELO Manager - Torneo Personale (${formatLabels}) - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+            </div>
+            <div style="text-align: right; font-size: 8px;">
+                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
+            </div>
+        </div>
+    `;
+
+    return openPrintWindow(`${displayName.replace(' - ', ', ')}, Torneo Personale, ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+};
+
+/**
+ * Stampa il report completo con risultati per Torneo Personale
+ */
+export const printCustomTournamentComplete = (
+    tournament: Tournament,
+    config: CustomTournamentFlowConfig,
+    boxes: { boxNumber: number; players: Player[]; matches: Match[] }[],
+    boxStandings: { boxNumber: number; standings: any[] }[],
+    semifinalMatches: Match[],
+    finalMatches: Match[],
+    individualStandings: { player: Player; eloChange: number; rank: number; gamesWon: number; gamesLost: number; winPercentage: number }[],
+    getPlayerById: (id: string) => Player | undefined,
+    displayNameOverride?: string
+) => {
+    const displayName = displayNameOverride || tournament.name;
+    const isSingles = config?.playerMode === 'singles';
+    const phases = config?.phases || [];
+    const firstPhase = phases[0] || (isSingles ? 'americano' : 'box');
+    const formatLabels = phases.map(p => {
+        const blk = ALL_PHASE_BLOCKS.find(b => b.id === p);
+        return blk ? blk.label : p.toUpperCase();
+    }).join(' + ');
+
+    const cleanedBoxes = boxes.map(box => ({
+        ...box,
+        players: Array.from(new Map(box.players.map(p => [p.id, p])).values())
+    }));
+
+    const generateMatchRow = (match: Match) => {
+        const t1p1 = getPlayerById(match.team1[0]);
+        const t1p2 = getPlayerById(match.team1[1]);
+        const t2p1 = getPlayerById(match.team2[0]);
+        const t2p2 = getPlayerById(match.team2[1]);
+
+        if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
+
+        const team1Name = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+        const team2Name = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+        const scoreHtml = formatScoreBoxes(match.sets, false);
+
+        return `
+            <tr style="height: 24px;">
+                <td style="width: 37%; text-align: right; ${match.winner === 'team1' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                <td style="text-align: center; width: 26%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                    ${scoreHtml}
+                </td>
+                <td style="width: 37%; text-align: left; ${match.winner === 'team2' ? 'font-weight: bold;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+            </tr>
+        `;
+    };
+
+    const boxesContent = cleanedBoxes.map((box) => {
+        const matchesHtml = box.matches.map(match => generateMatchRow(match)).join('');
+
+        const boxStanding = boxStandings.find(bs => bs.boxNumber === box.boxNumber);
+        const standingsHtml = boxStanding ? boxStanding.standings.map((entry: any, idx: number) => `
+            <tr style="height: 24px;">
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${idx + 1}°</td>
+                <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.player.name} ${entry.player.surname}</td>
+                <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap;">${entry.points}</td>
+                <td style="text-align: center; width: 20%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
+            </tr>
+        `).join('') : '';
+
+        let boxHeaderTitle = `📦 BOX ${box.boxNumber} - CAMPO ${box.boxNumber}`;
+        if (firstPhase === 'americano') {
+            boxHeaderTitle = `🔄 FASE AMERICANO - ${box.players.length} GIOCATORI`;
+        } else if (firstPhase === 'torneotto') {
+            boxHeaderTitle = `🎱 TORNEOTTO - CAMPO ${box.boxNumber}`;
+        } else if (firstPhase === 'girone') {
+            boxHeaderTitle = `📋 GIRONE ALL'ITALIANA`;
+        }
+
+        return `
+            <div class="section-block" style="margin-bottom: 24px; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: bold; margin: 18px 0 6px 0; padding: 5px 8px; background: #eff6ff; border-left: 4px solid #2196f3;">
+                    ${boxHeaderTitle}
+                </h3>
+                <table style="margin-bottom: 6px; font-size: 10px;">
+                    <tbody>
+                        ${matchesHtml}
+                    </tbody>
+                </table>
+                ${standingsHtml ? `
+                    <h4 style="font-size: 11px; font-weight: bold; margin: 12px 0 4px 0; background: #f0f9ff; padding: 3px 5px;">CLASSIFICA ${boxHeaderTitle}</h4>
+                    <table style="margin-bottom: 6px; font-size: 10px;">
+                        <thead>
+                            <tr style="height: 20px;">
+                                <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Pos</th>
+                                <th style="font-size: 11px; padding: 5px 6px; height: 24px;">Giocatore</th>
+                                <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Pt</th>
+                                <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${standingsHtml}
+                        </tbody>
+                    </table>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    let semifinalsContent = '';
+    if (semifinalMatches.length > 0) {
+        semifinalsContent = `
+            <div class="section-block" style="margin: 22px 0; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 5px 8px; background: #ffedd5; border-left: 4px solid #f97316;">SEMIFINALI</h3>
+                <table style="margin-bottom: 6px;">
+                    <tbody>
+                        ${semifinalMatches.map((match, idx) => `
+                            <tr style="height: 20px;">
+                                <td colspan="3" style="background: #f8fafc; padding: 5px 6px; font-size: 11px; font-weight: bold; height: 24px;">Semifinale ${idx + 1}</td>
+                            </tr>
+                            ${generateMatchRow(match)}
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    let finalsContent = '';
+    if (finalMatches.length > 0) {
+        finalsContent = `
+            <div class="section-block" style="margin: 22px 0; page-break-inside: avoid; break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 5px 8px; background: #fef3c7; border-left: 4px solid #eab308;">FINALI</h3>
+                <table style="margin-bottom: 6px;">
+                    <tbody>
+                        ${finalMatches.map((match) => {
+                            const isGold = match.phase === 'final_1_2';
+                            const title = isGold ? '🏆 FINALE 1°/2° POSTO' : '🥉 FINALINA 3°/4° POSTO';
+                            const bg = isGold ? '#ffd54f' : '#ffe0b2';
+                            return `
+                                <tr style="height: 20px;">
+                                    <td colspan="3" style="background: ${bg}; padding: 5px 6px; font-size: 11px; font-weight: bold; text-align: center; height: 24px;">${title}</td>
+                                </tr>
+                                ${generateMatchRow(match)}
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    const cleanedIndividualStandings = Array.from(
+        new Map(individualStandings.map(entry => [entry.player.id, entry])).values()
+    ).sort((a, b) => (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost))
+     .map((e, idx) => ({ ...e, rank: idx + 1 }));
+
+    const individualStandingsHtml = cleanedIndividualStandings.map(entry => `
+        <tr style="height: 20px;">
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.rank}°</td>
+            <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.player.name} ${entry.player.surname}</td>
+            <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap;">${entry.gamesWon}</td>
+            <td style="text-align: center; width: 25%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap;">${entry.gamesLost}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.winPercentage ? entry.winPercentage.toFixed(1) : '0.0'}%</td>
+        </tr>
+    `).join('');
+
+    const content = `
+        <style>
+            @page { size: A4; margin: 12mm 10mm; }
+            body { font-family: 'Manrope', sans-serif; font-size: 11px; margin: 0; padding: 0; }
+            h1 { font-size: 22px; margin: 0 0 4px 0; color: #2196f3; font-weight: bold; }
+            h2 { font-size: 14px; margin: 0 0 3px 0; color: #475569; }
+            .section-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+            table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; }
+            th { background-color: #1e3a6e; color: white; padding: 5px 6px; font-weight: bold; font-size: 11px; height: 24px; }
+            td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; font-size: 11px; height: 24px; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #64748b; }
+        </style>
+
+        <div style="text-align: center; margin-bottom: 14px;">
+            <h1>🛠️ ${displayName}</h1>
+            <h2>${tournament.club} - ${formatLabels}</h2>
+            <div style="color: #2196f3; font-size: 11px; font-weight: bold; margin: 3px 0 0 0;">
+                ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
+            </div>
+        </div>
+
+        <div style="border-bottom: 2px solid #2196f3; margin: 10px 0 20px 0;"></div>
+
+        ${boxesContent}
+
+        ${semifinalsContent}
+
+        ${finalsContent}
+
+        <div class="section-block" style="page-break-inside: avoid; break-inside: avoid;">
+            <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 5px 8px; background: #e8f5e9; border-left: 4px solid #4caf50;">📊 CLASSIFICA INDIVIDUALE</h3>
+            <table style="margin-bottom: 6px;">
+                <thead>
+                    <tr style="height: 20px;">
+                        <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Pos</th>
+                        <th style="font-size: 11px; padding: 5px 6px; height: 24px;">Giocatore</th>
+                        <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Games V</th>
+                        <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">Games P</th>
+                        <th style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">% Vitt.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${individualStandingsHtml}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <div style="text-align: left; margin-bottom: 4px;">
+                Padel ELO Manager - Torneo Personale (${formatLabels}) - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+            </div>
+            <div style="text-align: right; font-size: 8px;">
+                ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
+            </div>
+        </div>
+    `;
+
+    return openPrintWindow(`${displayName.replace(' - ', ', ')}, Riepilogo Torneo Personale, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
 /**

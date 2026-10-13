@@ -1,3 +1,27 @@
+## v6.10.0 — 2026-10-13
+- **Nuovo Formato "Crea Torneo Personale" (Fasi Componibili & Drag-and-Drop)**:
+  - Introdotto il costruttore di tornei personalizzati (`CustomTournamentBuilder` e `CustomTournamentFlow`) accessibile dal DrawPage e dal selettore formato.
+  - Possibilità di combinare liberamente fasi iniziali (Box, Girone all'Italiana, TorneOtto, Americano) e fasi finali (Quarti, Semifinali, Finali, Finali Dirette, Ritorno).
+  - Supporto completo sia per **Coppie Fisse** che per **Giocatori Singoli**:
+    - Americano singolo con rotazione continua (senza box separati, turni con campi multipli e riposi automatici).
+    - Box per singoli (4 o 5 giocatori per campo, con rotazione 2v2 e gestione riposo per turno).
+    - Gironi e TorneOtto a coppie fisse con validazione avanzata delle combinazioni ammissibili.
+  - Avanzamento dinamico e seamless tra le fasi (box/americano -> semifinali -> finali) con calcolo classifiche e teste di serie deterministiche.
+  - Selezione flessibile "Coppie Fisse / Giocatori Singoli" resa disponibile anche da "+ Inserisci Giornata".
+  - Layout desktop rifinito e selettore numerico flessibile con attivazione counter "9+" / "Altro".
+- **Motore di Stampa PDF Dedicato per Torneo Personale**:
+  - Implementate le funzioni di stampa `printCustomTournamentBlank` e `printCustomTournamentComplete` in `printService.ts`.
+  - Intestazioni dinamiche e fedeli alle scelte dell'utente (`🔄 FASE AMERICANO`, `🏆 SEMIFINALI`, `🏆 FINALI 1°/2° e 3°/4° POSTO`) anziché la dicitura generica Beat the Box.
+  - Tabellone in bianco completo: le semifinali e le finali vengono stampate anche quando la fase a gironi o americano ha 1 solo campo/gruppo.
+  - Paginazione controllata con regole CSS anti-troncamento (`break-inside: avoid` / `page-break-inside: avoid`).
+- **Modernizzazione Iconografia UI**:
+  - Sostituite le vecchie emoji di sistema nei selettori modalità partecipanti con icone vettoriali Material Symbols (`group` per Coppie Fisse, `person` per Giocatori Singoli).
+  - Ottimizzazione spaziatura superiore barra del logo ELO Manager (+5px per respiro visivo).
+- **Hardening & Suite di Test Estesa**:
+  - Nuova suite di test `utils/customTournamentFlow.test.ts` con 42 test dedicati a permutazioni, accoppiamenti, tie-breaker e avanzamento playoff.
+  - Suite complessiva portata a 109 test Vitest (100% green) e 0 errori TypeScript.
+  - Verifica di regressione confermata con successo su tutti i 6 formati congelati e tornei a squadre.
+
 ## v6.9.1 — 2026-09-04
 - **Restyling UI Clubio-Inspired (Apple HIG & Flat Design)**:
   - Rimozione completa di gradienti e backdrop-blur a favore di un'estetica moderna, nitida e minimale.

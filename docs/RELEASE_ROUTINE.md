@@ -2,8 +2,8 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.9.1`
-- Mese attuale: `Set 2026`
+- Versione attuale: `6.10.0`
+- Mese attuale: `Ott 2026`
 
 ## Checklist Operativa
 
@@ -12,8 +12,8 @@
 3. Se sono state aggiunte nuove funzionalità o correzioni, incrementare la versione in `package.json` (`npm version patch --no-git-tag-version` o `minor`).
 4. Allineare `APP_VERSION` (e `APP_MONTH` se cambiato mese) in `constants.ts`.
 5. Verificare e aggiornare le descrizioni e i testi promozionali in `docs/Padel_ELO_Manager_Testi_Promo.txt` e `docs/Padel_ELO_Manager_Presentazione.html`.
-6. Aggiornare l'HTML guida utente corrente (`docs/Padel_ELO_Manager_Guida_v6.9.1.html`) e la guida in formato `.md` (`docs/ISTRUZIONI_USO.md`).
-7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` per la guida a squadre, e `swift scripts/html_to_pdf.swift docs/Padel_ELO_Manager_Guida_v6.9.1.html docs/Guida_Uso_v6.9.1.pdf` per la guida d'uso generica) per produrre in `docs/` i PDF aggiornati (`Guida_Torneo_a_Squadre_v6.9.1.pdf` e `Guida_Uso_v6.9.1.pdf`), rimuovendo i vecchi file PDF.
+6. Aggiornare l'HTML guida utente corrente (`docs/Padel_ELO_Manager_Guida_v6.10.0.html`) e la guida in formato `.md` (`docs/ISTRUZIONI_USO.md`).
+7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` per la guida a squadre, e `node scripts/generate-user-guide-pdf.mjs` per la guida d'uso generica) per produrre in `docs/` i PDF aggiornati (`Guida_Torneo_a_Squadre_v6.10.0.pdf` e `Guida_Uso_v6.10.0.pdf`), rimuovendo i vecchi file PDF.
 8. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.
 9. Creare backup `.zip` di ripristino (`Elo_Manager_v...zip`) e salvarlo sul Desktop dell'utente (`~/Desktop/`).

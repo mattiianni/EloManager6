@@ -13,6 +13,7 @@ export enum TournamentType {
     BeatTheBox = "Beat the Box",
     TorneoASquadre = "Torneo a Squadre",
     EliminazioneDiretta = "Eliminazione Diretta",
+    TorneoPersonale = "Torneo Personale",
 }
 
 export interface Player {
@@ -34,6 +35,7 @@ export interface Match {
     tournamentId?: string;
     roundNumber?: number;
     groupNumber?: number; // Girone persistito (1=A, 2=B, ...)
+    courtNumber?: number; // Campo assegnato (1, 2, 3...)
     createdAt?: string;
     phase?: MatchPhase;
 }
@@ -87,6 +89,12 @@ export interface Tournament {
     isBye?: boolean; // Se la partita del tabellone a eliminazione diretta è un BYE
     parentTournamentName?: string | null; // Nome torneo padre (per tornei figlio di un TorneOtto)
     dayLabel?: string | null; // Etichetta giornata (backfill column - da NON usare per display, usare giornataName||type)
+    customFlowConfig?: any; // Per Torneo Personale: JSON delle fasi
+    custom_flow_config?: any; // Formato DB
+    playerMode?: 'pairs' | 'singles';
+    player_mode?: 'pairs' | 'singles';
+    numCampi?: number;
+    num_campi?: number;
 }
 
 export interface EloHistoryEntry {
