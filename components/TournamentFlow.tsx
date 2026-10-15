@@ -3119,6 +3119,27 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  if (step === 'scoring') {
     // Render Beat the Box dedicated flow
     if (selectedFormat === 'beat-the-box') {
+      const isSinglesPairs = customFlowConfig?.playerMode === 'singles' || (pairs.length > 0 && pairs[0][0].id === pairs[0][1].id);
+      if (isSinglesPairs) {
+        const singlesConfig = customFlowConfig || {
+          playerMode: 'singles' as const,
+          phases: pairs.length >= 8 ? ['box', 'semifinals', 'finals'] : ['box', 'finals'],
+          numCampi: Math.max(1, Math.floor(pairs.length / 4)),
+          numPartecipanti: pairs.length,
+        };
+        return (
+          <CustomTournamentFlow
+            pairs={pairs}
+            config={singlesConfig}
+            onFinish={onFinish}
+            tournamentDate={tournamentDate}
+            clubName={clubName}
+            tournamentName={(isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || ''}
+            giornataName={preselectedTournamentName || undefined}
+          />
+        );
+      }
+
       return (
         <BeatTheBoxFlow
           pairs={pairs}

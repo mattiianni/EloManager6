@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 
-const APP_VERSION = '6.9.1';
-const APP_MONTH = 'Set 2026';
+const APP_VERSION = '6.10.1';
+const APP_MONTH = 'Ott 2026';
 
 const outDir = path.resolve(process.cwd(), 'docs');
 const outPath = path.join(outDir, `Guida_Uso_v${APP_VERSION}.pdf`);
@@ -136,13 +136,15 @@ bullet('Teste di Serie', 'Separa i giocatori top e li abbina ai restanti parteci
 bullet('Manuale', 'Definizione libera delle coppie direttamente dall\'organizzatore.');
 
 // Section 4: Formati di Gioco
-sectionHeader('4. Formati di Gioco Supportati');
+sectionHeader('4. Formati di Gioco Supportati (9 Formati)');
 bullet('TorneOtto', 'Formato classico a 8 giocatori su 2 campi con rotazione completa dei compagni e dei campi.');
-bullet('Americano', 'Rotazione individuale in cui ogni giocatore gioca con compagni diversi accumulando punti individuali.');
-bullet('Beat the Box', 'Sfida a box con promosse e retrocessioni dinamiche al termine di ogni turno.');
+bullet('Americano', 'Rotazione individuale a punti singoli (anche con fasi finali a eliminazione diretta).');
+bullet('Beat the Box', 'Sfida a box (a coppie fisse o singoli con riposi equi e teste di serie ELO a serpentina).');
 bullet('Round Robin + Finali', 'Girone all\'italiana con fase finale a eliminazione diretta.');
 bullet('Gironi + Fase Finale', 'Suddivisione in 2, 3 o 4 gironi con passaggi diretti e migliori terze per semifinali o quarti.');
-bullet('Eliminazione Diretta', 'Tabellone ad albero con quarti, semifinali e finale.');
+bullet('Eliminazione Diretta / TPRA', 'Tabellone ad albero con quarti, semifinali e finale ad eliminazione diretta.');
+bullet('Torneo Libero', 'Accoppiamenti liberi e aggiornamento istantaneo del ranking ELO.');
+bullet('Crea Torneo Personale', 'Generatore modulare drag-and-drop con fasi personalizzabili per coppie e singoli.');
 
 // Section 5: Inserimento Risultati ed ELO
 sectionHeader('5. Risultati e Calcolo ELO');

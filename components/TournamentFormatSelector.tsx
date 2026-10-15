@@ -48,21 +48,39 @@ const ALL_FORMATS: SingleTournamentFormat[] = [
     'torneo-libero'
 ];
 
+const SINGLES_FORMATS: SingleTournamentFormat[] = [
+    'americano',
+    'beat-the-box',
+    'torneo-personale'
+];
+
 interface TournamentFormatSelectorProps {
     onSelectFormat: (format: SingleTournamentFormat) => void;
     onBack: () => void;
+    playerMode?: 'pairs' | 'singles';
 }
 
-const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onSelectFormat, onBack }) => {
+const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onSelectFormat, onBack, playerMode = 'pairs' }) => {
+    const formatsToShow = playerMode === 'singles' ? SINGLES_FORMATS : ALL_FORMATS;
+
+    const getSinglesDescription = (format: SingleTournamentFormat): string => {
+        if (format === 'americano') return 'Tutti contro tutti, rotazione individuale continua su tutti i campi.';
+        if (format === 'beat-the-box') return 'Gironi da 4 o 5 singoli con rotazione interna e qualificazione alla fase finale.';
+        if (format === 'torneo-personale') return 'Torneo personalizzabile in tutte le sue fasi per singoli.';
+        return FORMAT_DESCRIPTIONS[format];
+    };
+
     return (
         <div className="mx-auto max-w-3xl space-y-4">
-            <Card title="Seleziona Formato Torneo">
+            <Card title={playerMode === 'singles' ? "Seleziona Formato Torneo (Singoli)" : "Seleziona Formato Torneo"}>
                 <div className="space-y-5">
                     <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Scegli la tipologia di formato per la giornata. Ogni formato si adatta al numero di coppie e campi disponibili.
+                        {playerMode === 'singles'
+                            ? "Scegli il formato per i giocatori singoli selezionati. I partecipanti ruoteranno ad ogni partita o girone."
+                            : "Scegli la tipologia di formato per la giornata. Ogni formato si adatta al numero di coppie e campi disponibili."}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {ALL_FORMATS.map((format) => {
+                        {formatsToShow.map((format) => {
                             const isPersonale = format === 'torneo-personale';
                             return (
                                 <button
@@ -78,12 +96,12 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                                         <span className={`block text-[17px] font-bold ${
                                             isPersonale ? 'text-blue-950 dark:text-blue-200' : 'text-slate-900 dark:text-white'
                                         }`}>
-                                            {getFormatDisplayName(format)}
+                                            {playerMode === 'singles' && format === 'beat-the-box' ? 'Box (Beat the Box)' : getFormatDisplayName(format)}
                                         </span>
                                         <span className={`mt-1 block text-xs font-medium leading-snug ${
                                             isPersonale ? 'text-blue-700/80 dark:text-blue-300/80' : 'text-slate-500 dark:text-slate-400'
                                         }`}>
-                                            {FORMAT_DESCRIPTIONS[format]}
+                                            {playerMode === 'singles' ? getSinglesDescription(format) : FORMAT_DESCRIPTIONS[format]}
                                         </span>
                                     </span>
                                     <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${

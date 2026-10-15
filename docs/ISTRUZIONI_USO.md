@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.10.0)
+# Istruzioni d'Uso (v6.10.1)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.0` — `Ott 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.1` — `Ott 2026`).
 
 ## Accesso
 
@@ -28,21 +28,15 @@ In `Sorteggi` il flusso guidato ti permette di scegliere la modalità desiderata
 
 1. **Multi Giornata**: Tornei a coppie su più tappe.
 2. **Torneo a Squadre**: Sfide tra team e squadre numerate.
-3. **Torneo Singolo**: Eventi a coppie in un singolo appuntamento con scelta anticipata del formato.
+3. **Torneo Singolo**: Eventi a coppie o singoli in un singolo appuntamento con scelta anticipata del formato.
 4. **Nuova Giornata**: Aggancio di giornate ai tornei attivi.
-5. **Crea Torneo Personale**: Torneo personalizzabile in tutte le sue fasi tramite drag & drop (Box, Americano, Gironi, TorneOtto, Semifinali, Finali) sia per Coppie Fisse che per Singoli.
+5. **Crea Torneo Personale**: Torneo personalizzabile in tutte le sue fasi tramite drag & drop (Box, Americano, Gironi, TorneOtto, Semifinali, Finali) sia per Coppie Fisse che per Singoli con distribuzione automatica a teste di serie.
 
-*Nota:* In qualsiasi momento della configurazione del sorteggio puoi cliccare sul pulsante **`← Torna indietro`** in alto per rientrare alla schermata iniziale.
+*Nota:* In qualsiasi momento della configurazione del sorteggio puoi cliccare sul pulsante **`← Torna indietro`** in alto per rientrare alla schermata iniziale. Su mobile, il pulsante di avanzamento è ancorato in basso per un utilizzo ergonomico con una sola mano.
 
-Per il sorteggio coppie o singoli puoi:
-
-- selezionare i partecipanti (o passare a modalità Giocatori Singoli)
-- scegliere la modalita':
-  - casuale
-  - bilanciato
-  - teste di serie
-  - manuale
-- generare o confermare le coppie
+Per il sorteggio puoi alternare tramite pill in alto tra:
+- **Coppie Fisse**: seleziona i partecipanti, scegli la modalità (casuale, bilanciato, teste di serie, manuale) e genera o conferma le coppie.
+- **Giocatori Singoli**: seleziona il numero di partecipanti (4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16...) e i giocatori. Il flusso propone direttamente i formati dedicati ai singoli: **Torneo Americano** (rotazione continua su tutti i campi), **Box (Beat the Box Singoli)** con distribuzione a teste di serie ELO (Seed 1 e Seed 2 separati) e **Crea Torneo Personale**. Nelle card partita le squadre sono ben distanziate in alto e i campi punteggio sotto per garantire leggibilità perfetta su smartphone.
 
 ## Creazione torneo
 

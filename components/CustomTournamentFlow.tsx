@@ -107,7 +107,11 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   // Initial distribution into boxes or unified Americano
   useEffect(() => {
     if (isSingles) {
-      const rawPlayers = Array.from(new Set(pairs.flatMap(p => [p[0], p[1]]))).filter((p): p is Player => Boolean(p));
+      const uniquePlayerMap = new Map<string, Player>();
+      pairs.flatMap(p => [p[0], p[1]]).filter((p): p is Player => Boolean(p)).forEach(p => {
+        if (!uniquePlayerMap.has(p.id)) uniquePlayerMap.set(p.id, p);
+      });
+      const rawPlayers = Array.from(uniquePlayerMap.values());
       if (isAmericanoMode) {
         const americanoData = generateAmericanoMatchesForCustomFlow(
           rawPlayers,
@@ -559,7 +563,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                 {boxesData.map((box, bIdx) => (
                   <div
                     key={box.boxNumber}
-                    className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4"
+                    className="bg-white dark:bg-slate-800 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4"
                   >
                     {/* Header Box / Americano */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
@@ -598,39 +602,61 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                         return (
                           <div
                             key={match.id}
-                            className="p-3 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/60 dark:border-white/5 space-y-2"
+                            className="p-3 sm:p-3.5 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/60 dark:border-white/5 space-y-2.5 shadow-sm"
                           >
-                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1.5 border-b border-slate-200/50 dark:border-white/5">
                               <span>
                                 {match.roundNumber ? `Turno ${match.roundNumber} • ` : ''}Partita {mIdx + 1}
                               </span>
-                              <span className="text-slate-400">Campo {match.courtNumber || box.courtNumber}</span>
+                              <span className="font-semibold text-slate-500 dark:text-slate-400">Campo {match.courtNumber || box.courtNumber}</span>
                             </div>
 
-                            <div className="flex items-center justify-between gap-2">
-                              {/* Team 1 */}
-                              <div className={`flex-1 min-w-0 text-right transition-colors ${
-                                isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-700 dark:text-slate-200 font-medium'
+                            {/* Squadra A vs Squadra B */}
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
+                              {/* Squadra A */}
+                              <div className={`min-w-0 text-left transition-colors ${
+                                isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'
                               }`}>
-                                <div className="text-xs sm:text-sm leading-tight truncate" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{formatShort(t1p1)}</div>
-                                <div className="text-xs sm:text-sm leading-tight truncate" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{formatShort(t1p2)}</div>
+                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                  Squadra A
+                                </div>
+                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>
+                                  {t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}
+                                </div>
+                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>
+                                  {t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}
+                                </div>
                               </div>
 
-                              {/* Score Input */}
-                              <div className="shrink-0 px-1 flex justify-center">
-                                <MatchScoreInput
-                                  sets={match.sets || [{ team1: 0, team2: 0 }]}
-                                  onSetsChange={(sets) => handleScoreChange(bIdx, mIdx, sets)}
-                                />
+                              {/* VS Badge */}
+                              <div className="flex items-center justify-center shrink-0">
+                                <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
+                                  VS
+                                </span>
                               </div>
 
-                              {/* Team 2 */}
-                              <div className={`flex-1 min-w-0 text-left transition-colors ${
-                                isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-700 dark:text-slate-200 font-medium'
+                              {/* Squadra B */}
+                              <div className={`min-w-0 text-right transition-colors ${
+                                isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'
                               }`}>
-                                <div className="text-xs sm:text-sm leading-tight truncate" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{formatShort(t2p1)}</div>
-                                <div className="text-xs sm:text-sm leading-tight truncate" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{formatShort(t2p2)}</div>
+                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                  Squadra B
+                                </div>
+                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>
+                                  {t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}
+                                </div>
+                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>
+                                  {t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}
+                                </div>
                               </div>
+                            </div>
+
+                            {/* Score Input SOTTO */}
+                            <div className="pt-2 flex justify-center border-t border-slate-200/50 dark:border-white/5">
+                              <MatchScoreInput
+                                sets={match.sets || [{ team1: 0, team2: 0 }]}
+                                onSetsChange={(sets) => handleScoreChange(bIdx, mIdx, sets)}
+                              />
                             </div>
                           </div>
                         );
@@ -741,32 +767,42 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                   return (
                     <div
                       key={match.id}
-                      className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4"
+                      className="bg-white dark:bg-slate-800 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3"
                     >
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
                         <span className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                           Semifinale {idx + 1}
                         </span>
                         <span className="text-xs font-semibold text-slate-400">Campo {match.courtNumber || idx + 1}</span>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 py-2">
-                        <div className={`flex-1 min-w-0 text-right ${isTeam1Winner ? 'text-sky-600 font-bold' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>
-                          <div className="text-xs sm:text-sm truncate" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{formatShort(t1p1)}</div>
-                          <div className="text-xs sm:text-sm truncate" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{formatShort(t1p2)}</div>
+                      {/* Squadra A vs Squadra B */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
+                        <div className={`min-w-0 text-left transition-colors ${isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra A</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}</div>
                         </div>
 
-                        <div className="shrink-0 px-1 flex justify-center">
-                          <MatchScoreInput
-                            sets={match.sets || [{ team1: 0, team2: 0 }]}
-                            onSetsChange={(sets) => handleSfScoreChange(idx, sets)}
-                          />
+                        <div className="flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
+                            VS
+                          </span>
                         </div>
 
-                        <div className={`flex-1 min-w-0 text-left ${isTeam2Winner ? 'text-sky-600 font-bold' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>
-                          <div className="text-xs sm:text-sm truncate" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{formatShort(t2p1)}</div>
-                          <div className="text-xs sm:text-sm truncate" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{formatShort(t2p2)}</div>
+                        <div className={`min-w-0 text-right transition-colors ${isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra B</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}</div>
                         </div>
+                      </div>
+
+                      {/* Score Input SOTTO */}
+                      <div className="pt-2 flex justify-center border-t border-slate-200/50 dark:border-white/5">
+                        <MatchScoreInput
+                          sets={match.sets || [{ team1: 0, team2: 0 }]}
+                          onSetsChange={(sets) => handleSfScoreChange(idx, sets)}
+                        />
                       </div>
                     </div>
                   );
@@ -814,13 +850,13 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                   return (
                     <div
                       key={match.id}
-                      className={`bg-white dark:bg-slate-800 rounded-2xl p-5 border shadow-sm space-y-4 ${
+                      className={`bg-white dark:bg-slate-800 rounded-2xl p-3.5 sm:p-5 border shadow-sm space-y-3 ${
                         isFirstPlaceMatch
                           ? 'border-amber-400/60 dark:border-amber-500/30 ring-1 ring-amber-400/30'
                           : 'border-slate-200/80 dark:border-white/10'
                       }`}
                     >
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
                         <span className={`text-xs font-bold uppercase tracking-wider ${
                           isFirstPlaceMatch ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'
                         }`}>
@@ -829,23 +865,33 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                         <span className="text-xs font-semibold text-slate-400">Campo {match.courtNumber || idx + 1}</span>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 py-2">
-                        <div className={`flex-1 min-w-0 text-right ${isTeam1Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>
-                          <div className="text-xs sm:text-sm truncate" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{formatShort(t1p1)}</div>
-                          <div className="text-xs sm:text-sm truncate" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{formatShort(t1p2)}</div>
+                      {/* Squadra A vs Squadra B */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
+                        <div className={`min-w-0 text-left transition-colors ${isTeam1Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra A</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}</div>
                         </div>
 
-                        <div className="shrink-0 px-1 flex justify-center">
-                          <MatchScoreInput
-                            sets={match.sets || [{ team1: 0, team2: 0 }]}
-                            onSetsChange={(sets) => handleFinalScoreChange(idx, sets)}
-                          />
+                        <div className="flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
+                            VS
+                          </span>
                         </div>
 
-                        <div className={`flex-1 min-w-0 text-left ${isTeam2Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200 font-medium'}`}>
-                          <div className="text-xs sm:text-sm truncate" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{formatShort(t2p1)}</div>
-                          <div className="text-xs sm:text-sm truncate" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{formatShort(t2p2)}</div>
+                        <div className={`min-w-0 text-right transition-colors ${isTeam2Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra B</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}</div>
+                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}</div>
                         </div>
+                      </div>
+
+                      {/* Score Input SOTTO */}
+                      <div className="pt-2 flex justify-center border-t border-slate-200/50 dark:border-white/5">
+                        <MatchScoreInput
+                          sets={match.sets || [{ team1: 0, team2: 0 }]}
+                          onSetsChange={(sets) => handleFinalScoreChange(idx, sets)}
+                        />
                       </div>
                     </div>
                   );

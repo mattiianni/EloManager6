@@ -578,4 +578,77 @@ describe('4. Avanzamento alle Fasi Successive (Semifinali e Finali)', () => {
       expect(finalsDirect.find(f => f.phase === 'final_3_4')).toBeDefined();
     });
   });
+
+  describe('8. Distribuzione Singoli a Teste di Serie & Assenza Duplicazioni', () => {
+    it('distribuisce 8 giocatori singoli in 2 Box a teste di serie: Seed 1 e Seed 2 in box diversi', () => {
+      const p1 = createMockPlayer('p1', 'Seed', 'One', 1800);
+      const p2 = createMockPlayer('p2', 'Seed', 'Two', 1700);
+      const p3 = createMockPlayer('p3', 'Seed', 'Three', 1600);
+      const p4 = createMockPlayer('p4', 'Seed', 'Four', 1500);
+      const p5 = createMockPlayer('p5', 'Player', 'Five', 1400);
+      const p6 = createMockPlayer('p6', 'Player', 'Six', 1300);
+      const p7 = createMockPlayer('p7', 'Player', 'Seven', 1200);
+      const p8 = createMockPlayer('p8', 'Player', 'Eight', 1100);
+
+      const players = [p4, p8, p1, p5, p2, p6, p3, p7]; // In ordine sparso
+
+      const boxes = distributeSinglesIntoBoxes(players, 2, '2026-10-15');
+      expect(boxes.length).toBe(2);
+
+      const box1Players = boxes[0].players;
+      const box2Players = boxes[1].players;
+
+      expect(box1Players.length).toBe(4);
+      expect(box2Players.length).toBe(4);
+
+      // Seed 1 (1800) e Seed 2 (1700) devono essere in box DIVERSI!
+      const box1HasP1 = box1Players.some(p => p.id === 'p1');
+      const box2HasP2 = box2Players.some(p => p.id === 'p2');
+      expect(box1HasP1).toBe(true);
+      expect(box2HasP2).toBe(true);
+
+      // Nessuna duplicazione di giocatori
+      const allIds = [...box1Players.map(p => p.id), ...box2Players.map(p => p.id)];
+      expect(new Set(allIds).size).toBe(8);
+
+      // Tutte le partite hanno 4 giocatori distinti
+      boxes.forEach(b => {
+        b.matches.forEach(m => {
+          const matchPlayerIds = [m.team1[0], m.team1[1], m.team2[0], m.team2[1]];
+          expect(new Set(matchPlayerIds).size).toBe(4);
+        });
+      });
+    });
+
+    it('distribuisce 12 giocatori singoli in 3 Box con teste di serie 1, 2, 3 in box differenti', () => {
+      const players = generatePlayers(12, 1400); // p1=1520, p2=1510, p3=1500...
+      const boxes = distributeSinglesIntoBoxes(players, 3, '2026-10-15');
+      expect(boxes.length).toBe(3);
+
+      expect(boxes[0].players.some(p => p.id === 'p1')).toBe(true);
+      expect(boxes[1].players.some(p => p.id === 'p2')).toBe(true);
+      expect(boxes[2].players.some(p => p.id === 'p3')).toBe(true);
+
+      const allIds = boxes.flatMap(b => b.players.map(p => p.id));
+      expect(new Set(allIds).size).toBe(12);
+    });
+
+    it('deduplica correttamente coppie fittizie [p, p] senza generare nomi duplicati', () => {
+      const players = generatePlayers(8);
+      const fakePairs: [Player, Player][] = players.map(p => [p, p]);
+
+      const uniqueMap = new Map<string, Player>();
+      fakePairs.flatMap(p => [p[0], p[1]]).filter((p): p is Player => Boolean(p)).forEach(p => {
+        if (!uniqueMap.has(p.id)) uniqueMap.set(p.id, p);
+      });
+      const rawPlayers = Array.from(uniqueMap.values());
+      expect(rawPlayers.length).toBe(8);
+
+      const boxes = distributeSinglesIntoBoxes(rawPlayers, 2, '2026-10-15');
+      boxes.forEach(b => {
+        expect(b.players.length).toBe(4);
+        expect(new Set(b.players.map(p => p.id)).size).toBe(4);
+      });
+    });
+  });
 });

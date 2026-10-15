@@ -490,11 +490,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
 
         if (playerMode === 'singles') {
             // Modalità Giocatori Singoli: nessun sorteggio coppie!
-            // Creiamo direttamente le coppie fittizie [p, p] per i singoli giocatori
             try {
-                const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
-                setDrawnPairs(pairs);
                 if (selectedFormatForNewFlow) {
+                    const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
+                    setDrawnPairs(pairs);
                     setShowTournamentFlow(true);
                 } else {
                     setActiveFlow('single-tournament-format-first');
@@ -1108,7 +1107,55 @@ const DrawPage: React.FC<DrawPageProps> = ({
     if (activeFlow === 'single-tournament-format-first' && !selectedFormatForNewFlow) {
         return (
             <TournamentFormatSelector
+                playerMode={playerMode}
                 onSelectFormat={(format) => {
+                    if (playerMode === 'singles') {
+                        if (format === 'torneo-personale') {
+                            setActiveFlow('custom-tournament');
+                            return;
+                        }
+
+                        if (format === 'americano') {
+                            const count = participantPlayers.length || numPairs;
+                            const numCampi = Math.max(1, Math.floor(count / 4));
+                            setCustomTournamentFlowConfig({
+                                playerMode: 'singles',
+                                phases: ['americano'],
+                                numCampi,
+                                numPartecipanti: count,
+                            });
+                            setSelectedFormatForNewFlow('torneo-personale');
+                            if (participantPlayers.length >= 4) {
+                                const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
+                                setDrawnPairs(pairs);
+                                setShowTournamentFlow(true);
+                            } else {
+                                setActiveFlow('pairs');
+                            }
+                            return;
+                        }
+
+                        if (format === 'beat-the-box') {
+                            const count = participantPlayers.length || numPairs;
+                            const numCampi = Math.max(1, Math.floor(count / 4));
+                            setCustomTournamentFlowConfig({
+                                playerMode: 'singles',
+                                phases: count >= 8 ? ['box', 'semifinals', 'finals'] : ['box', 'finals'],
+                                numCampi,
+                                numPartecipanti: count,
+                            });
+                            setSelectedFormatForNewFlow('torneo-personale');
+                            if (participantPlayers.length >= 4) {
+                                const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
+                                setDrawnPairs(pairs);
+                                setShowTournamentFlow(true);
+                            } else {
+                                setActiveFlow('pairs');
+                            }
+                            return;
+                        }
+                    }
+
                     if (format === 'torneo-personale') {
                         setActiveFlow('custom-tournament');
                         return;
@@ -1137,7 +1184,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 }}
                 onBack={() => {
                     setActiveFlow('pairs');
-                    setEntryChoice('menu');
+                    if (participants.length === 0) {
+                        setEntryChoice('menu');
+                    }
                 }}
             />
         );
@@ -2194,7 +2243,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     }
 
     return (
-        <div className="space-y-6 pb-8">
+        <div className="space-y-6 pb-32 sm:pb-8">
             {isShuffling && <ShuffleAnimation />}
             {isCompletingTeamTournamentConfiguration && teamTournamentConfig?.format === 'ELIMINAZIONE DIRETTA' && (
                 <ShuffleAnimation title="Creo il tabellone..." />
@@ -2490,7 +2539,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                     
                     {!isTeamTournamentFlow && !isNavigationOverlayOpen && (
-                        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-6 z-20 w-full max-w-3xl mx-auto rounded-2xl bg-white/95 p-2 sm:p-3 shadow-xl backdrop-blur-xl dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80">
+                        <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] left-3.5 right-3.5 sm:static sm:inset-auto sm:max-w-3xl sm:mx-auto z-30 rounded-2xl bg-white/95 p-2 sm:p-3 shadow-2xl backdrop-blur-xl dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80">
                             <Button
                                 onClick={handleDraw}
                                 className="w-full py-3.5 sm:py-4 text-base sm:text-lg font-bold"

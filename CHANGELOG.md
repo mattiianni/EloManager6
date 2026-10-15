@@ -1,3 +1,19 @@
+## v6.10.1 — 2026-10-15
+- **Flusso Giocatori Singoli Dedicato & Risoluzione Loop**:
+  - Dalla selezione partecipanti singoli, il flusso prosegue direttamente alla scelta del formato senza reimpostare la modalità a coppie fisse né forzare la riselezione dei giocatori.
+  - Nel selettore dei formati per singoli vengono mostrati unicamente i formati compatibili per giocatori individuali: **Torneo Americano**, **Box (Beat the Box Singoli)** e **Crea Torneo Personale**.
+  - Distribuzione a **teste di serie (serpentina ELO)** per i Box singoli: i giocatori con ELO più alto vengono separati deterministamente tra i box (Seed 1 e Seed 2 non capitano mai nello stesso girone iniziale).
+  - Risolto il bug di duplicazione nomi nei box tramite deduplicazione deterministica per ID giocatore e instradamento sicuro verso `CustomTournamentFlow`.
+- **Docking Bottom Action Bar su Mobile**:
+  - Ancorato il pulsante di avanzamento ("Avanti - Scelta Torneo") come barra inferiore fissa (`fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))]`) su mobile, eliminando l'effetto fluttuante a metà schermo.
+  - Aggiunto padding di compensazione (`pb-32 sm:pb-8`) sul contenitore scorrevole per garantire la piena visibilità di tutti i partecipanti.
+- **Redesign Card Partite Americano, Box e Fasi Finali**:
+  - Riorganizzazione dello spazio: **Squadra A** a sinistra e **Squadra B** a destra a piena larghezza con badge centrale `VS`, mostrando nomi e cognomi per intero senza troncamenti.
+  - Posizionamento dei campi di punteggio (`MatchScoreInput`) centrati **sotto** le squadre con ampio spazio touch per l'inserimento risultati su schermi mobile.
+  - Applicato a tutte le partite del Torneo Americano, Box, Semifinali e Finali.
+- **Estensione Suite di Test**:
+  - Nuovi test in `customTournamentFlow.test.ts` per la distribuzione a teste di serie per singoli (8, 12 giocatori) e la deduplicazione. Suite portata a 112 test Vitest (100% green) e 0 errori TypeScript.
+
 ## v6.10.0 — 2026-10-13
 - **Nuovo Formato "Crea Torneo Personale" (Fasi Componibili & Drag-and-Drop)**:
   - Introdotto il costruttore di tornei personalizzati (`CustomTournamentBuilder` e `CustomTournamentFlow`) accessibile dal DrawPage e dal selettore formato.
