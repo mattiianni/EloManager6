@@ -22,5 +22,5 @@ export const StatsIcon = ({ className }: { className?: string }) => <SFIcon name
 export const HomeIcon = ({ className }: { className?: string }) => <SFIcon name="house.fill" className={className} />;
 export const CalendarIcon = ({ className }: { className?: string }) => <SFIcon name="calendar" className={className} />;
 export const PlusIcon = ({ className }: { className?: string }) => <SFIcon name="plus" className={className} />;
-export const ArrowUpRightIcon = ({ className }: { className?: string }) => <SFIcon name="arrow.up.right" className={className} />;
+export const ArrowUpRightIcon = ({ className, size = 11 }: { className?: string; size?: number }) => <SFIcon name="arrow.up.right" className={className} size={size} />;
 export const MaterialIcon = ({ name, className, filled }: { name: string; className?: string; filled?: boolean }) => <SFIcon name={name} className={className} filled={filled} />;

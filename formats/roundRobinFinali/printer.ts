@@ -1,7 +1,7 @@
 import { Match, Tournament, Player, TournamentType } from '../../types';
 import { TournamentPrinter } from '../types';
 import { calculateRoundRobinStandings } from './engine';
-import { formatScoreBoxes, MANROPE_PRINT_STYLESHEET, printableTeamName, escapeHtml } from '../../services/printService';
+import { formatScoreBoxes, MANROPE_PRINT_STYLESHEET, printableTeamName, escapeHtml, PDF_ICONS } from '../../services/printService';
 import { normalizeTournamentRounds } from '../../utils/tournamentRounds';
 import { getCanonicalTeamKey } from '../../utils/matchIdentity';
 import { APP_MONTH, APP_VERSION } from '../../constants';
@@ -130,7 +130,7 @@ export const generateRoundRobinPdfHtml = (
 
             rowHtml += `
                 <tr class="round-header" style="page-break-inside: avoid; break-inside: avoid;">
-                    <td colspan="4" style="background: #f3f4f6; font-weight: bold; padding: 6px; font-size: 13px;">
+                    <td colspan="4" style="background: #f8fafc; font-weight: bold; padding: 6px 8px; font-size: 12px; border-left: 3px solid #0055D4; color: #0f172a; border: 1px solid #e2e8f0;">
                         ${roundTitle}
                         ${restingText}
                     </td>
@@ -161,10 +161,10 @@ export const generateRoundRobinPdfHtml = (
         const qLabels = ['Quarto 1 (1° vs 8°)', 'Quarto 2 (2° vs 7°)', 'Quarto 3 (3° vs 6°)', 'Quarto 4 (4° vs 5°)'];
         quartersHtml = `
             <div class="section-block" style="margin-top: 16px; page-break-inside: avoid; break-inside: avoid;">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #e8eaf6; border-left: 4px solid #5c6bc0; color: #3f51b5;">
-                    ⚡ QUARTI DI FINALE
-                </h3>
-                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse;">
+                <div style="font-size: 13px; font-weight: 700; margin: 16px 0 8px 0; padding: 6px 10px; background: #faf5ff; border-left: 4px solid #7c3aed; color: #581c87; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.zap} QUARTI DI FINALE
+                </div>
+                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
                     <tbody>
                         ${displayQuarterfinalMatches.map((match, idx) => {
                             const title = (!match.team1 || !match.team1[0]) ? qLabels[idx] : `Quarto ${idx + 1}`;
@@ -173,7 +173,7 @@ export const generateRoundRobinPdfHtml = (
                                 : generateMatchRow(match, `Campo ${(idx % fieldsCount) + 1}`);
                             return `
                                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                                    <td colspan="4" style="background: #f5f5f5; padding: 5px 6px; font-size: 11px; font-weight: bold; height: 24px; color: #374151;">
+                                    <td colspan="4" style="background: #f8fafc; padding: 5px 8px; font-size: 11px; font-weight: bold; height: 24px; color: #334155; border: 1px solid #e2e8f0;">
                                         ${title}
                                     </td>
                                 </tr>
@@ -202,10 +202,10 @@ export const generateRoundRobinPdfHtml = (
 
         semifinalsHtml = `
             <div class="section-block" style="margin-top: 16px; page-break-inside: avoid; break-inside: avoid;">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #e8eaf6; border-left: 4px solid #5c6bc0; color: #3f51b5;">
-                    ⚡ SEMIFINALI
-                </h3>
-                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse;">
+                <div style="font-size: 13px; font-weight: 700; margin: 16px 0 8px 0; padding: 6px 10px; background: #eff6ff; border-left: 4px solid #0055D4; color: #1e3a8a; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.trophy} SEMIFINALI
+                </div>
+                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
                     <tbody>
                         ${displaySemifinalMatches.map((match, idx) => {
                             const title = (!match.team1 || !match.team1[0]) ? sfLabels[idx] : `Semifinale ${idx + 1}`;
@@ -214,7 +214,7 @@ export const generateRoundRobinPdfHtml = (
                                 : generateMatchRow(match, `Campo ${(idx % fieldsCount) + 1}`);
                             return `
                                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                                    <td colspan="4" style="background: #f5f5f5; padding: 5px 6px; font-size: 11px; font-weight: bold; height: 24px; color: #374151;">
+                                    <td colspan="4" style="background: #f8fafc; padding: 5px 8px; font-size: 11px; font-weight: bold; height: 24px; color: #334155; border: 1px solid #e2e8f0;">
                                         ${title}
                                     </td>
                                 </tr>
@@ -239,17 +239,21 @@ export const generateRoundRobinPdfHtml = (
     if (displayFinalMatches.length > 0) {
         const finalsRowsHtml = displayFinalMatches.map((match, idx) => {
             let matchTitle = '';
-            let bgColor = '#fff9c4';
+            let headerBg = '#f8fafc';
+            let headerColor = '#1e293b';
 
             if (idx === 0) {
                 matchTitle = 'FINALE 1° - 2° POSTO';
-                bgColor = '#ffd54f';
+                headerBg = '#fef3c7';
+                headerColor = '#92400e';
             } else if (idx === 1) {
                 matchTitle = 'FINALINA 3° - 4° POSTO';
-                bgColor = '#ffe0b2';
+                headerBg = '#ffedd5';
+                headerColor = '#9a3412';
             } else {
                 matchTitle = `FINALE ${idx + 1}`;
-                bgColor = '#f5f5f5';
+                headerBg = '#f8fafc';
+                headerColor = '#1e293b';
             }
 
             const matchRowHtml = (!match.team1 || !match.team1[0])
@@ -258,7 +262,7 @@ export const generateRoundRobinPdfHtml = (
 
             return `
                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                    <td colspan="4" style="background: ${bgColor}; padding: 5px 6px; font-size: 11px; font-weight: bold; text-align: center; height: 24px; color: #1e293b;">
+                    <td colspan="4" style="background: ${headerBg}; padding: 5px 6px; font-size: 11px; font-weight: bold; text-align: center; height: 24px; color: ${headerColor}; border: 1px solid #e2e8f0;">
                         ${matchTitle}
                     </td>
                 </tr>
@@ -268,10 +272,10 @@ export const generateRoundRobinPdfHtml = (
 
         finalsHtml = `
             <div class="section-block" style="margin-top: 16px; page-break-inside: avoid; break-inside: avoid;">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #fff9c4; border-left: 4px solid #fbc02d; color: #854d0e;">
-                    🏆 FINALI
-                </h3>
-                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse;">
+                <div style="font-size: 13px; font-weight: 700; margin: 16px 0 8px 0; padding: 6px 10px; background: #fffbeb; border-left: 4px solid #d97706; color: #92400e; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.trophy} FINALI
+                </div>
+                <table style="margin-bottom: 6px; width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
                     <tbody>
                         ${finalsRowsHtml}
                     </tbody>
@@ -315,30 +319,34 @@ export const generateRoundRobinPdfHtml = (
     // Round Robin Phase Standings HTML (before playoffs)
     const roundRobinStandingsRowsHtml = standings.map((entry, idx) => `
         <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold;">${idx + 1}°</td>
-            <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
-            <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0284c7;">${entry.points}</td>
-            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
-            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
-            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #64748b; border: 1px solid #e2e8f0;">${idx + 1}°</td>
+            <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600; border: 1px solid #e2e8f0;">${escapeHtml(entry.pair[0].name)} ${escapeHtml(entry.pair[0].surname)} &amp; ${escapeHtml(entry.pair[1].name)} ${escapeHtml(entry.pair[1].surname)}</td>
+            <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4; border: 1px solid #e2e8f0;">${entry.points}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gamesWon}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gamesLost}</td>
+            <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
         </tr>
     `).join('');
 
     // Standings HTML at the end of report (Podium / Definitive)
     const standingsRowsHtml = finalOrderedStandings.map((entry, idx) => {
-        let medal = '';
-        if (idx === 0) medal = '🥇 ';
-        else if (idx === 1) medal = '🥈 ';
-        else if (idx === 2) medal = '🥉 ';
+        let rankBadge = `<span style="color: #64748b; font-weight: 700;">${idx + 1}°</span>`;
+        if (idx === 0) {
+            rankBadge = `<span style="background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fde68a;">1°</span>`;
+        } else if (idx === 1) {
+            rankBadge = `<span style="background: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #cbd5e1;">2°</span>`;
+        } else if (idx === 2) {
+            rankBadge = `<span style="background: #ffedd5; color: #9a3412; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fed7aa;">3°</span>`;
+        }
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold;">${medal}${idx + 1}°</td>
-                <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
-                <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0284c7;">${entry.points}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${rankBadge}</td>
+                <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600; border: 1px solid #e2e8f0;">${escapeHtml(entry.pair[0].name)} ${escapeHtml(entry.pair[0].surname)} &amp; ${escapeHtml(entry.pair[1].name)} ${escapeHtml(entry.pair[1].surname)}</td>
+                <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4; border: 1px solid #e2e8f0;">${entry.points}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gamesWon}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gamesLost}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
             </tr>
         `;
     }).join('');
@@ -352,34 +360,33 @@ export const generateRoundRobinPdfHtml = (
             <link rel="stylesheet" href="${MANROPE_PRINT_STYLESHEET}">
             <style>
                 @page { size: A4; margin: 12mm 10mm; }
-                body { font-family: 'Manrope', sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
-                h1 { font-size: 22px; margin: 0 0 4px 0; color: #2196f3; font-weight: bold; }
-                h2 { font-size: 14px; margin: 0 0 3px 0; color: #666; }
-                h3 { font-size: 13px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; }
-                table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; }
-                th { background-color: #1e3a6e; color: white; padding: 5px 6px; font-weight: bold; font-size: 11px; height: 24px; text-align: left; }
-                td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; font-size: 11px; height: 24px; border: 1px solid #cbd5e1; }
+                body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
+                h1 { font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800; }
+                h2 { font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500; }
+                table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
+                th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
+                td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
                 tr { height: 24px; }
-                tr:nth-child(even) { background-color: #f0f5ff; }
+                tr:nth-child(even) { background-color: #f8fafc; }
                 .section-block { page-break-inside: avoid; break-inside: avoid; }
-                .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #666; display: flex; justify-content: space-between; }
+                .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
             </style>
         </head>
         <body>
-            <div style="text-align: center; margin-bottom: 12px;">
-                <h1>🎾 ${safeDisplayName}</h1>
-                <h2>${safeClubName} - Round Robin + Finali</h2>
-                <div style="color: #2196f3; font-size: 11px; font-weight: bold; margin: 3px 0 0 0;">
-                    ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
+            <div style="text-align: center; margin-bottom: 14px;">
+                <h1>${PDF_ICONS.trophy} ${safeDisplayName}</h1>
+                <h2>${safeClubName} • Round Robin + Finali</h2>
+                <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
+                    ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
                 </div>
             </div>
 
-            <div style="border-bottom: 2px solid #2196f3; margin: 10px 0 20px 0;"></div>
+            <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 20px 0;"></div>
 
             <div class="section-block">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #f0f4f8; border-left: 4px solid #1e3a6e; color: #1e3a6e;">
-                    🎾 PARTITE ROUND ROBIN
-                </h3>
+                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #eff6ff; border-left: 4px solid #0055D4; color: #1e3a8a; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.box} PARTITE ROUND ROBIN
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -397,9 +404,9 @@ export const generateRoundRobinPdfHtml = (
 
             <!-- CLASSIFICA FASE ROUND ROBIN -->
             <div class="section-block" style="margin-top: 16px;">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #f0f4f8; border-left: 4px solid #1e3a6e; color: #1e3a6e;">
-                    📊 CLASSIFICA ROUND ROBIN
-                </h3>
+                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #eff6ff; border-left: 4px solid #0055D4; color: #1e3a8a; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.standings} CLASSIFICA ROUND ROBIN
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -423,9 +430,9 @@ export const generateRoundRobinPdfHtml = (
 
             <!-- CLASSIFICA DEFINITIVA ALWAYS AT THE VERY END -->
             <div class="section-block" style="margin-top: 20px;">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32;">
-                    📊 CLASSIFICA DEFINITIVA
-                </h3>
+                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #ecfdf5; border-left: 4px solid #059669; color: #065f46; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.medal} CLASSIFICA DEFINITIVA
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -445,10 +452,10 @@ export const generateRoundRobinPdfHtml = (
 
             <div class="footer">
                 <div style="text-align: left;">
-                    Padel ELO Manager - Round Robin + Finali - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+                    Padel ELO Manager • Round Robin + Finali • Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
                 </div>
-                <div style="text-align: right;">
-                    ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}
+                <div style="text-align: right; font-size: 8px;">
+                    Generato: ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
                 </div>
             </div>
         </body>

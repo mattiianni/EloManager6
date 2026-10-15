@@ -5,6 +5,7 @@ import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import { HIGSegmentedControl } from '../components/ui/HIGSegmentedControl.tsx';
 import { requestHIGConfirmation, showHIGAlert } from '../utils/higDialogService.ts';
+import { SFIcon } from '../components/ui/SFIcon.tsx';
 
 interface Workspace {
     id: string;
@@ -529,7 +530,7 @@ const AdminPage: React.FC = () => {
                     </Card>
 
                     {/* Ricalcola ELO */}
-                    <Card title="🔧 Ricalcola ELO da Storico">
+                    <Card title={<span className="flex items-center gap-1.5"><SFIcon name="wrench.and.screwdriver" size={14} className="text-slate-500" /><span>Ricalcola ELO da Storico</span></span>}>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                             Allinea il <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">current_elo</code> di ogni atleta alla somma reale di tutti i suoi delta in <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">elo_history</code>, inclusi i tornei disputati in workspace differenti.
                             Non ricalcola le partite: corregge soltanto eventuali disallineamenti tra storico e valore globale. L’aggiornamento è atomico e si applica a <strong>tutti i workspace</strong>.
@@ -537,17 +538,28 @@ const AdminPage: React.FC = () => {
                         <button
                             onClick={handleRecalculateElos}
                             disabled={recalculating}
-                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
                         >
-                            {recalculating ? 'Ricalcolo in corso...' : '⚡ Ricalcola ELO (tutti i workspace)'}
+                            {recalculating ? 'Ricalcolo in corso...' : (
+                                <>
+                                    <SFIcon name="bolt.fill" size={14} />
+                                    <span>Ricalcola ELO (tutti i workspace)</span>
+                                </>
+                            )}
                         </button>
                         {recalcResult !== null && (
                             <div className="mt-3">
                                 {recalcResult.corrected === 0 ? (
-                                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">✅ Tutto allineato, nessuna correzione necessaria.</p>
+                                    <p className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
+                                        <SFIcon name="checkmark.circle.fill" size={15} />
+                                        <span>Tutto allineato, nessuna correzione necessaria.</span>
+                                    </p>
                                 ) : (
                                     <>
-                                        <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-2">⚡ Corretti {recalcResult.corrected} giocatori:</p>
+                                        <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-2 flex items-center gap-1.5">
+                                            <SFIcon name="bolt.fill" size={15} />
+                                            <span>Corretti {recalcResult.corrected} giocatori:</span>
+                                        </p>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-xs border-collapse">
                                                 <thead>
@@ -579,26 +591,35 @@ const AdminPage: React.FC = () => {
                     </Card>
 
                     {/* Ricalcolo ELO COMPLETO */}
-                    <Card title="⚡ Ricalcolo ELO Completo da Zero">
+                    <Card title={<span className="flex items-center gap-1.5"><SFIcon name="bolt.fill" size={14} className="text-slate-500" /><span>Ricalcolo ELO Completo da Zero</span></span>}>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                             Ricostruisce da 1500 l’ELO locale di ogni torneo, mantiene la continuità tra le sue giornate e somma tutti i delta nell’ELO globale. Prima valida tutte le partite; soltanto dopo azzera gli ELO, sostituisce la cronologia e ripercorre tornei normali e tornei a squadre. L’operazione è atomica e si applica a <strong>tutti i workspace</strong>.
                         </p>
-                        <div className="p-3 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs text-amber-800 dark:text-amber-300">
-                            ⚠️ Operazione lenta (può richiedere alcuni minuti). Non usare se non necessario.
+                        <div className="p-3 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                            <SFIcon name="exclamationmark.triangle.fill" size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span>Operazione lenta (può richiedere alcuni minuti). Non usare se non necessario.</span>
                         </div>
                         <button
                             onClick={handleFullRecalculateElos}
                             disabled={fullRecalculating}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
                         >
-                            {fullRecalculating ? '⏳ Ricalcolo completo in corso...' : '🔄 Ricalcolo ELO Completo (tutti i workspace)'}
+                            {fullRecalculating ? 'Ricalcolo completo in corso...' : (
+                                <>
+                                    <SFIcon name="arrow.clockwise" size={14} />
+                                    <span>Ricalcolo ELO Completo (tutti i workspace)</span>
+                                </>
+                            )}
                         </button>
                         {fullRecalcResult !== null && (
                             <div className="mt-3">
-                                <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                                    ✅ Completato! Processate {fullRecalcResult.processed} partite valide in {fullRecalcResult.events} eventi ({fullRecalcResult.totalMatches} record esaminati).
-                                    {fullRecalcResult.skippedIncompleteMatches > 0 && ` ${fullRecalcResult.skippedIncompleteMatches} partite senza squadre complete sono state escluse dall’ELO.`}
-                                    {fullRecalcResult.skippedUnplayedMatches > 0 && ` ${fullRecalcResult.skippedUnplayedMatches} partite senza risultato sono state ignorate.`}
+                                <p className="text-sm text-green-600 dark:text-green-400 font-medium flex items-start gap-1.5">
+                                    <SFIcon name="checkmark.circle.fill" size={15} className="shrink-0 mt-0.5" />
+                                    <span>
+                                        Completato! Processate {fullRecalcResult.processed} partite valide in {fullRecalcResult.events} eventi ({fullRecalcResult.totalMatches} record esaminati).
+                                        {fullRecalcResult.skippedIncompleteMatches > 0 && ` ${fullRecalcResult.skippedIncompleteMatches} partite senza squadre complete sono state escluse dall’ELO.`}
+                                        {fullRecalcResult.skippedUnplayedMatches > 0 && ` ${fullRecalcResult.skippedUnplayedMatches} partite senza risultato sono state ignorate.`}
+                                    </span>
                                 </p>
                             </div>
                         )}

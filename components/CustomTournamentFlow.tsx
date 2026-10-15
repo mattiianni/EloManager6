@@ -8,6 +8,7 @@ import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import { showHIGAlert } from '../utils/higDialogService.ts';
+import { SFIcon } from './ui/SFIcon.tsx';
 import { CustomTournamentFlowConfig } from '../types/customTournament.ts';
 import { printCustomTournamentBlank, printCustomTournamentComplete } from '../services/printService.ts';
 import {
@@ -28,6 +29,7 @@ export type { CustomBoxData, BoxStandingItem };
 interface CustomTournamentFlowProps {
   pairs: [Player, Player][];
   config?: CustomTournamentFlowConfig;
+  tournamentType?: TournamentType;
   onFinish: () => void;
   tournamentDate: string;
   clubName: string;
@@ -40,6 +42,7 @@ type CustomTournamentStep = 'boxes' | 'semifinals' | 'finals' | 'results';
 export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   pairs,
   config,
+  tournamentType,
   onFinish,
   tournamentDate,
   clubName,
@@ -52,9 +55,17 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   const phases = config?.phases || ['box', 'semifinali', 'finali'];
   const firstPhase = phases[0] || (isSingles ? 'box' : 'box');
   const isAmericanoMode = isSingles && firstPhase === 'americano';
-  const hasSemifinals = phases.includes('semifinali');
-  const hasFinals = phases.includes('finali');
+  const hasSemifinals = phases.includes('semifinali') || phases.includes('semifinals');
+  const hasFinals = phases.includes('finali') || phases.includes('finals');
+  const hasQuarters = phases.includes('quarti') || phases.includes('quarters');
   const numCampi = config?.numCampi || 2;
+
+  const effectiveTournamentType = tournamentType || (isAmericanoMode ? TournamentType.Americano : TournamentType.TorneoPersonale);
+  const formatBadgeName = effectiveTournamentType === TournamentType.BeatTheBox
+    ? 'Beat the Box'
+    : effectiveTournamentType === TournamentType.Americano
+    ? 'Americano'
+    : 'Torneo Personale';
 
   const [step, setStep] = useState<CustomTournamentStep>('boxes');
   const [boxesData, setBoxesData] = useState<CustomBoxData[]>([]);
@@ -181,7 +192,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   // Transizione a Semifinali o Finali
   const handleProceedFromBoxes = () => {
     if (!areAllBoxMatchesComplete) {
-      showHIGAlert('⚠️ Inserisci i risultati di tutte le partite dei Box per procedere.');
+      showHIGAlert('Inserisci i risultati di tutte le partite dei Box per procedere.');
       return;
     }
 
@@ -220,7 +231,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   const handleProceedFromSemifinals = () => {
     const allSfDone = semifinalMatches.length > 0 && semifinalMatches.every(m => m.winner !== null);
     if (!allSfDone) {
-      showHIGAlert('⚠️ Inserisci i risultati di entrambe le semifinali.');
+      showHIGAlert('Inserisci i risultati di entrambe le semifinali.');
       return;
     }
 
@@ -257,8 +268,8 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
     });
   };
 
-  // Salva Calendario (status: 'scheduled')
-  const handleSaveCalendar = async () => {
+  // Salva Calendario (status: 'scheduled') o Torneo in corso
+  const handleSaveCalendar = async (exitOnSuccess = true) => {
     if (isSavingCalendar) return;
     setIsSavingCalendar(true);
 
@@ -282,7 +293,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
       const tournamentData: Omit<Tournament, 'id'> = {
         name: tournamentName,
-        type: TournamentType.TorneoPersonale,
+        type: effectiveTournamentType,
         date: tournamentDate,
         club: clubName,
         matchIds: [],
@@ -294,8 +305,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       };
 
       await addMultipleMatches(allMatchesList, tournamentData);
-      showHIGAlert('✅ Calendario salvato con successo!');
-      onFinish();
+      showHIGAlert('Dati del torneo salvati con successo!');
+      if (exitOnSuccess) {
+        onFinish();
+      }
     } catch (e: any) {
       console.error('Error saving calendar:', e);
       showHIGAlert(e.message || 'Errore nel salvataggio del calendario.');
@@ -308,7 +321,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   const handleCompleteTournament = async () => {
     const allFinalsDone = finalMatches.length > 0 && finalMatches.every(m => m.winner !== null);
     if (!allFinalsDone) {
-      showHIGAlert('⚠️ Inserisci i risultati di tutte le finali prima di completare il torneo.');
+      showHIGAlert('Inserisci i risultati di tutte le finali prima di completare il torneo.');
       return;
     }
 
@@ -335,7 +348,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
       const tournamentData: Omit<Tournament, 'id'> = {
         name: tournamentName,
-        type: TournamentType.TorneoPersonale,
+        type: effectiveTournamentType,
         date: tournamentDate,
         club: clubName,
         matchIds: [],
@@ -371,7 +384,8 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       },
       config || { phases: ['box', 'finali'], playerMode: isSingles ? 'singles' : 'pairs', numCampi },
       customBoxes,
-      getPlayerById
+      getPlayerById,
+      formatBadgeName
     );
   };
 
@@ -382,7 +396,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       name: tournamentName,
       club: clubName,
       date: tournamentDate,
-      type: TournamentType.TorneoPersonale,
+      type: effectiveTournamentType,
       status: 'completed',
       matchIds: [],
       customFlowConfig: config,
@@ -441,7 +455,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       <Card
         title={
           <div className="flex items-center justify-between">
-            <span>🏆 Risultati Torneo Personale</span>
+            <span className="flex items-center gap-2">
+              <SFIcon name="trophy.fill" size={18} className="text-amber-500" />
+              <span>Risultati {formatBadgeName}</span>
+            </span>
             <Button onClick={handlePrintComplete} variant="ghost" size="sm">
               <span className="flex items-center gap-1.5 font-bold"><PrintIcon /> Stampa PDF Completo</span>
             </Button>
@@ -450,7 +467,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       >
         <div className="space-y-6 px-2 py-4">
           <div className="text-center space-y-1">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">{tournamentName}</h2>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">{tournamentName || formatBadgeName}</h2>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{clubName} • {tournamentDate}</p>
           </div>
 
@@ -458,7 +475,9 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             {/* 2° Posto */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-white/10 text-center flex flex-col justify-center items-center order-2 sm:order-1">
-              <span className="text-3xl mb-1">🥈</span>
+              <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-300 font-extrabold text-sm mb-2 shadow-xs">
+                2°
+              </div>
               <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">2° Classificato</span>
               <p className="font-bold text-slate-900 dark:text-white text-sm">
                 {secondTeam.map(id => formatShort(getPlayerById(id))).join(' & ') || '—'}
@@ -467,7 +486,9 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
             {/* 1° Posto */}
             <div className="p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-center flex flex-col justify-center items-center order-1 sm:order-2 shadow-sm">
-              <span className="text-4xl mb-1">🥇</span>
+              <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-black text-base mb-2 shadow-xs">
+                1°
+              </div>
               <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">Campione</span>
               <p className="font-black text-slate-900 dark:text-white text-base">
                 {firstTeam.map(id => formatShort(getPlayerById(id))).join(' & ') || '—'}
@@ -476,7 +497,9 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
             {/* 3° Posto */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-white/10 text-center flex flex-col justify-center items-center order-3">
-              <span className="text-3xl mb-1">🥉</span>
+              <div className="w-10 h-10 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-sm mb-2 shadow-xs">
+                3°
+              </div>
               <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">3° Classificato</span>
               <p className="font-bold text-slate-900 dark:text-white text-sm">
                 {thirdTeam.map(id => formatShort(getPlayerById(id))).join(' & ') || '—'}
@@ -505,14 +528,14 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                  Torneo Personale
+                  {formatBadgeName}
                 </span>
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
                   {isSingles ? 'Singoli' : 'Coppie Fisse'} • {numCampi} {numCampi === 1 ? 'Campo' : 'Campi'}
                 </span>
               </div>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                {tournamentName || 'Torneo Personale'}
+                {tournamentName || formatBadgeName}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -529,7 +552,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
               step === 'boxes' ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
             }`}>
-              <span>{isAmericanoMode ? '🔄' : '📦'}</span>
+              <SFIcon name={isAmericanoMode ? "shuffle" : "shippingbox.fill"} size={13} />
               <span>{isAmericanoMode ? 'Fase Americano' : 'Fase Box'}</span>
             </div>
             {hasSemifinals && (
@@ -538,7 +561,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                   step === 'semifinals' ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 }`}>
-                  <span>⚔️</span>
+                  <SFIcon name="bolt.fill" size={13} />
                   <span>Semifinali</span>
                 </div>
               </>
@@ -549,7 +572,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                   step === 'finals' ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 }`}>
-                  <span>🏆</span>
+                  <SFIcon name="trophy.fill" size={13} />
                   <span>Finali</span>
                 </div>
               </>
@@ -569,7 +592,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-lg">
-                          {isAmericanoMode ? '🔄' : '📦'}
+                          <SFIcon name={isAmericanoMode ? "shuffle" : "shippingbox.fill"} size={18} />
                         </div>
                         <div>
                           <h3 className="font-bold text-base text-slate-900 dark:text-white">
@@ -681,6 +704,8 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                           <tbody>
                             {boxStandings[box.boxNumber]?.map((st, sIdx) => {
                               const isQualifying = hasSemifinals ? sIdx < (isAmericanoMode ? 8 : 2) : hasFinals ? sIdx < (isAmericanoMode ? 4 : 2) : sIdx < 2;
+                              const boxLetter = String.fromCharCode(64 + box.boxNumber);
+                              const badgeCode = `${boxLetter}${sIdx + 1}`;
                               return (
                                 <tr
                                   key={st.id}
@@ -701,9 +726,13 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                   </td>
                                   <td className="py-1.5 truncate max-w-[140px]">
                                     {st.displayName}
-                                    {isQualifying && (hasSemifinals || hasFinals) && (
-                                      <span className="ml-1.5 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded">
-                                        Qualif.
+                                    {isSingles && (hasSemifinals || hasFinals) && (
+                                      <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                                        isQualifying
+                                          ? 'bg-emerald-600 text-white shadow-xs'
+                                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                      }`}>
+                                        {badgeCode}
                                       </span>
                                     )}
                                   </td>
@@ -723,12 +752,12 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
               {/* Bottoni azione sotto i box */}
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
                 <Button
-                  onClick={handleSaveCalendar}
-                  variant="secondary"
+                  onClick={() => handleSaveCalendar(false)}
+                  variant="success"
                   disabled={isSavingCalendar}
                   className="w-full sm:w-auto font-bold"
                 >
-                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Calendario'}
+                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
                 </Button>
 
                 <Button
@@ -736,7 +765,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                   disabled={!areAllBoxMatchesComplete}
                   className="w-full sm:flex-1 font-bold"
                 >
-                  {hasSemifinals ? 'Procedi alle Semifinali →' : hasFinals ? 'Procedi alle Finali →' : 'Completa Torneo →'}
+                  {hasSemifinals ? 'Procedi alle Semifinali →' : hasFinals ? 'Procedi alle Finali →' : 'Avanti →'}
                 </Button>
               </div>
             </div>
@@ -746,8 +775,9 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
           {step === 'semifinals' && (
             <div className="space-y-6">
               <div className="p-4 bg-sky-50 dark:bg-sky-950/30 rounded-2xl border border-sky-200/60 dark:border-sky-500/20">
-                <h3 className="font-bold text-sky-900 dark:text-sky-200 text-sm mb-1">
-                  ⚔️ Semifinali in Contemporanea
+                <h3 className="font-bold text-sky-900 dark:text-sky-200 text-sm mb-1 flex items-center gap-1.5">
+                  <SFIcon name="bolt.fill" size={15} className="text-sky-600 dark:text-sky-400" />
+                  <span>Semifinali in Contemporanea</span>
                 </h3>
                 <p className="text-xs text-sky-700 dark:text-sky-300">
                   Le migliori coppie si affrontano su 2 campi. Le vincitrici giocheranno la Finale 1°-2° posto, le perdenti la Finale 3°-4° posto.
@@ -809,14 +839,22 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                <Button onClick={() => setStep('boxes')} variant="outline" className="font-bold">
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                <Button onClick={() => setStep('boxes')} variant="outline" className="w-full sm:w-auto font-bold">
                   ← Torna ai Box
+                </Button>
+                <Button
+                  onClick={() => handleSaveCalendar(false)}
+                  variant="success"
+                  disabled={isSavingCalendar}
+                  className="w-full sm:w-auto font-bold"
+                >
+                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
                 </Button>
                 <Button
                   onClick={handleProceedFromSemifinals}
                   disabled={semifinalMatches.some(m => !m.winner)}
-                  className="flex-1 font-bold"
+                  className="w-full sm:flex-1 font-bold"
                 >
                   Procedi alle Finali →
                 </Button>
@@ -828,8 +866,9 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
           {step === 'finals' && (
             <div className="space-y-6">
               <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200/60 dark:border-amber-500/20">
-                <h3 className="font-bold text-amber-900 dark:text-amber-200 text-sm mb-1">
-                  🏆 Fase Finale
+                <h3 className="font-bold text-amber-900 dark:text-amber-200 text-sm mb-1 flex items-center gap-1.5">
+                  <SFIcon name="trophy.fill" size={15} className="text-amber-500" />
+                  <span>Fase Finale</span>
                 </h3>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   Inserisci i risultati delle finali per completare il torneo e aggiornare le classifiche ELO.
@@ -857,10 +896,20 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-                        <span className={`text-xs font-bold uppercase tracking-wider ${
+                        <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                           isFirstPlaceMatch ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'
                         }`}>
-                          {isFirstPlaceMatch ? '🥇 Finale 1° / 2° Posto' : '🥉 Finale 3° / 4° Posto'}
+                          {isFirstPlaceMatch ? (
+                            <>
+                              <span className="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-[10px]">1°</span>
+                              <span>Finale 1° / 2° Posto</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="w-5 h-5 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-[10px]">3°</span>
+                              <span>Finale 3° / 4° Posto</span>
+                            </>
+                          )}
                         </span>
                         <span className="text-xs font-semibold text-slate-400">Campo {match.courtNumber || idx + 1}</span>
                       </div>
@@ -898,20 +947,33 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
                 <Button
                   onClick={() => setStep(hasSemifinals ? 'semifinals' : 'boxes')}
                   variant="outline"
-                  className="font-bold"
+                  className="w-full sm:w-auto font-bold"
                 >
                   ← Indietro
                 </Button>
                 <Button
+                  onClick={() => handleSaveCalendar(false)}
+                  variant="success"
+                  disabled={isSavingCalendar}
+                  className="w-full sm:w-auto font-bold"
+                >
+                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
+                </Button>
+                <Button
                   onClick={handleCompleteTournament}
                   disabled={isSubmitting || finalMatches.some(m => !m.winner)}
-                  className="flex-1 font-bold"
+                  className="w-full sm:flex-1 font-bold"
                 >
-                  {isSubmitting ? 'Salvataggio in corso...' : 'Completa Torneo 🏆'}
+                  {isSubmitting ? 'Salvataggio in corso...' : (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <SFIcon name="trophy.fill" size={16} />
+                      <span>Completa Torneo</span>
+                    </span>
+                  )}
                 </Button>
               </div>
             </div>

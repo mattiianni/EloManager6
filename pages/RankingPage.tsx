@@ -358,10 +358,26 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
 
     const getMedalIcon = (index: number) => {
         switch (index) {
-            case 0: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemYellow)" />;
-            case 1: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemGray)" />;
-            case 2: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemOrange)" />;
-            default: return <span className="text-[15px] font-bold text-ios-label-secondary">{index + 1}.</span>;
+            case 0:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-xs shadow-xs">
+                        1°
+                    </div>
+                );
+            case 1:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-300 font-extrabold text-xs shadow-xs">
+                        2°
+                    </div>
+                );
+            case 2:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-xs shadow-xs">
+                        3°
+                    </div>
+                );
+            default:
+                return <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">{index + 1}°</span>;
         }
     };
 
@@ -450,8 +466,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                 <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto pt-2 items-end">
                     {/* 2° Posto */}
                     <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[1])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[1]); } }} role="button" tabIndex={0}>
-                        <div className="w-12 h-12 rounded-full border-2 border-slate-300 bg-slate-100 dark:bg-slate-800 dark:border-slate-500 flex items-center justify-center text-lg font-black shadow-md mb-2">
-                            🥈
+                        <div className="relative w-12 h-12 rounded-full border-2 border-slate-300 bg-slate-100 dark:bg-slate-800 dark:border-slate-500 flex items-center justify-center shadow-md mb-2">
+                            <SFIcon name="medal.fill" size={22} color="#64748b" />
+                            <span className="absolute -bottom-1 -right-1 bg-slate-500 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 shadow-xs">2°</span>
                         </div>
                         <div className="w-full bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-300 dark:border-white/10 rounded-t-2xl p-3 text-center h-28 flex flex-col justify-between">
                             <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{formatPlayerShortName(rankingData[1])}</p>
@@ -460,8 +477,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     </div>
                     {/* 1° Posto */}
                     <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[0])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[0]); } }} role="button" tabIndex={0}>
-                        <div className="w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center text-2xl font-black shadow-xl mb-2 animate-bounce">
-                            🥇
+                        <div className="relative w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center shadow-xl mb-2 animate-bounce">
+                            <SFIcon name="trophy.fill" size={26} color="#d97706" />
+                            <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white font-black text-[10px] px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 shadow-xs">1°</span>
                         </div>
                         <div className="w-full bg-amber-500/15 border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-sm">
                             <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{formatPlayerShortName(rankingData[0])}</p>
@@ -470,8 +488,9 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     </div>
                     {/* 3° Posto */}
                     <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[2])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[2]); } }} role="button" tabIndex={0}>
-                        <div className="w-12 h-12 rounded-full border-2 border-amber-700 bg-orange-100 dark:bg-slate-800 dark:border-amber-700 flex items-center justify-center text-lg font-black shadow-md mb-2">
-                            🥉
+                        <div className="relative w-12 h-12 rounded-full border-2 border-amber-700 bg-orange-100 dark:bg-slate-800 dark:border-amber-700 flex items-center justify-center shadow-md mb-2">
+                            <SFIcon name="medal.fill" size={22} color="#b45309" />
+                            <span className="absolute -bottom-1 -right-1 bg-amber-700 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 shadow-xs">3°</span>
                         </div>
                         <div className="w-full bg-orange-100/60 dark:bg-slate-800/80 backdrop-blur-xl border border-orange-200 dark:border-white/10 rounded-t-2xl p-3 text-center h-24 flex flex-col justify-between">
                             <p className="text-xs font-bold truncate text-slate-900 dark:text-white">{formatPlayerShortName(rankingData[2])}</p>

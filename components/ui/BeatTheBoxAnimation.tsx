@@ -1,4 +1,5 @@
 import React from 'react';
+import { SFIcon } from './SFIcon.tsx';
 
 const BeatTheBoxAnimation: React.FC = () => {
  return (
@@ -81,7 +82,7 @@ const BeatTheBoxAnimation: React.FC = () => {
  <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 bg-opacity-95 flex flex-col items-center justify-center z-50 backdrop-blur-sm">
  {/* Box Animation */}
  <div className="beat-box-container">
- <div className="beat-box">📦</div>
+ <div className="beat-box"><SFIcon name="shippingbox.fill" size={38} className="text-white" /></div>
  </div>
  
  {/* Title */}

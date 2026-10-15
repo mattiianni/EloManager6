@@ -23,6 +23,7 @@ import BeatTheBoxAnimation from './ui/BeatTheBoxAnimation.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import { printBeatTheBoxBlank, printBeatTheBoxComplete } from '../services/printService.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
+import { SFIcon } from './ui/SFIcon.tsx';
 
 interface BeatTheBoxFlowProps {
  pairs: [Player, Player][];
@@ -430,7 +431,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  // Verifica che tutte le semifinali abbiano un vincitore
  const allComplete = semifinalMatches.every(m => m.winner);
  if (!allComplete) {
- showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('Inserisci i risultati di tutte le semifinali.');
  return;
  }
  
@@ -461,7 +462,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  // Verifica che tutte le finali abbiano un vincitore
  const allComplete = finalMatches.every(m => m.winner);
  if (!allComplete) {
- showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
+ showHIGAlert('Inserisci i risultati di tutte le finali.');
  return;
  }
  
@@ -620,27 +621,36 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <HIGSheet
  isOpen={showBoxStandingsModal}
  onClose={() => setShowBoxStandingsModal(false)}
- title="📦 Classifiche Box Completate"
+ title="Classifiche Box Completate"
  >
  <div className="space-y-4 px-4">
  {boxStandings.map((box) => (
  <div key={box.boxNumber} className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-ios-blue/20">
- <h4 className="font-semibold text-ios-blue dark:text-ios-blue mb-3">Box {box.boxNumber}</h4>
+ <h4 className="font-semibold text-ios-blue dark:text-ios-blue mb-3">Box {box.boxNumber} (Box {String.fromCharCode(64 + box.boxNumber)})</h4>
  <div className="space-y-2 px-4">
- {box.standings.map((s: any, idx: number) => (
- <div key={s.player.id} className={`flex justify-between items-center p-2 rounded ${
- idx < 2 
- ? 'bg-green-100 dark:bg-green-900 border border-green-400/50 dark:border-green-300/20' 
- : 'bg-white dark:bg-gray-800'
- }`}>
- <span className="font-medium">
- {idx + 1}° - {s.player.name} {s.player.surname}
- </span>
- <span className="text-sm text-gray-600 dark:text-gray-400">
- {s.points} punti ({s.gameDifference >= 0 ? '+' : ''}{s.gameDifference})
- </span>
- </div>
- ))}
+ {box.standings.map((s: any, idx: number) => {
+   const boxLetter = String.fromCharCode(64 + box.boxNumber);
+   const badgeCode = `${boxLetter}${idx + 1}`;
+   return (
+     <div key={s.player.id} className={`flex justify-between items-center p-2 rounded ${
+       idx < 2 
+         ? 'bg-green-100 dark:bg-green-900 border border-green-400/50 dark:border-green-300/20' 
+         : 'bg-white dark:bg-gray-800'
+     }`}>
+       <div className="flex items-center gap-2">
+         <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${idx < 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+           {badgeCode}
+         </span>
+         <span className="font-medium text-sm">
+           {idx + 1}° - {s.player.name} {s.player.surname}
+         </span>
+       </div>
+       <span className="text-sm text-gray-600 dark:text-gray-400 font-semibold">
+         {s.points} punti ({s.gameDifference >= 0 ? '+' : ''}{s.gameDifference})
+       </span>
+     </div>
+   );
+ })}
  </div>
  </div>
  ))}
@@ -744,7 +754,9 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  {boxesData.map((box, boxIdx) => (
  <div key={boxIdx} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
  <div className="flex items-center gap-2 mb-4">
- <div className="text-2xl">📦</div>
+ <div className="w-8 h-8 rounded-lg bg-ios-blue/10 dark:bg-ios-blue/20 flex items-center justify-center text-ios-blue shrink-0">
+  <SFIcon name="shippingbox.fill" size={18} />
+ </div>
  <h3 className="font-semibold text-lg">
  Box {box.boxNumber} - Campo {box.boxNumber}
  </h3>
@@ -768,40 +780,40 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  const t2p2 = getPlayerById(match.team2[1]);
  
  if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return null;
- 
- return (
- <div key={matchIdx} className="bg-white dark:bg-gray-800 p-3 rounded">
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm">
- {t1p1.name} {t1p1.surname}<br/>
- {t1p2.name} {t1p2.surname}
- </div>
- 
- <div>
- <MatchScoreInput
- sets={match.sets || []}
- onSetsChange={(sets) => {
- setBoxesData(prev => prev.map((box, bi) =>
- bi === boxIdx
- ? {
- ...box,
- matches: box.matches.map((m, mi) =>
- mi === matchIdx ? { ...m, sets } : m
- )
- }
- : box
- ));
- }}
- />
- </div>
- 
- <div className="text-sm text-right">
- {t2p1.name} {t2p1.surname}<br/>
- {t2p2.name} {t2p2.surname}
- </div>
- </div>
- </div>
- );
+  return (
+  <div key={matchIdx} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="min-w-0 text-left">
+        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
+      </div>
+      <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">VS</div>
+      <div className="min-w-0 text-right">
+        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
+      </div>
+    </div>
+    <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
+      <MatchScoreInput
+        sets={match.sets || []}
+        onSetsChange={(sets) => {
+          setBoxesData(prev => prev.map((box, bi) =>
+            bi === boxIdx
+              ? {
+                  ...box,
+                  matches: box.matches.map((m, mi) =>
+                    mi === matchIdx ? { ...m, sets } : m
+                  )
+                }
+              : box
+          ));
+        }}
+      />
+    </div>
+  </div>
+  );
  })}
  </div>
 
@@ -845,7 +857,10 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <Card title="Beat the Box - Semifinali">
  <div className="space-y-6 px-4">
  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6 border border-ios-blue/20">
- <h3 className="font-semibold text-lg mb-2">🏆 Qualificati alle Semifinali</h3>
+ <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+  <SFIcon name="trophy.fill" size={18} className="text-amber-500" />
+  <span>Qualificati alle Semifinali</span>
+ </h3>
  <p className="text-sm text-gray-600 dark:text-gray-300">
  I primi 2 classificati di ogni box si sfidano nelle semifinali
  </p>
@@ -858,49 +873,41 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  const t2p2 = getPlayerById(match.team2[1]);
  
  if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return null;
- 
- return (
- <div key={idx} className="bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-4 rounded-lg shadow-sm">
- <div className="text-center mb-3">
- <h4 className="font-bold text-lg text-green-900 dark:text-green-300">
- Semifinale {idx + 1}
- </h4>
- </div>
- 
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm font-medium">
- {t1p1.name} {t1p1.surname}<br/>
- {t1p2.name} {t1p2.surname}
- </div>
- 
- <div>
- <MatchScoreInput
- sets={match.sets || []}
- onSetsChange={(sets) => {
- const newMatches = [...semifinalMatches];
- 
- // Calcola winner
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
- 
- newMatches[idx] = {
- ...match,
- sets,
- winner,
- };
- setSemifinalMatches(newMatches);
- }}
- />
- </div>
- 
- <div className="text-sm font-medium text-right">
- {t2p1.name} {t2p1.surname}<br/>
- {t2p2.name} {t2p2.surname}
- </div>
- </div>
- </div>
- );
+  return (
+  <div key={idx} className="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2">
+    <div className="text-center pb-1 border-b border-green-200/50 dark:border-green-800/30">
+      <h4 className="font-bold text-sm text-green-900 dark:text-green-300">
+        Semifinale {idx + 1}
+      </h4>
+    </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="min-w-0 text-left">
+        <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra A</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
+      </div>
+      <div className="shrink-0 px-2 py-0.5 rounded-full bg-green-200/60 dark:bg-green-800/40 text-[10px] font-black text-green-700 dark:text-green-300">VS</div>
+      <div className="min-w-0 text-right">
+        <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra B</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
+      </div>
+    </div>
+    <div className="pt-2 flex justify-center border-t border-green-200/50 dark:border-green-800/30">
+      <MatchScoreInput
+        sets={match.sets || []}
+        onSetsChange={(sets) => {
+          const newMatches = [...semifinalMatches];
+          const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+          const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+          const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
+          newMatches[idx] = { ...match, sets, winner };
+          setSemifinalMatches(newMatches);
+        }}
+      />
+    </div>
+  </div>
+  );
  })}
  
  <div className="flex gap-3 mt-6">
@@ -933,7 +940,10 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <Card title="Beat the Box - Finali">
  <div className="space-y-6 px-4">
  <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg mb-6">
- <h3 className="font-semibold text-lg mb-2">🏆 Finali</h3>
+ <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+  <SFIcon name="trophy.fill" size={18} className="text-amber-500" />
+  <span>Finali</span>
+ </h3>
  <p className="text-sm text-gray-600 dark:text-gray-300">
  Ultimi match per determinare la classifica finale
  </p>
@@ -964,55 +974,50 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
  titleColor = 'text-green-800 dark:text-green-400';
  }
- 
- return (
- <div key={idx} className={`${bgColor} p-4 rounded-lg shadow-sm`}>
- <div className="text-center mb-3">
- <h4 className={`font-bold text-lg ${titleColor}`}>
- {matchTitle}
- </h4>
- </div>
- 
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm font-medium">
- {t1p1.name} {t1p1.surname}<br/>
- {t1p2.name} {t1p2.surname}
- </div>
- 
- <div>
- <MatchScoreInput
- sets={match.sets || []}
- onSetsChange={(sets) => {
- const newMatches = [...finalMatches];
- 
- // Calcola winner
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
- 
- newMatches[idx] = {
- ...match,
- sets,
- winner,
- };
- setFinalMatches(newMatches);
- }}
- />
- </div>
- 
- <div className="text-sm font-medium text-right">
- {t2p1.name} {t2p1.surname}<br/>
- {t2p2.name} {t2p2.surname}
- </div>
- </div>
- </div>
- );
+  return (
+  <div key={idx} className={`${bgColor} p-3.5 rounded-xl shadow-sm space-y-2`}>
+    <div className="text-center pb-1 border-b border-black/5 dark:border-white/5">
+      <h4 className={`font-bold text-sm ${titleColor}`}>
+        {matchTitle}
+      </h4>
+    </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="min-w-0 text-left">
+        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
+      </div>
+      <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[10px] font-black text-slate-500">VS</div>
+      <div className="min-w-0 text-right">
+        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
+      </div>
+    </div>
+    <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
+      <MatchScoreInput
+        sets={match.sets || []}
+        onSetsChange={(sets) => {
+          const newMatches = [...finalMatches];
+          const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+          const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+          const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
+          newMatches[idx] = { ...match, sets, winner };
+          setFinalMatches(newMatches);
+        }}
+      />
+    </div>
+  </div>
+  );
  })}
  
  {/* Anteprima Classifica Squadre Finale */}
  {finalMatches.length > 0 && (
  <div className="mt-4">
- <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">🏆 Classifica Squadre Finale</h4>
+ <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+  <SFIcon name="trophy.fill" size={16} className="text-amber-500" />
+  <span>Classifica Squadre Finale</span>
+ </h4>
  <div className="overflow-x-auto">
  <table className="min-w-full text-sm">
  <thead>
@@ -1067,7 +1072,12 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  className="flex-1"
  disabled={isSubmitting}
  >
- {isSubmitting ? 'Salvataggio...' : '✅ Completa Torneo'}
+ {isSubmitting ? 'Salvataggio...' : (
+  <span className="flex items-center justify-center gap-1.5">
+    <SFIcon name="checkmark.circle.fill" size={16} />
+    <span>Completa Torneo</span>
+  </span>
+ )}
  </Button>
  </div>
  </div>
@@ -1119,7 +1129,10 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  {/* Classifica Squadre Finale */}
  {finalMatches.length > 0 && (
  <div>
- <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">🏆 Classifica Squadre Finale</h4>
+ <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+  <SFIcon name="trophy.fill" size={16} className="text-amber-500" />
+  <span>Classifica Squadre Finale</span>
+ </h4>
  <div className="overflow-x-auto">
  <table className="min-w-full text-sm">
  <thead>
@@ -1163,7 +1176,10 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 
 					{/* Classifica Individuale (Var. ELO) */}
 					<div>
-						<h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">📈 Classifica Individuale (Var. ELO)</h4>
+						<h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+							<SFIcon name="chart.line.uptrend.xyaxis" size={16} className="text-ios-blue" />
+							<span>Classifica Individuale (Var. ELO)</span>
+						</h4>
 						<div className="overflow-x-auto">
 							<table className="min-w-full text-sm">
 								<thead>
@@ -1196,7 +1212,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 								console.log('🖨️ semifinalMatches.length:', semifinalMatches.length);
 								console.log('🖨️ finalMatches.length:', finalMatches.length);
 								
-								// 🔍 VERIFICA boxesData.players PRIMA della stampa
+								// VERIFICA boxesData.players PRIMA della stampa
 								console.log('🔍 Verifica boxesData.players:');
 								boxesData.forEach((b, idx) => {
 									console.log(` Box ${b.boxNumber}:`, {

@@ -1,7 +1,7 @@
 import { Match, Tournament, Player, TournamentType } from '../../types';
 import { TournamentPrinter } from '../types';
 import { calculateAmericanoStandings } from './engine';
-import { formatScoreBoxes, MANROPE_PRINT_STYLESHEET, printableTeamName, escapeHtml } from '../../services/printService';
+import { formatScoreBoxes, MANROPE_PRINT_STYLESHEET, printableTeamName, escapeHtml, PDF_ICONS } from '../../services/printService';
 import { normalizeTournamentRounds } from '../../utils/tournamentRounds';
 import { APP_MONTH, APP_VERSION } from '../../constants';
 
@@ -98,18 +98,22 @@ export const generateAmericanoPdfHtml = (
     // Standings HTML
     const standingsRowsHtml = standings.map((entry, idx) => {
         const player = (entry as any).team?.[0] || entry.player || entry.pair?.[0];
-        const playerName = player ? `${player.name} ${player.surname}` : 'Giocatore';
-        let medal = '';
-        if (idx === 0) medal = '🥇 ';
-        else if (idx === 1) medal = '🥈 ';
-        else if (idx === 2) medal = '🥉 ';
+        const playerName = player ? `${escapeHtml(player.name)} ${escapeHtml(player.surname)}` : 'Giocatore';
+        let rankBadge = `<span style="font-weight: 700; color: #64748b;">${idx + 1}°</span>`;
+        if (idx === 0) {
+            rankBadge = `<span style="background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fde68a;">1°</span>`;
+        } else if (idx === 1) {
+            rankBadge = `<span style="background: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #cbd5e1;">2°</span>`;
+        } else if (idx === 2) {
+            rankBadge = `<span style="background: #ffedd5; color: #9a3412; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fed7aa;">3°</span>`;
+        }
 
         if (americanoScoringType === 'points') {
             return `
                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold;">${medal}${idx + 1}°</td>
+                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
                     <td style="width: 60%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${playerName}</td>
-                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
+                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.gamesWon}</td>
                     <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
                 </tr>
             `;
@@ -117,9 +121,9 @@ export const generateAmericanoPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold;">${medal}${idx + 1}°</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
                 <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${playerName}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0284c7;">${entry.points}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.points}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
@@ -136,34 +140,33 @@ export const generateAmericanoPdfHtml = (
             <link rel="stylesheet" href="${MANROPE_PRINT_STYLESHEET}">
             <style>
                 @page { size: A4; margin: 12mm 10mm; }
-                body { font-family: 'Manrope', sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
-                h1 { font-size: 22px; margin: 0 0 4px 0; color: #2196f3; font-weight: bold; }
-                h2 { font-size: 14px; margin: 0 0 3px 0; color: #666; }
-                h3 { font-size: 13px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; }
-                table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; }
-                th { background-color: #1e3a6e; color: white; padding: 5px 6px; font-weight: bold; font-size: 11px; height: 24px; text-align: left; }
-                td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; font-size: 11px; height: 24px; border: 1px solid #cbd5e1; }
+                body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
+                h1 { font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800; }
+                h2 { font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500; }
+                table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
+                th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
+                td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
                 tr { height: 24px; }
-                tr:nth-child(even) { background-color: #f0f5ff; }
+                tr:nth-child(even) { background-color: #f8fafc; }
                 .section-block { page-break-inside: avoid; break-inside: avoid; }
-                .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #666; display: flex; justify-content: space-between; }
+                .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
             </style>
         </head>
         <body>
-            <div style="text-align: center; margin-bottom: 12px;">
-                <h1>🎾 ${safeDisplayName}</h1>
-                <h2>${safeClubName} - Torneo Americano</h2>
-                <div style="color: #2196f3; font-size: 11px; font-weight: bold; margin: 3px 0 0 0;">
-                    ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
+            <div style="text-align: center; margin-bottom: 14px;">
+                <h1>${PDF_ICONS.trophy} ${safeDisplayName}</h1>
+                <h2>${safeClubName} • Torneo Americano</h2>
+                <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
+                    ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
                 </div>
             </div>
 
-            <div style="border-bottom: 2px solid #2196f3; margin: 10px 0 20px 0;"></div>
+            <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 20px 0;"></div>
 
             <div class="section-block">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #f0f4f8; border-left: 4px solid #1e3a6e; color: #1e3a6e;">
-                    🎾 PARTITE E RISULTATI
-                </h3>
+                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #eff6ff; border-left: 4px solid #0055D4; color: #1e3a8a; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.box} PARTITE E RISULTATI
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -180,10 +183,10 @@ export const generateAmericanoPdfHtml = (
             </div>
 
             <!-- CLASSIFICA DEFINITIVA INDIVIDUALE ALWAYS AT THE VERY END -->
-            <div class="section-block">
-                <h3 style="font-size: 12px; font-weight: bold; margin: 24px 0 6px 0; padding: 4px 6px; background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32;">
-                    📊 CLASSIFICA DEFINITIVA INDIVIDUALE
-                </h3>
+            <div class="section-block" style="margin-top: 20px;">
+                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #ecfdf5; border-left: 4px solid #059669; color: #065f46; border-radius: 4px; display: flex; align-items: center;">
+                    ${PDF_ICONS.medal} CLASSIFICA DEFINITIVA INDIVIDUALE
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -208,10 +211,10 @@ export const generateAmericanoPdfHtml = (
 
             <div class="footer">
                 <div style="text-align: left;">
-                    Padel ELO Manager - Torneo Americano - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+                    Padel ELO Manager • Torneo Americano • Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
                 </div>
-                <div style="text-align: right;">
-                    ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}
+                <div style="text-align: right; font-size: 8px;">
+                    Generato: ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
                 </div>
             </div>
         </body>

@@ -12,7 +12,7 @@ import HIGButton from '../components/ui/HIGButton.tsx';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
 import { HIGAlert } from '../components/ui/HIGAlert';
-import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon } from '../components/ui/Icons.tsx';
+import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon, TrophyIcon } from '../components/ui/Icons.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { formatPlayerName } from '../utils/format.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
@@ -2061,7 +2061,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                                             {playoffMatches.length > 0 && (
                                                                                                 <div className="pt-4 border-t border-purple-500/20 dark:border-purple-400/20">
                                                                                                     <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 mb-2.5 flex items-center gap-1.5">
-                                                                                                        <span>🏆</span> Fase Finale & Playoff
+                                                                                                        <TrophyIcon className="w-3.5 h-3.5 inline-block" /> Fase Finale & Playoff
                                                                                                     </h4>
                                                                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                                                                                                         {playoffMatches.map((m, idx) => renderMatchCard(m, idx, playoffMatches))}

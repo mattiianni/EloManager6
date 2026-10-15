@@ -114,10 +114,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
 
     const getMedalIcon = (index: number) => {
         switch (index) {
-            case 0: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemYellow)" />;
-            case 1: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemGray)" />;
-            case 2: return <SFIcon name="medal.fill" size={20} color="var(--ios-systemOrange)" />;
-            default: return <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ios-secondaryLabel)' }}>{index + 1}.</span>;
+            case 0:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-xs shadow-xs">
+                        1°
+                    </div>
+                );
+            case 1:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-300 font-extrabold text-xs shadow-xs">
+                        2°
+                    </div>
+                );
+            case 2:
+                return (
+                    <div className="w-6 h-6 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-xs shadow-xs">
+                        3°
+                    </div>
+                );
+            default:
+                return <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">{index + 1}°</span>;
         }
     };
 

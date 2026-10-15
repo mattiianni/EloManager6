@@ -644,7 +644,7 @@ export const buildTournamentStats = (
                 const isTeam1 = match.team1.includes(s.player.id);
                 const won = (isTeam1 && match.winner === 'team1') ||
                             (!isTeam1 && match.winner === 'team2');
-                return won ? '🟢' : '🔴';
+                return won ? 'V' : 'P';
             }).join(' ');
 
             return {
@@ -655,9 +655,9 @@ export const buildTournamentStats = (
         })
         .filter(f => f.lastMatches >= 3) // Show only players with at least 3 matches
         .sort((a, b) => {
-            // Sort by number of green circles (wins) in form string
-            const aWins = (a.form.match(/🟢/g) || []).length;
-            const bWins = (b.form.match(/🟢/g) || []).length;
+            // Sort by number of wins in form string
+            const aWins = (a.form.match(/V/g) || []).length;
+            const bWins = (b.form.match(/V/g) || []).length;
             return bWins - aWins;
         })
         .slice(0, 5);
@@ -1325,11 +1325,11 @@ const StatistichePage: React.FC = () => {
             const last5 = playerMatches.slice(-5);
             return {
                 player: s,
-                form: last5.map(m => m.won ? '🟢' : '🔴').join(' ') || 'N/A',
+                form: last5.map(m => m.won ? 'V' : 'P').join(' ') || 'N/A',
                 lastMatches: last5.length
             };
         }).filter(f => f.lastMatches >= 3)
-          .sort((a, b) => (b.form.match(/🟢/g) || []).length - (a.form.match(/🟢/g) || []).length)
+          .sort((a, b) => (b.form.match(/V/g) || []).length - (a.form.match(/V/g) || []).length)
           .slice(0, 5);
 
         // CLUTCH PERFORMANCE (wins by 1 game difference)
@@ -1555,7 +1555,7 @@ const StatistichePage: React.FC = () => {
                             </div>
 
                             {/* 1) Informazioni generali */}
-                            <HIGListSection header="📋 Informazioni Generali">
+                            <HIGListSection header="Informazioni Generali">
                                 <StatBox label="Squadre" value={teams.length ? String(teams.length) : (cfg?.initialTeamCount ? String(cfg.initialTeamCount) : '—')} />
                                 <StatBox label="Giocatori/Team" value={cfg?.defaultPlayersPerTeam ? String(cfg.defaultPlayersPerTeam) : '—'} />
                                 <StatBox label="Partite/Giornata" value={cfg?.matchesPerDay ? String(cfg.matchesPerDay) : '—'} />
@@ -1844,8 +1844,9 @@ const StatistichePage: React.FC = () => {
 
                                     {/* 1. Informazioni Generali */}
                                     <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
-                                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold">
-                                            📋 Informazioni Generali
+                                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold flex items-center gap-1.5">
+                                            <SFIcon name="info.circle" size={15} color="var(--ios-systemBlue)" />
+                                            <span>Informazioni Generali</span>
                                         </div>
                                         <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                                             <StatBox label="Periodo" value={`${stats.periodo.inizio} - ${stats.periodo.fine}`} />
@@ -1866,16 +1867,35 @@ const StatistichePage: React.FC = () => {
                                         </div>
                                         <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                             {stats.top5.map((entry, idx) => {
-                                                let iconName = `${idx + 1}.circle.fill`;
-                                                let iconColor = "var(--ios-tertiaryLabel)";
-                                                if (idx === 0) { iconName = "trophy.fill"; iconColor = "var(--ios-systemYellow)"; }
-                                                else if (idx === 1) { iconName = "medal.fill"; iconColor = "var(--ios-systemGray)"; }
-                                                else if (idx === 2) { iconName = "medal.fill"; iconColor = "var(--ios-systemOrange)"; }
+                                                let rankBadge = (
+                                                    <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">
+                                                        {idx + 1}°
+                                                    </span>
+                                                );
+                                                if (idx === 0) {
+                                                    rankBadge = (
+                                                        <div className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-xs shadow-xs">
+                                                            1°
+                                                        </div>
+                                                    );
+                                                } else if (idx === 1) {
+                                                    rankBadge = (
+                                                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-300 font-extrabold text-xs shadow-xs">
+                                                            2°
+                                                        </div>
+                                                    );
+                                                } else if (idx === 2) {
+                                                    rankBadge = (
+                                                        <div className="w-6 h-6 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-xs shadow-xs">
+                                                            3°
+                                                        </div>
+                                                    );
+                                                }
 
                                                 return (
                                                     <div key={entry.player.id} className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 flex justify-center"><SFIcon name={iconName} color={iconColor} size={24} /></div>
+                                                            <div className="w-8 flex justify-center">{rankBadge}</div>
                                                             <div>
                                                                 <div className="font-semibold text-gray-900 dark:text-white">{`${entry.player.name} ${entry.player.surname}`}</div>
                                                                 <div className="text-sm text-gray-500 dark:text-gray-400">Games V/P: {entry.gamesWon}/{entry.gamesLost}</div>

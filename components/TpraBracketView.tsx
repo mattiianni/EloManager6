@@ -7,6 +7,7 @@ import { HIGSheet } from './ui/HIGSheet.tsx';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { findMatchBetweenTeams, orientResultForStoredMatch } from '../utils/matchIdentity.ts';
 import { requestHIGConfirmation, showHIGAlert } from '../utils/higDialogService.ts';
+import { SFIcon } from './ui/SFIcon.tsx';
 
 interface TpraBracketViewProps {
     tournament: Tournament;
@@ -199,7 +200,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
     const isTournamentFinished = finalRound && finalRound.length === 1 && !!finalRound[0].winner;
 
     const getRoundTitle = (nodeCount: number, rIndex: number) => {
-        if (nodeCount === 1) return "FINALE 🏆";
+        if (nodeCount === 1) return "Finale";
         if (nodeCount === 2) return "Semifinali";
         if (nodeCount === 4) return "Quarti di Finale";
         if (nodeCount === 8) return "Ottavi di Finale";
@@ -210,15 +211,17 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
         <div className="overflow-x-auto py-6">
             <div className="mb-4 px-4">
                 {isTournamentFinished ? (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-center">
+                    <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-center flex items-center justify-center gap-2">
+                        <SFIcon name="checkmark.circle.fill" size={18} className="text-green-600 dark:text-green-400 shrink-0" />
                         <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-                            🎉 La Finale è stata completata! Ora puoi concludere il torneo e calcolare gli ELO.
+                            La Finale è stata completata! Ora puoi concludere il torneo e calcolare gli ELO.
                         </p>
                     </div>
                 ) : (
-                    <div className="p-3 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-xl text-center">
+                    <div className="p-3 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-xl text-center flex items-center justify-center gap-2">
+                        <SFIcon name="trophy.fill" size={18} className="text-sky-600 dark:text-sky-400 shrink-0" />
                         <p className="text-xs sm:text-sm font-medium text-sky-800 dark:text-sky-300">
-                            🏆 Torneo ad Eliminazione Diretta in corso: clicca su ciascun match per inserire i risultati e far avanzare automaticamente le coppie vincenti fino alla Finale.
+                            Torneo ad Eliminazione Diretta in corso: clicca su ciascun match per inserire i risultati e far avanzare automaticamente le coppie vincenti fino alla Finale.
                         </p>
                     </div>
                 )}
@@ -270,12 +273,14 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
                                         {isClickable && (
                                             <div className="mt-2 pt-1 border-t border-gray-100 dark:border-gray-700/50 flex justify-end">
                                                 {node.winner ? (
-                                                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                        ✏️ Modifica Risultato
+                                                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                                        <SFIcon name="pencil" size={13} />
+                                                        Modifica Risultato
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1">
-                                                        ⚡ Inserisci Risultato
+                                                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
+                                                        <SFIcon name="bolt.fill" size={13} />
+                                                        Inserisci Risultato
                                                     </span>
                                                 )}
                                             </div>
@@ -290,8 +295,9 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
 
             {tournament.status === 'scheduled' && isTournamentFinished && (
                 <div className="mt-8 px-4 flex justify-center">
-                    <Button onClick={handleComplete} size="lg" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 font-bold">
-                        🏆 Concludi Torneo TPRA (Calcola ELO)
+                    <Button onClick={handleComplete} size="lg" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 font-bold flex items-center justify-center gap-2">
+                        <SFIcon name="trophy.fill" size={18} className="text-white" />
+                        <span>Concludi Torneo TPRA (Calcola ELO)</span>
                     </Button>
                 </div>
             )}

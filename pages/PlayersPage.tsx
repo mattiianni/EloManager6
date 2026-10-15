@@ -362,8 +362,9 @@ const PlayersPage: React.FC = () => {
                             <label className="sm:w-1/3 text-sm font-medium text-ios-label-secondary mb-1 sm:mb-0">
                                 Cognome
                                 {playerHasMatches && (
-                                    <span className="ml-2 text-[10px] font-semibold text-ios-orange bg-orange-50 border border-orange-200 rounded px-1 py-0.5" title="Modifiche al cognome sono limitate al 20% per proteggere lo storico ELO">
-                                        🔒 protetto
+                                    <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold text-ios-orange bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded px-1.5 py-0.5" title="Modifiche al cognome sono limitate al 20% per proteggere lo storico ELO">
+                                        <SFIcon name="lock.fill" size={10} />
+                                        <span>protetto</span>
                                     </span>
                                 )}
                             </label>

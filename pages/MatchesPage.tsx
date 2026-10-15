@@ -12,6 +12,7 @@ import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
 import { buildQuarterfinalPairings, buildSemifinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
+import { SFIcon } from '../components/ui/SFIcon.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { calculateRoundRobinStandings, generateRoundRobinPlayoffs } from '../formats/roundRobinFinali/engine.ts';
@@ -1958,7 +1959,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         setFinalsMatches(generatedSemis);
         setFinalsScores({});
         await fetchData();
-        showHIGAlert('✅ Quarti di finale salvati e passati al report PDF! Inserisci ora i risultati delle Semifinali.');
+        showHIGAlert('Quarti di finale salvati e passati al report PDF! Inserisci ora i risultati delle Semifinali.');
     } catch (e: any) {
         console.error('Errore nel salvataggio dei quarti:', e);
         showHIGAlert('Errore nel salvataggio dei quarti di finale');
@@ -2153,7 +2154,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  console.log('🔵 Tournament:', tournament);
  if (!tournament) {
  console.error('❌ No tournament reference available!');
- showHIGAlert('❌ Errore: riferimento torneo non disponibile');
+ showHIGAlert('Errore: riferimento torneo non disponibile.');
  return;
  }
 
@@ -2665,13 +2666,13 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  )}
  {editingTournament?.type === TournamentType.BeatTheBox && editingTournament?.status === 'scheduled' && (
  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
- <h3 className="font-semibold text-gray-900 dark:text-white">📦 Beat the Box - Fase Box</h3>
+ <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5"><SFIcon name="square.grid.2x2" size={16} /> Beat the Box - Fase Box</h3>
  <p className="text-sm text-gray-600 dark:text-gray-400">Inserisci i risultati di tutte le partite dei box. I primi 2 di ogni box si qualificheranno per le finali.</p>
  </div>
  )}
  {editingTournament?.type === TournamentType.GironiFaseFinale && editingTournament?.status === 'scheduled' && (
  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
- <h3 className="font-semibold text-gray-900 dark:text-white">🏆 Gironi + Fase Finale - Fase Gironi</h3>
+ <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5"><SFIcon name="trophy.fill" size={16} color="var(--ios-systemOrange)" /> Gironi + Fase Finale - Fase Gironi</h3>
  <p className="text-sm text-gray-600 dark:text-gray-400">Inserisci i risultati di tutte le partite dei gironi. I primi 2 di ogni girone si qualificheranno per le semifinali.</p>
  </div>
  )}
@@ -2742,7 +2743,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return Array.from(boxGroups.entries()).map(([boxNum, boxMatches]) => (
  <div key={boxNum} className="mb-6">
  <div className="flex items-center gap-2 mb-3">
- <div className="text-xl">📦</div>
+ <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400"><SFIcon name="square.grid.2x2" size={15} /></div>
  <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
  Box {boxNum} - Campo {boxNum}
  </h4>
@@ -2753,23 +2754,46 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
 
+ const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+ const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+ const t1Name = isT1Single ? formatPlayerName(team1[0]) : `${formatPlayerName(team1[0])} & ${formatPlayerName(team1[1])}`;
+ const t2Name = isT2Single ? formatPlayerName(team2[0]) : `${formatPlayerName(team2[0])} & ${formatPlayerName(team2[1])}`;
+ const t1Elo = isT1Single ? (team1[0].currentElo || 1500).toFixed(2) : (((team1[0].currentElo || 1500) + (team1[1]?.currentElo || 1500)) / 2).toFixed(2);
+ const t2Elo = isT2Single ? (team2[0].currentElo || 1500).toFixed(2) : (((team2[0].currentElo || 1500) + (team2[1]?.currentElo || 1500)) / 2).toFixed(2);
+
  return (
- <div key={match.id} className="grid grid-cols-3 items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border">
- <div className="text-right text-sm">
- <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+ <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+ {t1Name}
+ </p>
+ <p className="text-[10px] text-gray-500">ELO: {t1Elo}</p>
  </div>
+
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+ {t2Name}
+ </p>
+ <p className="text-[10px] text-gray-500">ELO: {t2Elo}</p>
+ </div>
+ </div>
+
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={editScores[match.id] || []}
  onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
  disabled={isSubmitting}
  />
- <div className="text-sm">
- <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
- )
+ );
  })}
  </div>
  </div>
@@ -2786,7 +2810,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return (
  <div key={gironeIdx} className="mb-6">
  <div className="flex items-center gap-2 mb-3">
- <div className="text-xl">🏆</div>
+ <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"><SFIcon name="trophy.fill" size={15} /></div>
  <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
  Girone {gironeName}
  </h4>
@@ -2801,23 +2825,46 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
 
+ const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+ const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+ const t1Name = isT1Single ? formatPlayerShortName(team1[0]) : `${formatPlayerShortName(team1[0])} & ${formatPlayerShortName(team1[1])}`;
+ const t2Name = isT2Single ? formatPlayerShortName(team2[0]) : `${formatPlayerShortName(team2[0])} & ${formatPlayerShortName(team2[1])}`;
+ const t1Elo = isT1Single ? (team1[0].currentElo || 1500).toFixed(2) : (((team1[0].currentElo || 1500) + (team1[1]?.currentElo || 1500)) / 2).toFixed(2);
+ const t2Elo = isT2Single ? (team2[0].currentElo || 1500).toFixed(2) : (((team2[0].currentElo || 1500) + (team2[1]?.currentElo || 1500)) / 2).toFixed(2);
+
  return (
- <div key={match.id} className="grid grid-cols-3 items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border">
- <div className="text-right text-sm">
- <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+ <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+ {t1Name}
+ </p>
+ <p className="text-[10px] text-gray-500">ELO: {t1Elo}</p>
  </div>
+
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+ {t2Name}
+ </p>
+ <p className="text-[10px] text-gray-500">ELO: {t2Elo}</p>
+ </div>
+ </div>
+
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={editScores[match.id] || []}
  onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
  disabled={isSubmitting}
  />
- <div className="text-sm">
- <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
- <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
- )
+ );
  })}
  </div>
  </div>
@@ -2886,20 +2933,43 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                          const team2 = match.team2.map(p => getPlayerById(p)!);
                          if (!team1[0] || !team2[0]) return null;
 
+                         const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+                         const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+                         const t1Name = isT1Single ? formatPlayerShortName(team1[0]) : `${formatPlayerShortName(team1[0])} & ${formatPlayerShortName(team1[1])}`;
+                         const t2Name = isT2Single ? formatPlayerShortName(team2[0]) : `${formatPlayerShortName(team2[0])} & ${formatPlayerShortName(team2[1])}`;
+                         const t1Elo = isT1Single ? (team1[0].currentElo || 1500).toFixed(2) : (((team1[0].currentElo || 1500) + (team1[1]?.currentElo || 1500)) / 2).toFixed(2);
+                         const t2Elo = isT2Single ? (team2[0].currentElo || 1500).toFixed(2) : (((team2[0].currentElo || 1500) + (team2[1]?.currentElo || 1500)) / 2).toFixed(2);
+
                          return (
-                             <div key={match.id} id={`match-card-${match.id}`} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                                 <div className="text-right text-sm">
-                                     <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
-                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+                             <div key={match.id} id={`match-card-${match.id}`} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+                                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                                     <div className="min-w-0 text-left">
+                                         <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+                                         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+                                             {t1Name}
+                                         </p>
+                                         <p className="text-[10px] text-gray-500">ELO: {t1Elo}</p>
+                                     </div>
+
+                                     <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+                                         VS
+                                     </div>
+
+                                     <div className="min-w-0 text-right">
+                                         <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+                                         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+                                             {t2Name}
+                                         </p>
+                                         <p className="text-[10px] text-gray-500">ELO: {t2Elo}</p>
+                                     </div>
                                  </div>
-                                 <MatchScoreInput
-                                     sets={editScores[match.id] || []}
-                                     onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
-                                     disabled={isSubmitting}
-                                 />
-                                 <div className="text-sm">
-                                     <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
-                                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+
+                                 <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
+                                     <MatchScoreInput
+                                         sets={editScores[match.id] || []}
+                                         onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
+                                         disabled={isSubmitting}
+                                     />
                                  </div>
                              </div>
                          )
@@ -2914,20 +2984,43 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
          const team2 = match.team2.map(p => getPlayerById(p)!);
          if (!team1[0] || !team2[0]) return null;
 
+         const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+         const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+         const t1Name = isT1Single ? formatPlayerShortName(team1[0]) : `${formatPlayerShortName(team1[0])} & ${formatPlayerShortName(team1[1])}`;
+         const t2Name = isT2Single ? formatPlayerShortName(team2[0]) : `${formatPlayerShortName(team2[0])} & ${formatPlayerShortName(team2[1])}`;
+         const t1Elo = isT1Single ? (team1[0].currentElo || 1500).toFixed(2) : (((team1[0].currentElo || 1500) + (team1[1]?.currentElo || 1500)) / 2).toFixed(2);
+         const t2Elo = isT2Single ? (team2[0].currentElo || 1500).toFixed(2) : (((team2[0].currentElo || 1500) + (team2[1]?.currentElo || 1500)) / 2).toFixed(2);
+
          return (
-             <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                 <div className="text-right text-sm">
-                     <p className="font-semibold">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
-                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+             <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                     <div className="min-w-0 text-left">
+                         <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+                         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+                             {t1Name}
+                         </p>
+                         <p className="text-[10px] text-gray-500">ELO: {t1Elo}</p>
+                     </div>
+
+                     <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+                         VS
+                     </div>
+
+                     <div className="min-w-0 text-right">
+                         <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+                         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+                             {t2Name}
+                         </p>
+                         <p className="text-[10px] text-gray-500">ELO: {t2Elo}</p>
+                     </div>
                  </div>
-                 <MatchScoreInput
-                     sets={editScores[match.id] || []}
-                     onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
-                     disabled={isSubmitting}
-                 />
-                 <div className="text-sm">
-                     <p className="font-semibold">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
-                     <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+
+                 <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
+                     <MatchScoreInput
+                         sets={editScores[match.id] || []}
+                         onSetsChange={(sets) => setEditScores(prev => ({ ...prev, [match.id]: sets }))}
+                         disabled={isSubmitting}
+                     />
                  </div>
              </div>
          )
@@ -3104,7 +3197,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  >
  <span className={`font-medium ${isQualified ? 'text-green-700 dark:text-green-300 font-bold' : ''}`}>
  {index + 1}° - {formatPlayerShortName(standing.pair[0])} & {formatPlayerShortName(standing.pair[1])}
- {isQualified && <span className="ml-2 text-xs">✓ Qualificato</span>}
+ {isQualified && <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-300 font-semibold"><SFIcon name="checkmark" size={12} />Qualificato</span>}
  </span>
  <span className="text-sm text-gray-600 dark:text-gray-400">
  {standing.punti} punti
@@ -3264,29 +3357,40 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   return (
   <div
   key={match.id}
-  className={`grid grid-cols-3 items-center gap-2 p-3 rounded-lg ${cardClass}`}
+  className={`p-3 rounded-xl border shadow-sm space-y-2 ${cardClass}`}
   >
-  <div className="text-right text-sm">
-  <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
-  <p className="text-xs text-gray-500 dark:text-gray-400">
+  <div className={`text-[11px] font-bold uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40 ${titleClass}`}>
+  {matchTitle}
+  </div>
+  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+  <div className="min-w-0 text-left">
+  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+  <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+  {formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}
+  </p>
+  <p className="text-[10px] text-gray-500">
   ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}
   </p>
   </div>
-  <div className="text-center">
+  <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+  VS
+  </div>
+  <div className="min-w-0 text-right">
+  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+  <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+  {formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}
+  </p>
+  <p className="text-[10px] text-gray-500">
+  ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
+  </p>
+  </div>
+  </div>
+  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
   <MatchScoreInput
   sets={finalsScores[match.id] || (match.sets && match.sets.length > 0 ? match.sets : [{team1: 0, team2: 0}])}
   onSetsChange={(sets) => setFinalsScores(prev => ({ ...prev, [match.id]: sets }))}
   disabled={isSubmitting}
   />
-  <p className={`text-xs font-medium mt-1 ${titleClass}`}>
-  {matchTitle}
-  </p>
-  </div>
-  <div className="text-sm">
-  <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
-  <p className="text-xs text-gray-500 dark:text-gray-400">
-  ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
-  </p>
   </div>
   </div>
   );
@@ -3351,7 +3455,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <HIGSheet
  isOpen={showBeatBoxStandingsModal}
  onClose={() => resetAllFlowStates()}
- title="📦 Classifiche Box Completate"
+ title="Classifiche Box Completate"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  {beatBoxStandings.map((boxStanding, boxIdx) => (
@@ -3415,7 +3519,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setIsInBeatBoxSemifinalsPhase(false);
  setShowBeatBoxStandingsModal(true);
  }}
- title="📦 Beat the Box - Semifinali"
+ title="Beat the Box - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900 rounded-lg">
@@ -3431,13 +3535,37 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const team2 = match.team2.map(p => getPlayerById(p)!);
  if (!team1[0] || !team2[0]) return null;
 
+ const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+ const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+ const t1Name = isT1Single ? formatPlayerName(team1[0]) : `${formatPlayerName(team1[0])} & ${formatPlayerName(team1[1])}`;
+ const t2Name = isT2Single ? formatPlayerName(team2[0]) : `${formatPlayerName(team2[0])} & ${formatPlayerName(team2[1])}`;
+
  return (
- <div key={idx}>
- <h4 className="font-semibold mb-2 text-center">Semifinale {idx + 1}</h4>
- <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
- <div className="text-right text-sm">
- <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
+ <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+ <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
+ Semifinale {idx + 1}
  </div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+ {t1Name}
+ </p>
+ </div>
+
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+ {t2Name}
+ </p>
+ </div>
+ </div>
+
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={match.sets || []}
  onSetsChange={(sets) => {
@@ -3453,9 +3581,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }}
  disabled={isSubmitting}
  />
- <div className="text-sm">
- <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
- </div>
  </div>
  </div>
  );
@@ -3485,12 +3610,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (beatBoxSemifinalMatches.length < 2) {
- showHIGAlert('⚠️ Errore: semifinali non generate correttamente.');
+ showHIGAlert('Errore: semifinali non generate correttamente.');
  return;
  }
  const allComplete = beatBoxSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('Inserisci i risultati di tutte le semifinali.');
  return;
  }
 
@@ -3537,7 +3662,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setShowBeatBoxStandingsModal(true);
  }
  }}
- title="📦 Beat the Box - Finali"
+ title="Beat the Box - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
@@ -3558,13 +3683,37 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  else if (idx === 1) matchTitle = 'Finalina 3° - 4° Posto';
  else if (idx === 2) matchTitle = 'Partita Consolazione';
 
+ const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
+ const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+ const t1Name = isT1Single ? formatPlayerName(team1[0]) : `${formatPlayerName(team1[0])} & ${formatPlayerName(team1[1])}`;
+ const t2Name = isT2Single ? formatPlayerName(team2[0]) : `${formatPlayerName(team2[0])} & ${formatPlayerName(team2[1])}`;
+
  return (
- <div key={idx}>
- <h4 className="font-semibold mb-2 text-center">{matchTitle}</h4>
- <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
- <div className="text-right text-sm">
- <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
+ <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
+ <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
+ {matchTitle}
  </div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t1Name}>
+ {t1Name}
+ </p>
+ </div>
+
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={t2Name}>
+ {t2Name}
+ </p>
+ </div>
+ </div>
+
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={match.sets || []}
  onSetsChange={(sets) => {
@@ -3580,9 +3729,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }}
  disabled={isSubmitting}
  />
- <div className="text-sm">
- <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
- </div>
  </div>
  </div>
  );
@@ -3616,7 +3762,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  onClick={() => {
  const allComplete = beatBoxFinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
+ showHIGAlert('Inserisci i risultati di tutte le finali.');
  return;
  }
  setShowBeatBoxCompleteConfirm(true);
@@ -3677,7 +3823,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setShowBeatBoxStandingsModal(false);
  fetchData();
  }}
- title="🏆 Beat the Box - Risultati Finali"
+ title="Beat the Box - Risultati Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2 max-h-[70vh] overflow-y-auto">
  <div className="text-center p-3 bg-green-50 dark:bg-green-900 rounded">
@@ -3717,7 +3863,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  {/* Classifica Squadre Finale */}
  {beatBoxFinalMatches.length > 0 && (
  <div>
- <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">🏆 Classifica Squadre Finale</h4>
+ <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5"><SFIcon name="trophy.fill" size={14} color="var(--ios-systemOrange)" /> Classifica Squadre Finale</h4>
  <div className="overflow-x-auto">
  <table className="min-w-full text-sm">
  <thead>
@@ -3762,7 +3908,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  {/* Classifica Individuale */}
  {beatBoxFinalStandings.length > 0 && (
  <div>
- <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">📈 Classifica Individuale (Var. ELO)</h4>
+ <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5"><SFIcon name="chart.line.uptrend.xyaxis" size={14} color="var(--ios-systemGreen)" /> Classifica Individuale (Var. ELO)</h4>
  <div className="overflow-x-auto">
  <table className="min-w-full text-sm">
  <thead>
@@ -3816,7 +3962,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <HIGSheet
  isOpen={isInGironiQuarterfinalsPhase}
  onClose={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}
- title="🏆 Gironi + Fase Finale - Quarti"
+ title="Gironi + Fase Finale - Quarti"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <p className="text-sm text-gray-700 dark:text-gray-300">Inserisci i risultati dei quarti. Ogni partita deve avere un vincitore.</p>
@@ -3824,18 +3970,37 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  const team1 = match.team1.map(id => getPlayerById(id)!);
  const team2 = match.team2.map(id => getPlayerById(id)!);
  if (!team1[0] || !team2[0]) return null;
- return <div key={match.id} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
- <h4 className="font-semibold mb-3">Quarto {idx + 1}</h4>
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</div>
+ return (
+ <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-2">
+ <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
+ Quarto {idx + 1}
+ </div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}
+ </p>
+ </div>
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}
+ </p>
+ </div>
+ </div>
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput sets={match.sets} onSetsChange={(sets) => {
  const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
  const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
  setGironiQuarterfinalMatches(current => current.map((item, index) => index === idx ? { ...item, sets, winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null } : item));
  }} disabled={isSubmitting}/>
- <div className="text-sm text-right">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</div>
  </div>
- </div>;
+ </div>
+ );
  })}
  <div className="flex gap-3 pt-4">
  <Button variant="outline" className="flex-1" onClick={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}>Indietro</Button>
@@ -3863,7 +4028,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setIsInGironiSemifinalsPhase(false);
  setShowGironiStandingsModal(true);
  }}
- title="🏆 Gironi + Fase Finale - Semifinali"
+ title="Gironi + Fase Finale - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-1">
@@ -3880,13 +4045,28 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  if (!team1[0] || !team2[0]) return null;
 
  return (
- <div key={idx} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
- <h4 className="font-semibold mb-3 text-gray-900 dark:text-gray-300">Semifinale {idx + 1}</h4>
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm">
- {team1[0].name} {team1[0].surname}<br/>
- {team1[1].name} {team1[1].surname}
+ <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-2">
+ <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
+ Semifinale {idx + 1}
  </div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {team1[0].name} {team1[0].surname} & {team1[1].name} {team1[1].surname}
+ </p>
+ </div>
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {team2[0].name} {team2[0].surname} & {team2[1].name} {team2[1].surname}
+ </p>
+ </div>
+ </div>
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={match.sets || [{ team1: 0, team2: 0 }]}
  onSetsChange={(sets) => {
@@ -3902,10 +4082,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }}
  disabled={isSubmitting}
  />
- <div className="text-sm text-right">
- {team2[0].name} {team2[0].surname}<br/>
- {team2[1].name} {team2[1].surname}
- </div>
  </div>
  </div>
  );
@@ -3935,12 +4111,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (gironiSemifinalMatches.length < 2) {
- showHIGAlert('⚠️ Errore: semifinali non generate correttamente.');
+ showHIGAlert('Errore: semifinali non generate correttamente.');
  return;
  }
  const allComplete = gironiSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
- showHIGAlert('⚠️ Inserisci i risultati di tutte le semifinali');
+ showHIGAlert('Inserisci i risultati di tutte le semifinali.');
  return;
  }
 
@@ -4003,7 +4179,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setIsInGironiFinalsPhase(false);
  setTimeout(() => setIsInGironiSemifinalsPhase(true), 100);
  }}
- title="🏆 Gironi + Fase Finale - Finali"
+ title="Gironi + Fase Finale - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-lg">
@@ -4029,13 +4205,28 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  :"text-green-800 dark:text-green-400";
 
  return (
- <div key={idx} className={`${bgColor} p-4 rounded-lg`}>
- <h4 className={`font-semibold mb-3 ${titleColor}`}>{title}</h4>
- <div className="grid grid-cols-3 items-center gap-4">
- <div className="text-sm">
- {team1[0].name} {team1[0].surname}<br/>
- {team1[1].name} {team1[1].surname}
+ <div key={idx} className={`${bgColor} p-3 rounded-xl border shadow-sm space-y-2 mb-2`}>
+ <div className={`text-[11px] font-bold uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40 ${titleColor}`}>
+ {title}
  </div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-left">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {team1[0].name} {team1[0].surname} & {team1[1].name} {team1[1].surname}
+ </p>
+ </div>
+ <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+ VS
+ </div>
+ <div className="min-w-0 text-right">
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+ <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
+ {team2[0].name} {team2[0].surname} & {team2[1].name} {team2[1].surname}
+ </p>
+ </div>
+ </div>
+ <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
  <MatchScoreInput
  sets={match.sets || [{ team1: 0, team2: 0 }]}
  onSetsChange={(sets) => {
@@ -4051,10 +4242,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }}
  disabled={isSubmitting}
  />
- <div className="text-sm text-right">
- {team2[0].name} {team2[0].surname}<br/>
- {team2[1].name} {team2[1].surname}
- </div>
  </div>
  </div>
  );
@@ -4084,7 +4271,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  onClick={() => {
                             const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
                             if (!allComplete) {
-                                showHIGAlert('⚠️ Inserisci i risultati di tutte le finali');
+                                showHIGAlert('Inserisci i risultati di tutte le finali.');
                                 return;
                             }
                             setProceedConfirmData({
@@ -4177,7 +4364,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                         setActivePage('Tournaments');
                     }
                 }}
-                title="✅ Operazione Completata"
+                title="Operazione Completata"
             >
                 <div className="p-4 space-y-4 text-center">
                     <p className="text-gray-700 dark:text-gray-300 text-lg">Salvataggio Effettuato!</p>
@@ -4197,7 +4384,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
             <HIGSheet
                 isOpen={showDeleteSuccess}
                 onClose={() => setShowDeleteSuccess(false)}
-                title="🗑️ Operazione Completata"
+                title="Operazione Completata"
             >
                 <div className="p-4 space-y-4 text-center">
                     <p className="text-gray-700 dark:text-gray-300 text-lg">Cancellazione Effettuata!</p>

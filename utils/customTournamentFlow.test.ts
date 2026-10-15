@@ -393,13 +393,13 @@ describe('4. Avanzamento alle Fasi Successive (Semifinali e Finali)', () => {
       expect(sfMatches[0].phase).toBe('semifinal');
       expect(sfMatches[1].phase).toBe('semifinal');
 
-      // SF1: 1° B1 con 4° B2 vs 2° B2 con 3° B1
-      expect(sfMatches[0].team1).toEqual([standings[1][0].id, standings[2][3].id]);
-      expect(sfMatches[0].team2).toEqual([standings[2][1].id, standings[1][2].id]);
+      // SF1: A1 + B2 vs A2 + B1
+      expect(sfMatches[0].team1).toEqual([standings[1][0].id, standings[2][1].id]);
+      expect(sfMatches[0].team2).toEqual([standings[1][1].id, standings[2][0].id]);
 
-      // SF2: 1° B2 con 4° B1 vs 2° B1 con 3° B2
-      expect(sfMatches[1].team1).toEqual([standings[2][0].id, standings[1][3].id]);
-      expect(sfMatches[1].team2).toEqual([standings[1][1].id, standings[2][2].id]);
+      // SF2: A3 + B4 vs A4 + B3
+      expect(sfMatches[1].team1).toEqual([standings[1][2].id, standings[2][3].id]);
+      expect(sfMatches[1].team2).toEqual([standings[1][3].id, standings[2][2].id]);
 
       // Risultati semifinali -> Generazione Finali
       sfMatches[0].winner = 'team1'; // Vincente SF1 = team1

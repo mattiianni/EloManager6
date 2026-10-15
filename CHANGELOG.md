@@ -1,3 +1,16 @@
+## v6.10.2 — 2026-10-15
+- **Bonifica Globale Icone & Allineamento Apple HIG**:
+  - Eliminazione completa e definitiva di tutte le vecchie icone e raw emoji (`🥇`, `🥈`, `🥉`, `🏆`, `📦`, `⚡`, `📊`, `📋`, `📈`, `✏️`, `⚔️`, `🔄`, `🟢`, `🔴`, `🔒`, ecc.) in tutti i componenti, pagine e flussi di gioco.
+  - Sostituzione con badge circolari Apple HIG (`1°` oro, `2°` argento/ardesia, `3°` bronzo, `4°+` slate mono) e icone vettoriali `SFIcon`.
+  - Aggiornamento Top 5 Giocatori ed Ultima Giornata nella Home/Dashboard.
+  - Aggiornamento podio e lista classifiche nella pagina Classifiche.
+  - Modernizzazione dei flussi Torneo (Round Robin + Finali, Beat the Box, Torneo Personale, TPRA Bracket, Partite, Giocatori, Admin).
+  - Forma recente atleti in Statistiche convertita da pallini emoji a notazione sportiva pulita `V` (Vittoria) e `P` (Persa).
+- **Uniformazione Totale PDF**:
+  - Tutti i PDF di tutti i formati (Round Robin + Finali, Beat the Box, Americano, Gironi, TPRA, Torneo Libero, Statistiche) allineati agli standard Apple HIG con icone SVG vettoriali `PDF_ICONS`, palette `#0055D4` e piè di pagina unificato.
+- **Suite di Test & Verifica**:
+  - Estesi i test di verifica grafica e completezza PDF (`printPhases.test.ts`), con 119 test su 119 passati e 0 errori TypeScript.
+
 ## v6.10.1 — 2026-10-15
 - **Flusso Giocatori Singoli Dedicato & Risoluzione Loop**:
   - Dalla selezione partecipanti singoli, il flusso prosegue direttamente alla scelta del formato senza reimpostare la modalità a coppie fisse né forzare la riselezione dei giocatori.

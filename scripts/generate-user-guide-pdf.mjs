@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 
-const APP_VERSION = '6.10.1';
+const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8'));
+const APP_VERSION = pkg.version;
 const APP_MONTH = 'Ott 2026';
 
 const outDir = path.resolve(process.cwd(), 'docs');

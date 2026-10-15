@@ -86,7 +86,7 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                                 <button
                                     key={format}
                                     onClick={() => onSelectFormat(format)}
-                                    className={`flex items-center justify-between p-4 rounded-2xl shadow-sm backdrop-blur-xl cursor-pointer text-left active:scale-[0.98] transition-all ${
+                                    className={`flex items-center justify-between p-4 rounded-2xl shadow-sm backdrop-blur-xl cursor-pointer text-left active:scale-[0.98] transition-all min-h-[92px] h-full ${
                                         isPersonale
                                             ? 'sm:col-span-2 bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-300/80 dark:border-blue-400/40 hover:border-blue-500'
                                             : 'bg-white/60 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/10 hover:border-sky-400'
@@ -96,7 +96,7 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
                                         <span className={`block text-[17px] font-bold ${
                                             isPersonale ? 'text-blue-950 dark:text-blue-200' : 'text-slate-900 dark:text-white'
                                         }`}>
-                                            {playerMode === 'singles' && format === 'beat-the-box' ? 'Box (Beat the Box)' : getFormatDisplayName(format)}
+                                            {getFormatDisplayName(format)}
                                         </span>
                                         <span className={`mt-1 block text-xs font-medium leading-snug ${
                                             isPersonale ? 'text-blue-700/80 dark:text-blue-300/80' : 'text-slate-500 dark:text-slate-400'

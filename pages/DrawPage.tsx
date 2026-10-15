@@ -1116,15 +1116,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         }
 
                         if (format === 'americano') {
-                            const count = participantPlayers.length || numPairs;
-                            const numCampi = Math.max(1, Math.floor(count / 4));
-                            setCustomTournamentFlowConfig({
-                                playerMode: 'singles',
-                                phases: ['americano'],
-                                numCampi,
-                                numPartecipanti: count,
-                            });
-                            setSelectedFormatForNewFlow('torneo-personale');
+                            setSelectedFormatForNewFlow('americano');
                             if (participantPlayers.length >= 4) {
                                 const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
                                 setDrawnPairs(pairs);
@@ -1136,15 +1128,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         }
 
                         if (format === 'beat-the-box') {
-                            const count = participantPlayers.length || numPairs;
-                            const numCampi = Math.max(1, Math.floor(count / 4));
-                            setCustomTournamentFlowConfig({
-                                playerMode: 'singles',
-                                phases: count >= 8 ? ['box', 'semifinals', 'finals'] : ['box', 'finals'],
-                                numCampi,
-                                numPartecipanti: count,
-                            });
-                            setSelectedFormatForNewFlow('torneo-personale');
+                            setSelectedFormatForNewFlow('beat-the-box');
                             if (participantPlayers.length >= 4) {
                                 const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
                                 setDrawnPairs(pairs);
@@ -1300,21 +1284,21 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Seleziona la tipologia di evento per avviare il sorteggio e la configurazione</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 items-stretch">
                     {/* Card 1: Multi Giornata */}
                     <div
                         onClick={openPairsFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-sky-500/80 dark:hover:border-sky-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] h-full min-h-[175px]"
                     >
                         <div className="flex justify-between items-start">
                             <div className="p-3 rounded-2xl bg-[#0055D4] text-white shadow-sm">
                                 <CalendarIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
-                                <ArrowUpRightIcon className="w-4 h-4" />
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
-                        <div>
+                        <div className="mt-auto pt-3">
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">Multi Giornata</h3>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Tornei a coppie distribuiti su più giornate di gioco</p>
                         </div>
@@ -1323,17 +1307,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 2: Torneo Squadre */}
                     <div
                         onClick={openTeamFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-indigo-500/80 dark:hover:border-indigo-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-indigo-500/80 dark:hover:border-indigo-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] h-full min-h-[175px]"
                     >
                         <div className="flex justify-between items-start">
                             <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-sm">
                                 <UsersIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
-                                <ArrowUpRightIcon className="w-4 h-4" />
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
-                        <div>
+                        <div className="mt-auto pt-3">
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Torneo a Squadre</h3>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Campionati e tornei per club a squadre</p>
                         </div>
@@ -1342,17 +1326,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 3: Torneo Singolo */}
                     <div
                         onClick={() => { setEntryChoice('pairs'); setSelectedFormatForNewFlow(null); setActiveFlow('single-tournament-format-first'); }}
-                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] h-full min-h-[175px]"
                     >
                         <div className="flex justify-between items-start">
                             <div className="p-3 rounded-2xl bg-amber-500 text-white shadow-sm">
                                 <TrophyIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
-                                <ArrowUpRightIcon className="w-4 h-4" />
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
-                        <div>
+                        <div className="mt-auto pt-3">
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors">Torneo Singolo</h3>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Eventi ed esibizioni in un singolo appuntamento</p>
                         </div>
@@ -1361,17 +1345,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     {/* Card 4: Nuova Giornata */}
                     <div
                         onClick={openExistingTournamentDayFlow}
-                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-emerald-500/80 dark:hover:border-emerald-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[170px]"
+                        className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-emerald-500/80 dark:hover:border-emerald-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] h-full min-h-[175px]"
                     >
                         <div className="flex justify-between items-start">
                             <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-sm">
                                 <PlusIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
-                                <ArrowUpRightIcon className="w-4 h-4" />
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
+                                <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
-                        <div>
+                        <div className="mt-auto pt-3">
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">Nuova Giornata</h3>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">Aggiungi nuove giornate ai tornei attivi</p>
                         </div>
@@ -1384,21 +1368,21 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             setSelectedFormatForNewFlow(null);
                             setActiveFlow('custom-tournament');
                         }}
-                        className="group relative col-span-2 flex flex-col justify-between p-5 rounded-[22px] bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-300/80 dark:border-blue-400/40 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[140px]"
+                        className="group relative col-span-2 flex flex-col justify-between p-5 rounded-[22px] bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-300/80 dark:border-blue-400/40 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] min-h-[135px]"
                     >
                         <div className="flex justify-between items-start">
                             <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-sm">
                                 <span className="material-symbols-outlined text-2xl">extension</span>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-blue-500 group-hover:text-blue-600 group-hover:bg-blue-200/80 transition-colors">
-                                <ArrowUpRightIcon className="w-4 h-4" />
+                            <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-blue-500 group-hover:text-blue-600 group-hover:bg-blue-200/80 transition-colors">
+                                <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
-                        <div>
+                        <div className="mt-auto pt-2">
                             <h3 className="font-black text-lg text-blue-950 dark:text-blue-200 leading-tight group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                                 Crea Torneo Personale
                             </h3>
-                            <p className="text-xs font-medium text-blue-700/80 dark:text-blue-300/80 mt-1.5 leading-relaxed">
+                            <p className="text-xs font-medium text-blue-700/80 dark:text-blue-300/80 mt-1 leading-relaxed">
                                 Torneo personalizzabile in tutte le sue fasi
                             </p>
                         </div>

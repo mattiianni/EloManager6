@@ -478,11 +478,12 @@ export function generateSemifinalsMatches(
 
       if (box1.length < 4 || box2.length < 4) return [];
 
+      // Semifinale 1: A1 + B2 vs A2 + B1
       const sf1: Match = {
         id: 'sf-1',
         date: tournamentDate,
-        team1: [box1[0].id, box2[3].id],
-        team2: [box2[1].id, box1[2].id],
+        team1: [box1[0].id, box2[1].id],
+        team2: [box1[1].id, box2[0].id],
         sets: [{ team1: 0, team2: 0 }],
         winner: null,
         phase: 'semifinal',
@@ -491,11 +492,12 @@ export function generateSemifinalsMatches(
         tournamentId: 'temp',
       } as Match;
 
+      // Semifinale 2: A3 + B4 vs A4 + B3
       const sf2: Match = {
         id: 'sf-2',
         date: tournamentDate,
-        team1: [box2[0].id, box1[3].id],
-        team2: [box1[1].id, box2[2].id],
+        team1: [box1[2].id, box2[3].id],
+        team2: [box1[3].id, box2[2].id],
         sets: [{ team1: 0, team2: 0 }],
         winner: null,
         phase: 'semifinal',
@@ -722,7 +724,7 @@ export function generateFinalsMatchesFromBoxes(
         id: 'final-1-2',
         date: tournamentDate,
         team1: [box1[0].id, box2[1].id],
-        team2: [box2[0].id, box1[1].id],
+        team2: [box1[1].id, box2[0].id],
         sets: [{ team1: 0, team2: 0 }],
         winner: null,
         phase: 'final_1_2',
@@ -735,7 +737,7 @@ export function generateFinalsMatchesFromBoxes(
         id: 'final-3-4',
         date: tournamentDate,
         team1: [box1[2].id, box2[3].id],
-        team2: [box2[2].id, box1[3].id],
+        team2: [box1[3].id, box2[2].id],
         sets: [{ team1: 0, team2: 0 }],
         winner: null,
         phase: 'final_3_4',
