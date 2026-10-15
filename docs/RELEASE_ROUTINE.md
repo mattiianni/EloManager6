@@ -16,10 +16,14 @@
 7. Eseguire i due script di generazione PDF (`node scripts/generate-team-tournament-guide-pdf.mjs` per la guida a squadre, e `node scripts/generate-user-guide-pdf.mjs` per la guida d'uso generica) per produrre in `docs/` i PDF aggiornati (`Guida_Torneo_a_Squadre_v6.10.1.pdf` e `Guida_Uso_v6.10.1.pdf`), rimuovendo i vecchi file PDF.
 8. Aggiornare `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` se ci sono cambi architetturali o nuovi flussi importanti.
 8. Eseguire test automatici e build di verifica.
-9. Creare backup `.zip` di ripristino (`Elo_Manager_v...zip`) e salvarlo sul Desktop dell'utente (`~/Desktop/`).
-10. Creare 3 dump `.txt` distinti del codice sorgente (`Elo_Manager_Grafica_v...txt`, `Elo_Manager_Logica_v...txt` e `Elo_Manager_Backend_v...txt`) e salvarli sul Desktop dell'utente (`~/Desktop/`).
-11. Creare la cartella unificata di release sul Desktop con il seriale della versione (es. `~/Desktop/${VERSION}/`) contenente lo zip, i 3 txt di codice sorgente, tutti i PDF, gli HTML guida e presentazione, e i file di testi promozionali e istruzioni. Sincronizzare gli stessi file nella cartella/alias `TorneOtto 3.0 Docs` (sottocartelle `${VERSION}` e `Docs`).
-12. Fare commit e push della versione locale corrente.
+9. Salvare tutti i file di rilascio **esclusivamente** nella cartella della versione (`${VERSION}`) all'interno di `TorneOtto 3.0 Docs` (`/Users/mattiaianniello/Library/Mobile Documents/com~apple~CloudDocs/World Padel Tour/App TorneOtto 3.0/${VERSION}`). Nessun file o cartella sul Desktop e nessuna cartella Docs ridondante.
+10. La cartella della versione deve contenere:
+    - Backup `.zip` di ripristino (`Elo_Manager_v${VERSION}_${DATE}.zip`).
+    - 3 file `.txt` di codice sorgente (Grafica, Logica, Backend).
+    - PDF delle guide utente (`Guida_Uso_v${VERSION}.pdf` e `Guida_Torneo_a_Squadre_v${VERSION}.pdf`).
+    - Pagine web/guide HTML (`Padel_ELO_Manager_Guida_v${VERSION}.html` e `Padel_ELO_Manager_Presentazione.html`).
+    - Testi promozionali e istruzioni d'uso (`Padel_ELO_Manager_Testi_Promo.txt` e `ISTRUZIONI_USO.md`).
+11. Fare commit e push della versione locale corrente.
 
 ## Note operative
 

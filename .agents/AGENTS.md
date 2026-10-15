@@ -15,74 +15,67 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
    - Controlla se le ultime modifiche logiche hanno impatto sulla documentazione.
    - Aggiorna i file rilevanti: Guida HTML, Presentazione HTML, Testi Promo e Istruzioni d'uso.
 
-3. **Backup ZIP sulla Scrivania:**
-   - Esegui un comando per creare uno zip pulito sulla scrivania (escludendo `node_modules` e `.git`):
-     ```bash
-     zip -r ~/Desktop/Elo_Manager_v$(node -p "require('./package.json').version")_$(date +%Y-%m-%d).zip . -x "node_modules/*" ".git/*" ".gemini/*" "dist/*" "*/.DS_Store"
-     ```
-
-4. **Esporta il Codice Sorgente in 3 File TXT (Grafica, Logica, Backend):**
-   - Esegui il comando per generare tre file di testo distinti sulla Scrivania:
+3. **Creazione Cartella Release Unica in TorneOtto 3.0 Docs (MANDATORY):**
+   - Tutti i file di rilascio vanno inseriti **ESCLUSIVAMENTE** in una singola cartella nominata con la versione (`${VERSION}`) all'interno di `TorneOtto 3.0 Docs` (`/Users/mattiaianniello/Library/Mobile Documents/com~apple~CloudDocs/World Padel Tour/App TorneOtto 3.0/${VERSION}`).
+   - **NON** creare cartelle o file sfusi sul Desktop e **NON** creare sottocartelle Docs ridondanti.
+   - Crea la cartella di release:
      ```bash
      VERSION=$(node -p "require('./package.json').version")
      DATE=$(date +%Y-%m-%d)
-     UI_FILE=~/Desktop/Elo_Manager_Grafica_v${VERSION}_${DATE}.txt
-     LOGIC_FILE=~/Desktop/Elo_Manager_Logica_v${VERSION}_${DATE}.txt
-     BACKEND_FILE=~/Desktop/Elo_Manager_Backend_v${VERSION}_${DATE}.txt
+     CLOUD_DIR="/Users/mattiaianniello/Library/Mobile Documents/com~apple~CloudDocs/World Padel Tour/App TorneOtto 3.0"
+     RELEASE_DIR="$CLOUD_DIR/${VERSION}"
+     mkdir -p "$RELEASE_DIR"
+     ```
 
-     echo "Padel Manager - Source Code: GRAFICA & UI" > $UI_FILE
-     echo "Padel Manager - Source Code: CORE & LOGICA DI GIOCO" > $LOGIC_FILE
-     echo "Padel Manager - Source Code: BACKEND & INFRASTRUTTURA" > $BACKEND_FILE
+4. **Backup ZIP e i 3 File TXT di Codice Sorgente:**
+   - Salva lo ZIP direttamente nella cartella di release:
+     ```bash
+     zip -r "$RELEASE_DIR/Elo_Manager_v${VERSION}_${DATE}.zip" . -x "node_modules/*" ".git/*" ".gemini/*" "dist/*" "*/.DS_Store"
+     ```
+   - Genera i 3 file TXT direttamente nella cartella di release:
+     ```bash
+     UI_FILE="$RELEASE_DIR/Elo_Manager_Grafica_v${VERSION}_${DATE}.txt"
+     LOGIC_FILE="$RELEASE_DIR/Elo_Manager_Logica_v${VERSION}_${DATE}.txt"
+     BACKEND_FILE="$RELEASE_DIR/Elo_Manager_Backend_v${VERSION}_${DATE}.txt"
 
-     # 1. File Grafica (Componenti, Pagine, Stili, Template UI)
+     echo "Padel Manager - Source Code: GRAFICA & UI" > "$UI_FILE"
+     echo "Padel Manager - Source Code: CORE & LOGICA DI GIOCO" > "$LOGIC_FILE"
+     echo "Padel Manager - Source Code: BACKEND & INFRASTRUTTURA" > "$BACKEND_FILE"
+
+     # 1. File Grafica
      find ./components ./pages ./index.css ./index.html ./App.tsx ./index.tsx ./tailwind.config.js ./postcss.config.js -type f -not -name "*.png" -not -name "*.jpg" -not -name "*.zip" 2>/dev/null | sort | while read -r file; do
-         echo -e "\n\n================================================================" >> $UI_FILE
-         echo "FILE: $file" >> $UI_FILE
-         echo "================================================================" >> $UI_FILE
-         cat "$file" >> $UI_FILE
+         echo -e "\n\n================================================================" >> "$UI_FILE"
+         echo "FILE: $file" >> "$UI_FILE"
+         echo "================================================================" >> "$UI_FILE"
+         cat "$file" >> "$UI_FILE"
      done
 
-     # 2. File Logica (Formati Tornei, Servizi, Utils, Hooks, Store, Tipi e Costanti)
+     # 2. File Logica
      find ./formats ./services ./utils ./hooks ./types.ts ./constants.ts -type f -not -name "*.png" -not -name "*.jpg" -not -name "*.zip" 2>/dev/null | sort | while read -r file; do
-         echo -e "\n\n================================================================" >> $LOGIC_FILE
-         echo "FILE: $file" >> $LOGIC_FILE
-         echo "================================================================" >> $LOGIC_FILE
-         cat "$file" >> $LOGIC_FILE
+         echo -e "\n\n================================================================" >> "$LOGIC_FILE"
+         echo "FILE: $file" >> "$LOGIC_FILE"
+         echo "================================================================" >> "$LOGIC_FILE"
+         cat "$file" >> "$LOGIC_FILE"
      done
 
-     # 3. File Backend (Server Express, Script di Migrazione, Build e Config)
+     # 3. File Backend
      find ./server.js ./scripts ./package.json ./tsconfig.json ./vite.config.ts ./vercel.json -type f -not -name "*.png" -not -name "*.jpg" -not -name "*.zip" -not -name "*.sqlite" -not -name "*.db" 2>/dev/null | sort | while read -r file; do
-         echo -e "\n\n================================================================" >> $BACKEND_FILE
-         echo "FILE: $file" >> $BACKEND_FILE
-         echo "================================================================" >> $BACKEND_FILE
-         cat "$file" >> $BACKEND_FILE
+         echo -e "\n\n================================================================" >> "$BACKEND_FILE"
+         echo "FILE: $file" >> "$BACKEND_FILE"
+         echo "================================================================" >> "$BACKEND_FILE"
+         cat "$file" >> "$BACKEND_FILE"
      done
      ```
 
-5. **Cartella Release Unificata su Desktop e TorneOtto 3.0 Docs (MANDATORY):**
-   - Crea sempre una cartella sulla Scrivania con il seriale della versione (es. `~/Desktop/${VERSION}`):
+5. **Copia Documentazione nella Cartella di Release:**
+   - Copia i PDF, le guide HTML, la presentazione e i testi promozionali:
      ```bash
-     VERSION=$(node -p "require('./package.json').version")
-     RELEASE_DIR=~/Desktop/${VERSION}
-     mkdir -p "$RELEASE_DIR"
-     # Copia backup ZIP e i 3 TXT
-     cp ~/Desktop/Elo_Manager_*v${VERSION}* "$RELEASE_DIR/"
-     # Copia PDF, HTML guida, presentazione e testi promo da docs/
      cp docs/Guida_Uso_v${VERSION}.pdf "$RELEASE_DIR/" 2>/dev/null || true
      cp docs/Guida_Torneo_a_Squadre_v${VERSION}.pdf "$RELEASE_DIR/" 2>/dev/null || true
      cp docs/Padel_ELO_Manager_Guida_v${VERSION}.html "$RELEASE_DIR/" 2>/dev/null || true
      cp docs/Padel_ELO_Manager_Presentazione.html "$RELEASE_DIR/" 2>/dev/null || true
      cp docs/Padel_ELO_Manager_Testi_Promo.txt "$RELEASE_DIR/" 2>/dev/null || true
      cp docs/ISTRUZIONI_USO.md "$RELEASE_DIR/" 2>/dev/null || true
-
-     # Sincronizza anche nella cartella cloud/alias TorneOtto 3.0 Docs
-     CLOUD_DIR="/Users/mattiaianniello/Library/Mobile Documents/com~apple~CloudDocs/World Padel Tour/App TorneOtto 3.0"
-     if [ -d "$CLOUD_DIR" ]; then
-         mkdir -p "$CLOUD_DIR/${VERSION}"
-         cp -r "$RELEASE_DIR"/* "$CLOUD_DIR/${VERSION}/"
-         mkdir -p "$CLOUD_DIR/Docs"
-         cp -r docs/* "$CLOUD_DIR/Docs/"
-     fi
      ```
 
 6. **Commit e Push:**
