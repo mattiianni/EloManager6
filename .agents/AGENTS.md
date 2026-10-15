@@ -59,7 +59,33 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
      done
      ```
 
-5. **Commit e Push:**
+5. **Cartella Release Unificata su Desktop e TorneOtto 3.0 Docs (MANDATORY):**
+   - Crea sempre una cartella sulla Scrivania con il seriale della versione (es. `~/Desktop/${VERSION}`):
+     ```bash
+     VERSION=$(node -p "require('./package.json').version")
+     RELEASE_DIR=~/Desktop/${VERSION}
+     mkdir -p "$RELEASE_DIR"
+     # Copia backup ZIP e i 3 TXT
+     cp ~/Desktop/Elo_Manager_*v${VERSION}* "$RELEASE_DIR/"
+     # Copia PDF, HTML guida, presentazione e testi promo da docs/
+     cp docs/Guida_Uso_v${VERSION}.pdf "$RELEASE_DIR/" 2>/dev/null || true
+     cp docs/Guida_Torneo_a_Squadre_v${VERSION}.pdf "$RELEASE_DIR/" 2>/dev/null || true
+     cp docs/Padel_ELO_Manager_Guida_v${VERSION}.html "$RELEASE_DIR/" 2>/dev/null || true
+     cp docs/Padel_ELO_Manager_Presentazione.html "$RELEASE_DIR/" 2>/dev/null || true
+     cp docs/Padel_ELO_Manager_Testi_Promo.txt "$RELEASE_DIR/" 2>/dev/null || true
+     cp docs/ISTRUZIONI_USO.md "$RELEASE_DIR/" 2>/dev/null || true
+
+     # Sincronizza anche nella cartella cloud/alias TorneOtto 3.0 Docs
+     CLOUD_DIR="/Users/mattiaianniello/Library/Mobile Documents/com~apple~CloudDocs/World Padel Tour/App TorneOtto 3.0"
+     if [ -d "$CLOUD_DIR" ]; then
+         mkdir -p "$CLOUD_DIR/${VERSION}"
+         cp -r "$RELEASE_DIR"/* "$CLOUD_DIR/${VERSION}/"
+         mkdir -p "$CLOUD_DIR/Docs"
+         cp -r docs/* "$CLOUD_DIR/Docs/"
+     fi
+     ```
+
+6. **Commit e Push:**
    - Aggiungi i file a git: `git add .`
    - Esegui il commit indicando la nuova versione e i cambiamenti: `git commit -m "chore: release vX.Y.Z - [descrizione]"`
    - Esegui il push: `git push` (assicurati che il remote sia configurato col token).

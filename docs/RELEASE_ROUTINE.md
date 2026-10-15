@@ -18,7 +18,8 @@
 8. Eseguire test automatici e build di verifica.
 9. Creare backup `.zip` di ripristino (`Elo_Manager_v...zip`) e salvarlo sul Desktop dell'utente (`~/Desktop/`).
 10. Creare 3 dump `.txt` distinti del codice sorgente (`Elo_Manager_Grafica_v...txt`, `Elo_Manager_Logica_v...txt` e `Elo_Manager_Backend_v...txt`) e salvarli sul Desktop dell'utente (`~/Desktop/`).
-11. Fare commit e push della versione locale corrente.
+11. Creare la cartella unificata di release sul Desktop con il seriale della versione (es. `~/Desktop/${VERSION}/`) contenente lo zip, i 3 txt di codice sorgente, tutti i PDF, gli HTML guida e presentazione, e i file di testi promozionali e istruzioni. Sincronizzare gli stessi file nella cartella/alias `TorneOtto 3.0 Docs` (sottocartelle `${VERSION}` e `Docs`).
+12. Fare commit e push della versione locale corrente.
 
 ## Note operative
 
