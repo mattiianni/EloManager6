@@ -6,7 +6,7 @@ import Card from './ui/Card.tsx';
 import Button from './ui/Button.tsx';
 import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
-import { PrintIcon } from './ui/Icons.tsx';
+import { PrintIcon, BoxIcon } from './ui/Icons.tsx';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
 import { CustomTournamentFlowConfig } from '../types/customTournament.ts';
@@ -552,7 +552,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
               step === 'boxes' ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
             }`}>
-              <SFIcon name={isAmericanoMode ? "shuffle" : "shippingbox.fill"} size={13} />
+              {isAmericanoMode ? <SFIcon name="shuffle" size={13} /> : <BoxIcon size={13} />}
               <span>{isAmericanoMode ? 'Fase Americano' : 'Fase Box'}</span>
             </div>
             {hasSemifinals && (
@@ -592,7 +592,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-lg">
-                          <SFIcon name={isAmericanoMode ? "shuffle" : "shippingbox.fill"} size={18} />
+                          {isAmericanoMode ? <SFIcon name="shuffle" size={18} /> : <BoxIcon size={18} />}
                         </div>
                         <div>
                           <h3 className="font-bold text-base text-slate-900 dark:text-white">

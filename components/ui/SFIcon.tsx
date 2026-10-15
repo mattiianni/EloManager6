@@ -168,6 +168,11 @@ const SF_TO_MATERIAL: Record<string, string> = {
   '3.circle': 'looks_3',
   '4.circle': 'looks_4',
   '5.circle': 'looks_5',
+  'shippingbox': 'inventory_2',
+  'box': 'inventory_2',
+  'package': 'inventory_2',
+  'wrench.and.screwdriver': 'build',
+  'tablecells': 'table_chart',
 };
 
 /**

@@ -1,3 +1,9 @@
+## v6.10.3 — 2026-10-15
+- **Fix Animazione Beat the Box & BoxIcon SVG Dedicata**:
+  - Risolto il difetto di visualizzazione nell'animazione Beat the Box: sostituita la precedente chiamata font con un'icona SVG isometrica vettoriale pura (`BoxIcon`), garantendo rendering grafico immediato ed eliminando ogni residuo di testo o ligature fallback.
+  - Aggiunti i mapping mancanti in `SFIcon.tsx` (`shippingbox`, `box`, `package`, `wrench.and.screwdriver`, `tablecells`) verso le rispettive Google Material Symbols (`inventory_2`, `build`, `table_chart`).
+  - Utilizzata `BoxIcon` SVG nei box header e nel breadcrumb stepper di `BeatTheBoxFlow` e `CustomTournamentFlow`.
+
 ## v6.10.2 — 2026-10-15
 - **Bonifica Globale Icone & Allineamento Apple HIG**:
   - Eliminazione completa e definitiva di tutte le vecchie icone e raw emoji (`🥇`, `🥈`, `🥉`, `🏆`, `📦`, `⚡`, `📊`, `📋`, `📈`, `✏️`, `⚔️`, `🔄`, `🟢`, `🔴`, `🔒`, ecc.) in tutti i componenti, pagine e flussi di gioco.

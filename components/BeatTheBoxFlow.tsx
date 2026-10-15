@@ -20,7 +20,7 @@ import Button from './ui/Button.tsx';
 import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import BeatTheBoxAnimation from './ui/BeatTheBoxAnimation.tsx';
-import { PrintIcon } from './ui/Icons.tsx';
+import { PrintIcon, BoxIcon } from './ui/Icons.tsx';
 import { printBeatTheBoxBlank, printBeatTheBoxComplete } from '../services/printService.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
@@ -755,7 +755,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  <div key={boxIdx} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
  <div className="flex items-center gap-2 mb-4">
  <div className="w-8 h-8 rounded-lg bg-ios-blue/10 dark:bg-ios-blue/20 flex items-center justify-center text-ios-blue shrink-0">
-  <SFIcon name="shippingbox.fill" size={18} />
+  <BoxIcon size={18} />
  </div>
  <h3 className="font-semibold text-lg">
  Box {box.boxNumber} - Campo {box.boxNumber}
