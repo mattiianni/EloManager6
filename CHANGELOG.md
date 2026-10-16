@@ -1,3 +1,14 @@
+## v6.10.4 — 2026-10-16
+- **Ottimizzazione Layout Mobile UI & Eliminazione Box Annidati**:
+  - Eliminato il difetto dei "container dentro container" (`bg-gray-50 dark:bg-gray-900 p-4 rounded-lg` e padding ripetuti `px-4`) nelle schermate di riepilogo pre-salvataggio e tabellone vuoto (Beat the Box, Gironi, Torneo Libero, Torneo Personale).
+  - Intestazioni di sezione aperte (*unboxed section headers*) con icone SVG vettoriali e card partite a piena larghezza orizzontale, sfruttando al 100% lo spazio su schermi mobile (≤ 430px) ed eliminando margini bianchi laterali vuoti.
+- **Aggiustamento Nomi Giocatori (Nomi su 2 Righe per Squadra)**:
+  - Nomi dei compagni di coppia posizionati tassativamente su due righe separate per ciascuna squadra (Squadra A a sinistra, Squadra B a destra, badge `VS` centrato, inserimento punteggi sotto).
+  - Risolto definitivamente il troncamento dei nomi dei giocatori (eliminata ogni concatenazione compressa con ` & ` come `"Alessio Niccolini & Albert..."`).
+  - Applicato uniformemente in `BeatTheBoxFlow`, `TournamentFlow` e in tutti i modali di inserimento/modifica risultati di `MatchesPage`.
+- **Rimozione Totale ELO nelle Schermate di Riepilogo e Inserimento**:
+  - Eliminate tutte le diciture e valori `ELO: ...` o `(ELO: ...)` da ogni card partita e lista giocatori nelle schermate di riepilogo, salvataggio calendario e modali di modifica risultati.
+
 ## v6.10.3 — 2026-10-15
 - **Fix Animazione Beat the Box & BoxIcon SVG Dedicata**:
   - Risolto il difetto di visualizzazione nell'animazione Beat the Box: sostituita la precedente chiamata font con un'icona SVG isometrica vettoriale pura (`BoxIcon`), garantendo rendering grafico immediato ed eliminando ogni residuo di testo o ligature fallback.

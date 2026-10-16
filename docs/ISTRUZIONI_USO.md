@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.10.3)
+# Istruzioni d'Uso (v6.10.4)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.3` — `Ott 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.4` — `Ott 2026`).
 
 ## Accesso
 
@@ -45,6 +45,7 @@ Dopo il draw entri nel flow torneo:
 - scegli il formato
 - scegli se creare un nuovo torneo o aggiungere una giornata a una serie esistente
 - imposti data e circolo
+- verifichi il calendario con il nuovo **layout unboxed ottimizzato per mobile**: card partita a tutta larghezza (nessun box grigio annidato), nomi dei partner disposti su due righe separate per evitare ogni troncamento, badge VS centrale, input punteggio sotto e zero scritte ELO superflue
 - inserisci i risultati oppure salvi il calendario, se il formato lo supporta
 
 ## Formati disponibili

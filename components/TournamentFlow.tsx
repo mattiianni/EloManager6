@@ -2540,21 +2540,28 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               const team2Pair = pairs.find(pair => pair.some(player => player.id === match.team2[0]));
               if (!team1Pair || !team2Pair) return null;
               return (
-                <div key={match.id || idx} className="mb-4">
-                  <h4 className="font-semibold text-sm mb-2 text-gray-800 dark:text-gray-200">Quarto {idx + 1}</h4>
-                  <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800">
-                    <div className="text-right text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team1Pair[0])} & {formatPlayerShortName(team1Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1Pair[0].currentElo + team1Pair[1].currentElo)/2).toFixed(2)}</p>
+                <div key={match.id || idx} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-3">
+                  <div className="text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
+                    <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Quarto {idx + 1}</h4>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="min-w-0 text-left">
+                      <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
                     </div>
+                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">VS</div>
+                    <div className="min-w-0 text-right">
+                      <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
+                    </div>
+                  </div>
+                  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
                     <MatchScoreInput
                       sets={match.sets}
                       onSetsChange={(sets) => setGironiQuarterfinalsMatches(current => current.map((item, index) => index === idx ? { ...item, sets } : item))}
                     />
-                    <div className="text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team2Pair[0])} & {formatPlayerShortName(team2Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2Pair[0].currentElo + team2Pair[1].currentElo)/2).toFixed(2)}</p>
-                    </div>
                   </div>
                 </div>
               );
@@ -2586,27 +2593,32 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               if (!team1Pair || !team2Pair) return null;
 
               return (
-                <div key={idx} className="mb-4">
-                  <h4 className="font-semibold text-sm mb-2 text-gray-800 dark:text-gray-200">Semifinale {idx + 1}</h4>
-                  <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800">
-                    <div className="text-right text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team1Pair[0])} & {formatPlayerShortName(team1Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1Pair[0].currentElo + team1Pair[1].currentElo)/2).toFixed(2)}</p>
+                <div key={idx} className="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2 mb-3">
+                  <div className="text-center pb-1 border-b border-green-200/50 dark:border-green-800/30">
+                    <h4 className="font-bold text-sm text-green-900 dark:text-green-300">Semifinale {idx + 1}</h4>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="min-w-0 text-left">
+                      <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra A</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
                     </div>
-                    <div>
-                      <MatchScoreInput
-                        sets={match.sets}
-                        onSetsChange={(sets) => {
-                          const newMatches = [...gironiSemifinalsMatches];
-                          newMatches[idx] = { ...match, sets };
-                          setGironiSemifinalsMatches(newMatches);
-                        }}
-                      />
+                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-green-200/60 dark:bg-green-800/40 text-[10px] font-black text-green-700 dark:text-green-300">VS</div>
+                    <div className="min-w-0 text-right">
+                      <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra B</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
                     </div>
-                    <div className="text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team2Pair[0])} & {formatPlayerShortName(team2Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2Pair[0].currentElo + team2Pair[1].currentElo)/2).toFixed(2)}</p>
-                    </div>
+                  </div>
+                  <div className="pt-2 flex justify-center border-t border-green-200/50 dark:border-green-800/30">
+                    <MatchScoreInput
+                      sets={match.sets}
+                      onSetsChange={(sets) => {
+                        const newMatches = [...gironiSemifinalsMatches];
+                        newMatches[idx] = { ...match, sets };
+                        setGironiSemifinalsMatches(newMatches);
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -2656,27 +2668,32 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               const matchKey = `final-${match.team1.join('-')}-vs-${match.team2.join('-')}`;
 
               return (
-                <div key={matchKey} className="mb-4">
-                  <h4 className="font-semibold text-sm mb-2 text-gray-800 dark:text-gray-200">{title}</h4>
-                  <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800">
-                    <div className="text-right text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team1Pair[0])} & {formatPlayerShortName(team1Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1Pair[0].currentElo + team1Pair[1].currentElo)/2).toFixed(2)}</p>
+                <div key={matchKey} className="bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2 mb-3">
+                  <div className="text-center pb-1 border-b border-black/5 dark:border-white/5">
+                    <h4 className="font-bold text-sm text-green-900 dark:text-green-300">{title}</h4>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="min-w-0 text-left">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
                     </div>
-                    <div>
-                      <MatchScoreInput
-                        sets={match.sets}
-                        onSetsChange={(sets) => {
-                          const newMatches = [...gironiFinalsMatches];
-                          newMatches[idx] = { ...match, sets };
-                          setGironiFinalsMatches(newMatches);
-                        }}
-                      />
+                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[10px] font-black text-slate-500">VS</div>
+                    <div className="min-w-0 text-right">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
                     </div>
-                    <div className="text-sm">
-                      <p className="font-semibold">{formatPlayerShortName(team2Pair[0])} & {formatPlayerShortName(team2Pair[1])}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2Pair[0].currentElo + team2Pair[1].currentElo)/2).toFixed(2)}</p>
-                    </div>
+                  </div>
+                  <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
+                    <MatchScoreInput
+                      sets={match.sets}
+                      onSetsChange={(sets) => {
+                        const newMatches = [...gironiFinalsMatches];
+                        newMatches[idx] = { ...match, sets };
+                        setGironiFinalsMatches(newMatches);
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -2905,9 +2922,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Button>
  </div>
  }>
- <div className="space-y-6 px-4">
+ <div className="space-y-6">
  {torneoLiberoMatches.map((match, index) => (
- <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+ <div key={index} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-3">
  <h3 className="font-semibold mb-4">Partita {index + 1} di {numeroPartite}</h3>
 
  <div className="grid grid-cols-3 items-center gap-4">
@@ -3238,14 +3255,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
                                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                   <div className="min-w-0 text-left">
                                     <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
-                                    <p className="text-[10px] text-slate-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
                                   </div>
                                   <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
                                   <div className="min-w-0 text-right">
                                     <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
-                                    <p className="text-[10px] text-slate-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
                                   </div>
                                 </div>
                                 <div className="pt-2 flex justify-center border-t border-slate-100 dark:border-white/5">
@@ -3265,7 +3282,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               </div>
             </div>
           ) : (
- <div className="space-y-6 px-4">
+ <div className="space-y-4">
  {tournamentMatches.map((match, index) => {
  const team1 = getTeamPlayers(match.team1);
  const team2 = getTeamPlayers(match.team2);
@@ -3287,14 +3304,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <div className="min-w-0 text-left">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
-        <p className="text-[10px] text-slate-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
       </div>
       <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
       <div className="min-w-0 text-right">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
-        <p className="text-[10px] text-slate-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
       </div>
     </div>
     <div className="pt-2 flex justify-center border-t border-slate-100 dark:border-white/5">
@@ -3486,14 +3503,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <div className="min-w-0 text-left">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}</p>
-        <p className="text-[10px] text-slate-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
       </div>
       <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
       <div className="min-w-0 text-right">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}</p>
-        <p className="text-[10px] text-slate-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
       </div>
     </div>
     <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
