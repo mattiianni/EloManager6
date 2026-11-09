@@ -398,6 +398,10 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
         const styleEl = document.createElement('style');
         styleEl.id = 'padel-print-style';
         styleEl.textContent = `
+            @page {
+                size: A4;
+                margin: 12mm 10mm;
+            }
             #padel-print-root {
                 display: none !important;
             }
@@ -419,19 +423,14 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
                 }
                 #padel-print-root {
                     display: block !important;
-                    position: absolute !important;
-                    left: 0 !important;
-                    top: 0 !important;
+                    position: static !important;
                     width: 100% !important;
+                    height: auto !important;
                     background: #ffffff !important;
                     color: #000000 !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    z-index: 9999999 !important;
-                }
-                @page {
-                    size: A4;
-                    margin: 12mm 10mm;
+                    overflow: visible !important;
                 }
                 ${pageStyles}
                 ${extractedStyles}
@@ -7994,7 +7993,8 @@ export const printPlayerProfiles = (
             `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${w ? '#22c55e' : '#ef4444'};margin-right:3px;"></span>`
         ).join('');
 
-    const pagesHtml = playerPages.map((data: any) => {
+    const pagesHtml = playerPages.map((data: any, index: number) => {
+        const isLast = index === playerPages.length - 1;
         const p = data.player;
         const deltaColor = data.lastDelta >= 0 ? '#059669' : '#dc2626';
         const deltaSign = data.lastDelta >= 0 ? '+' : '';
@@ -8031,8 +8031,12 @@ export const printPlayerProfiles = (
 
         const eloSvg = generateEloSvg(data.chartPoints, 700, 140);
 
+        const pageBreakDivider = !isLast
+            ? `<div class="page-break" style="page-break-before: always; break-before: page; page-break-after: always; break-after: page; height: 0; line-height: 0; font-size: 0; margin: 0; padding: 0; clear: both; border: none; visibility: hidden;"></div>`
+            : '';
+
         return `
-            <div class="player-page">
+            <div class="player-page" style="page-break-inside: avoid; break-inside: avoid; page-break-after: ${isLast ? 'auto' : 'always'}; break-after: ${isLast ? 'auto' : 'page'};">
                 <!-- Header -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div>
@@ -8123,28 +8127,117 @@ export const printPlayerProfiles = (
                     Padel ELO Manager v${APP_VERSION} &middot; ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')} &middot; Profilo ${p.name} ${p.surname}${options?.tournamentFilter ? ` &middot; ${escapeHtml(options.tournamentFilter.tournamentName)}` : ''}
                 </div>
             </div>
+            ${pageBreakDivider}
         `;
     }).join('');
 
     const pageStyles = `
         @page {
             size: A4;
-            margin: 12mm 10mm;
+            margin: 10mm 10mm;
         }
         body {
             font-family: 'Manrope', sans-serif;
-                font-feature-settings: 'cv11', 'tnum', 'lnum';
+            font-feature-settings: 'cv11', 'tnum', 'lnum';
             font-size: 10px;
             color: #111;
             margin: 0;
             padding: 0;
         }
         .player-page {
-            page-break-after: always;
-            padding: 0;
+            display: block !important;
+            position: relative !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            clear: both !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .player-page + .player-page {
+            page-break-before: always !important;
+            break-before: page !important;
         }
         .player-page:last-child {
-            page-break-after: auto;
+            page-break-after: auto !important;
+            break-after: auto !important;
+        }
+        .page-break {
+            display: block !important;
+            page-break-before: always !important;
+            break-before: page !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            clear: both !important;
+            height: 0 !important;
+            line-height: 0 !important;
+            font-size: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            visibility: hidden !important;
+        }
+        @media screen {
+            .player-page {
+                background: #ffffff;
+                max-width: 820px;
+                margin: 20px auto 30px auto !important;
+                padding: 24px !important;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e2e8f0;
+            }
+            .page-break {
+                display: block !important;
+                height: 24px !important;
+                border-bottom: 2px dashed #cbd5e1 !important;
+                margin: 20px auto !important;
+                max-width: 820px !important;
+                visibility: visible !important;
+            }
+        }
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+            .player-page {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            .player-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            .page-break {
+                display: block !important;
+                page-break-before: always !important;
+                break-before: page !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 0 !important;
+                line-height: 0 !important;
+                font-size: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                visibility: hidden !important;
+            }
         }
         .stats-grid {
             display: grid;

@@ -1,3 +1,10 @@
+## v6.12.2 — 2026-11-09
+- **Paginazione e Interruzioni di Pagina Stampa Giocatori (1 Giocatore per Pagina)**:
+  - Inserito divisore esplicito `.page-break` tra le schede profilo dei giocatori con `break-before: page`, `page-break-before: always`, `break-after: page`, `page-break-after: always`.
+  - Risolto l'accavallamento dei contenuti nei report PDF multipagina (sia da *Giocatori Singolo Torneo* che da *Tutti i Giocatori*): impostato `break-inside: avoid` su ciascuna card `.player-page` e rimossa l'interruzione orfana sull'ultimo profilo.
+  - Risolto bug di impaginazione WebKit/Safari (`printInWindow`): rimosso `position: absolute !important` da `#padel-print-root` a favore di `position: static !important;`, ripristinando il normale flusso di paginazione CSS nativo.
+  - Spostata la regola `@page` all'esterno del blocco `@media print` per perfetta conformità alle specifiche CSS Paged Media.
+
 ## v6.12.1 — 2026-11-09
 - **Uniformazione Grafica Modale Stampa Giocatori**:
   - Rimosse icona trofeo e stili custom non conformi dal pulsante *"Giocatori Singolo Torneo..."* in `PlayerPrintModal.tsx`.
