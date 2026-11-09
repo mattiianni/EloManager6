@@ -4,7 +4,7 @@ import PDFDocument from 'pdfkit';
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8'));
 const APP_VERSION = pkg.version;
-const APP_MONTH = 'Ott 2026';
+const APP_MONTH = 'Nov 2026';
 
 const outDir = path.resolve(process.cwd(), 'docs');
 const outPath = path.join(outDir, `Guida_Torneo_a_Squadre_v${APP_VERSION}.pdf`);

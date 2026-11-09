@@ -2,8 +2,8 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.10.4`
-- Mese attuale: `Ott 2026`
+- Versione attuale: `6.10.5`
+- Mese attuale: `Nov 2026`
 
 ## Checklist Operativa
 

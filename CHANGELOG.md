@@ -1,3 +1,10 @@
+## v6.10.5 — 2026-11-09
+- **Fix Stampa su iOS (AirPrint Diretto & Risoluzione Schermata Browser Bloccata)**:
+  - Implementata la stampa nativa in-window su iOS (`printInWindow`): inserimento dinamico di `#padel-print-root` nel DOM e isolamento `@media print`, permettendo ad AirPrint di aprirsi istantaneamente sopra l'app attiva in Safari e in PWA standalone mode.
+  - Risolto il blocco di `window.print()` su WebKit iOS: eliminata l'apertura asincrona di schede orfane (`window.open('', '_blank')` con `location.replace(blobUrl)`), che causavano la perdita del token di attivazione utente e lasciavano la pagina bloccata in sola lettura.
+  - Aggiunta sticky action bar fail-safe (`.print-toolbar.no-print`): nei documenti aperti in nuova scheda su desktop o browser terzi, è sempre visibile in cima alla pagina una barra con pulsante primario *"🖨️ Stampa / Salva PDF"* e pulsante secondario *"✕ Chiudi"*, nascosta al 100% durante la stampa effettiva.
+  - Test automatici dedicati per `isIOS`, regole CSS di stampa e ciclo di vita DOM/cleanup di `printInWindow`.
+
 ## v6.10.4 — 2026-10-16
 - **Ottimizzazione Layout Mobile UI & Eliminazione Box Annidati**:
   - Eliminato il difetto dei "container dentro container" (`bg-gray-50 dark:bg-gray-900 p-4 rounded-lg` e padding ripetuti `px-4`) nelle schermate di riepilogo pre-salvataggio e tabellone vuoto (Beat the Box, Gironi, Torneo Libero, Torneo Personale).

@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.10.4)
+# Istruzioni d'Uso (v6.10.5)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.4` — `Ott 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.5` — `Nov 2026`).
 
 ## Accesso
 

@@ -177,6 +177,60 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 -webkit-text-size-adjust: 100%;
                 text-size-adjust: 100%;
             }
+            .print-toolbar {
+                position: sticky;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 9999;
+                background: #0055D4;
+                color: #ffffff;
+                padding: 10px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 2px 10px rgba(0, 85, 212, 0.25);
+                font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+            }
+            .print-toolbar-info {
+                font-size: 13px;
+                font-weight: 700;
+                color: #ffffff;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin-right: 12px;
+            }
+            .print-toolbar-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .print-btn-primary {
+                background: #ffffff;
+                color: #0055D4;
+                border: none;
+                border-radius: 8px;
+                padding: 6px 14px;
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            }
+            .print-btn-secondary {
+                background: rgba(255, 255, 255, 0.18);
+                color: #ffffff;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+            }
         }
         @media print {
             body {
@@ -187,7 +241,8 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 font-family: 'Manrope', sans-serif;
                 color: #000000;
             }
-            .no-print { display: none !important; }
+            .no-print,
+            .print-toolbar { display: none !important; }
         }
         .print-page {
             width: 100%;
@@ -309,29 +364,137 @@ export const formatScoreBoxes = (sets: any[], isScheduled: boolean = false) => {
     ).join('');
 };
 
-const isIOS = () => {
+export const isIOS = (): boolean => {
+    if (typeof navigator === 'undefined') return false;
     return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
-// iOS: print via blob URL so iOS can reload content on zoom change without getting about:blank
-const printViaIframe = (htmlContent: string): boolean => {
+export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
-        // Inject print script before </body> — fires on load
-        const htmlWithScript = htmlContent.replace(
-            /<\/body>/i,
-            `<script>
-                window.addEventListener('load', function() {
-                    ${waitForPrintFontsScript}.finally(function() {
-                        setTimeout(function() {
-                            try { window.print(); } catch(e) { console.error('Print error:', e); showHIGAlert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
-                        }, 200);
-                    });
-                });
-            <\/script></body>`
-        );
+        const existingRoot = document.getElementById('padel-print-root');
+        if (existingRoot) existingRoot.remove();
+        const existingStyle = document.getElementById('padel-print-style');
+        if (existingStyle) existingStyle.remove();
 
-        const blob = new Blob([htmlWithScript], { type: 'text/html;charset=utf-8' });
+        // Extract style tags and body content if a full document was passed
+        let rawContent = content;
+        let extractedStyles = '';
+        const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+        let match;
+        while ((match = styleRegex.exec(content)) !== null) {
+            extractedStyles += '\n' + match[1];
+        }
+
+        const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+            rawContent = bodyMatch[1];
+        }
+        rawContent = rawContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
+
+        const styleEl = document.createElement('style');
+        styleEl.id = 'padel-print-style';
+        styleEl.textContent = `
+            #padel-print-root {
+                display: none !important;
+            }
+            @media print {
+                html, body {
+                    width: 100% !important;
+                    height: auto !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                    overflow: visible !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif !important;
+                }
+                body > *:not(#padel-print-root) {
+                    display: none !important;
+                }
+                #padel-print-root {
+                    display: block !important;
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    z-index: 9999999 !important;
+                }
+                @page {
+                    size: A4;
+                    margin: 12mm 10mm;
+                }
+                ${pageStyles}
+                ${extractedStyles}
+            }
+            ${basePrintCss}
+        `;
+
+        const printRoot = document.createElement('div');
+        printRoot.id = 'padel-print-root';
+        printRoot.innerHTML = rawContent;
+
+        document.head.appendChild(styleEl);
+        document.body.appendChild(printRoot);
+
+        const originalTitle = document.title;
+        if (title) {
+            document.title = title;
+        }
+
+        let cleanedUp = false;
+        const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            try {
+                document.title = originalTitle;
+                const r = document.getElementById('padel-print-root');
+                if (r) r.remove();
+                const s = document.getElementById('padel-print-style');
+                if (s) s.remove();
+                window.removeEventListener('afterprint', cleanup);
+            } catch (e) {
+                console.error('Print cleanup error:', e);
+            }
+        };
+
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(cleanup, 120000);
+
+        setTimeout(() => {
+            try {
+                window.print();
+            } catch (err) {
+                console.error('window.print error:', err);
+                cleanup();
+                showHIGAlert('Impossibile avviare la stampa su iOS.');
+            }
+        }, 150);
+
+        return true;
+    } catch (error) {
+        console.error('printInWindow error:', error);
+        showHIGAlert('Errore durante la preparazione della stampa.');
+        return false;
+    }
+};
+
+// Fallback printing for iframes/blobs: on iOS, delegates to printInWindow directly
+const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
+    if (isIOS()) {
+        return printInWindow(title, htmlContent);
+    }
+    try {
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
 
@@ -341,7 +504,6 @@ const printViaIframe = (htmlContent: string): boolean => {
             return false;
         }
 
-        // Revoca il blob dopo 2 minuti (abbondante tempo per stampa)
         setTimeout(() => URL.revokeObjectURL(url), 120000);
         return true;
     } catch (error) {
@@ -355,6 +517,27 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
     try {
         const iOS = isIOS();
 
+        if (iOS) {
+            if (existingWindow) {
+                try {
+                    existingWindow.close();
+                } catch (e) {
+                    // ignore
+                }
+            }
+            return printInWindow(title, content, pageStyles);
+        }
+
+        const toolbarHtml = `
+            <div class="print-toolbar no-print">
+                <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
+                <div class="print-toolbar-actions">
+                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.box} Stampa / Salva PDF</button>
+                    <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
+                </div>
+            </div>
+        `;
+
         const fullHtml = `
             <!DOCTYPE html>
             <html>
@@ -365,6 +548,7 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
                 ${getPrintStyles(true)}
             </head>
             <body>
+                ${toolbarHtml}
                 ${content}
                 <script>
                     window.addEventListener('load', function() {
@@ -372,12 +556,12 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
                             setTimeout(function() {
                                 try {
                                     window.print();
-                                    ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
+                                    setTimeout(function() { window.close(); }, 100);
                                 } catch(e) {
                                     console.error('Print error:', e);
-                                    ${iOS ? '' : 'window.close();'}
+                                    window.close();
                                 }
-                            }, ${iOS ? 300 : 150});
+                            }, 150);
                         });
                     });
                 <\/script>
@@ -386,40 +570,13 @@ const openPrintWindow = (title: string, content: string, pageStyles = "", existi
         `;
 
         if (existingWindow) {
-            if (iOS) {
-                // On iOS, keeping team-tournament prints on about:blank breaks the native
-                // preview shell and the user can get stuck without the close button.
-                // Reuse the pre-opened tab, but load it through a blob URL just like the
-                // legacy print flow so Safari shows the standard dismiss UI.
-                const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                existingWindow.location.replace(url);
-                setTimeout(() => URL.revokeObjectURL(url), 120000);
-                return true;
-            }
-
             existingWindow.document.open();
             existingWindow.document.write(fullHtml);
             existingWindow.document.close();
             return true;
         }
 
-        if (iOS) {
-            // iOS: usa blob URL invece di document.write su about:blank
-            // Così iOS può ricaricare il contenuto al cambio zoom senza ottenere pagina bianca
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const printWindow = window.open(url, '_blank');
-            if (!printWindow) {
-                URL.revokeObjectURL(url);
-                showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
-                return false;
-            }
-            setTimeout(() => URL.revokeObjectURL(url), 120000);
-            return true;
-        }
-
-        // Desktop/Android: document.write funziona bene (no re-render on zoom)
+        // Desktop/Android: document.write in new window
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
@@ -578,9 +735,9 @@ export const printChart = (chartContainerId: string): boolean => {
         </html>
     `;
 
-    // iOS: use iframe approach
+    // iOS: in-window print
     if (isIOS()) {
-        return printViaIframe(fullHtml);
+        return printViaIframe(fullHtml, 'Grafico ELO');
     }
 
     // Desktop/Android: use window.open
@@ -754,9 +911,9 @@ export const printEloChart = (
     ${content}
 </body></html>`;
 
-    // iOS: use iframe approach
+    // iOS: in-window print
     if (isIOS()) {
-        return printViaIframe(fullHtml);
+        return printViaIframe(fullHtml, 'Grafico ELO');
     }
 
     // Desktop/Android: use window.open

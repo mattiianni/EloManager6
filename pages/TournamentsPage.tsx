@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { calculateTeamTournamentStandings } from '../services/teamTournamentService.ts';
-import { printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printCustomTournamentBlank, printCustomTournamentComplete, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport, printTournamentStatistics } from '../services/printService.ts';
+import { isIOS, printTournamentReport, printBeatTheBoxComplete, printBeatTheBoxBlank, printCustomTournamentBlank, printCustomTournamentComplete, printTorneoLiberoComplete, printGironiTournament, printTpraTournamentReport, printTeamTournamentRoundRobinSchedule, printTeamTournamentMatchdayCalendar, printTeamTournamentReport, printTeamTournamentMatchdayReport, printTournamentStatistics } from '../services/printService.ts';
 import { calculateAllBoxStandings, createFinalsMatches, groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, TeamTournamentFixture, TeamTournamentTeam, TeamTournamentMatchday } from '../types.ts';
 import Card from '../components/ui/Card.tsx';
@@ -949,7 +949,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     };
 
     const handleTeamTournamentPrint = async (tournament: Tournament) => {
-        const preOpenedWindow = window.open('', '_blank');
+        const preOpenedWindow = isIOS() ? null : window.open('', '_blank');
         try {
             // If this is a saved "giornata" (child tournament), print the calendar for that giornata
             if (tournament.giornataName) {
