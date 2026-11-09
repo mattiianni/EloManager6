@@ -3,7 +3,6 @@ import { Player, Tournament, Match, EloHistoryEntry, TournamentType } from '../t
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import Modal from './ui/Modal.tsx';
 import Button from './ui/Button.tsx';
-import { SFIcon } from './ui/SFIcon.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
 
 export interface TournamentGroupOption {
@@ -215,17 +214,8 @@ export default function PlayerPrintModal({
                     <Button onClick={handlePrintAllPhase1} variant="primary" fullWidth size="lg">
                         Tutti i Giocatori ({players.length})
                     </Button>
-                    <Button 
-                        onClick={() => setPhase(3)} 
-                        variant="secondary" 
-                        fullWidth 
-                        size="lg"
-                        className="!border-sky-500/30 hover:!border-sky-500/60"
-                    >
-                        <span className="flex items-center justify-center gap-2">
-                            <SFIcon name="trophy.fill" size={16} className="text-amber-500" />
-                            <span>Giocatori Singolo Torneo...</span>
-                        </span>
+                    <Button onClick={() => setPhase(3)} variant="secondary" fullWidth size="lg">
+                        Giocatori Singolo Torneo...
                     </Button>
                     <Button onClick={() => setPhase(2)} variant="secondary" fullWidth size="lg">
                         Scegli Giocatori...

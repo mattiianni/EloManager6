@@ -1,3 +1,8 @@
+## v6.12.1 — 2026-11-09
+- **Uniformazione Grafica Modale Stampa Giocatori**:
+  - Rimosse icona trofeo e stili custom non conformi dal pulsante *"Giocatori Singolo Torneo..."* in `PlayerPrintModal.tsx`.
+  - Ripristinata totale coerenza grafica testuale identica al pulsante *"Scegli Giocatori..."* conforme alle linee guida Apple HIG.
+
 ## v6.12.0 — 2026-11-09
 - **Bypass / Modifica Fasi Finali Calcolate (Risoluzione Errori Referto Cartaceo)**:
   - Introdotto pulsante pill rosso **"Bypass / Modifica"** in alto a destra in tutte le fasi finali calcolate (Beat the Box semifinali/finali, Gironi quarti/semifinali/finali, Round Robin finali, Torneo Personale semifinali/finali).
@@ -16,7 +21,7 @@
 
 ## v6.11.1 — 2026-11-09
 - **Stampa "Giocatori Singolo Torneo" con Filtro Automatico e Andamento ELO**:
-  - Aggiunta nel modal di stampa dei giocatori (`PlayerPrintModal.tsx`) la terza opzione intermedia: **"Giocatori Singolo Torneo..."** con icona trofeo.
+  - Aggiunta nel modal di stampa dei giocatori (`PlayerPrintModal.tsx`) la terza opzione intermedia: **"Giocatori Singolo Torneo..."**.
   - Implementata la schermata di selezione torneo (Fase 3): menù a tendina `<select>` Apple HIG con tutti i tornei attivi a DB (ordinati cronologicamente) che aggrega automaticamente tutte le giornate del torneo selezionato.
   - Filtro automatico rigoroso: estrazione e visualizzazione dei soli giocatori che hanno disputato almeno 1 partita con punteggio registrato nel torneo.
   - Card di riepilogo con conteggio giornate, partite disputate e chip dei giocatori partecipanti con rating ELO.
