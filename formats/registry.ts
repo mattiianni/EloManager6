@@ -12,12 +12,18 @@ import { TorneoLiberoPrinter } from './torneoLibero/printer';
 import { TeamTournamentPrinter } from './torneoASquadre/printer';
 import { TorneoPersonaleEngine } from './torneoPersonale/engine';
 import { TorneoPersonalePrinter } from './torneoPersonale/printer';
+import { MexicanEngine } from './messicano/engine';
+import { MexicanPrinter } from './messicano/printer';
 
 class TournamentRegistryImpl {
     private engines = new Map<TournamentType, TournamentEngine>();
     private printers = new Map<TournamentType, TournamentPrinter>();
+    private initialized = false;
 
-    constructor() {
+    private ensureInitialized() {
+        if (this.initialized) return;
+        this.initialized = true;
+
         // Round Robin + Finali & TorneOtto
         this.registerEngine(RoundRobinEngine);
         this.registerPrinter(RoundRobinPrinter);
@@ -31,6 +37,10 @@ class TournamentRegistryImpl {
         // Americano
         this.registerEngine(AmericanoEngine);
         this.registerPrinter(AmericanoPrinter);
+
+        // Messicano (JIT)
+        this.registerEngine(MexicanEngine);
+        this.registerPrinter(MexicanPrinter);
 
         // Gironi + Fase Finale
         this.registerPrinter(GironiPrinter);
@@ -58,6 +68,7 @@ class TournamentRegistryImpl {
     }
 
     public getEngine(type: TournamentType): TournamentEngine {
+        this.ensureInitialized();
         const engine = this.engines.get(type);
         if (!engine) {
             const msg = `[TournamentRegistry] Engine non registrato per tipo: ${type}`;
@@ -70,6 +81,7 @@ class TournamentRegistryImpl {
     }
 
     public getPrinter(type: TournamentType): TournamentPrinter {
+        this.ensureInitialized();
         const printer = this.printers.get(type);
         if (!printer) {
             const msg = `[TournamentRegistry] Printer non registrato per tipo: ${type}`;

@@ -1,3 +1,24 @@
+## v6.11.0 — 2026-11-09
+- **Nuovo Formato: Torneo Messicano Individuale (JIT)**:
+  - Introdotto il formato competitivo a coppie mobili su quote rigorosamente sature e multiple di 4 (8, 12, 16, 20 o 24 partecipanti).
+  - Algoritmo Just-In-Time (JIT): dal Round 2 in poi le partite vengono generate dinamicamente al salvataggio del turno precedente.
+  - Segmentazione meritocratica dei campi: Campo 1 (**Top Court**, posizioni 1-4 provvisorie), Campi intermedi (**Mid Courts**), Ultimo Campo (**Flop Court**).
+  - Algoritmo di accoppiamento anti-ripetizione: analisi delle 3 combinazioni per campo con selezione a costo minimo di compagni già avuti e fallback meritocratico `(1°+4°) vs (2°+3°)`.
+  - Turno 1 con sorteggi configurabili: Seeded (teste di serie ELO), Balanced (snake draft), Normal (casuale) o Manuale.
+  - Supporto per tornei a Giornata Singola o inseriti come tappa in una serie Torneo Madre.
+  - Aggiornamento ELO standard K=16 a somma zero (con regola del 50% dei punti per la vittoria e supporto pareggi).
+  - Flusso UI dedicato (`MexicanTournamentFlow.tsx`) con placeholder dinamici nei turni futuri (`[1° Class.] & [4° Class.] vs [2° Class.] & [3° Class.]`), blocco dell'avanzamento JIT se il turno corrente non è completo, e salvataggio sia in corso che definitivo.
+  - Report PDF nativo in bianco e completato conforme agli standard Apple HIG con palette `#0055D4` e icone SVG native.
+- **Risoluzione Bug Pre-Audit & Affidabilità**:
+  - **Beat the Box Sizing**: Rimosso il valore non valido `3` coppie in `DrawPage.tsx` e introdotta una guardia difensiva in `beatTheBoxService.ts` che impedisce crash su quote non pari o inferiori a 4 coppie.
+  - **Deduplicazione Singoli in Americano**: Risolto il raddoppio improprio dei singoli in coppie fittizie `[p, p]` tramite deduplicazione con Map per ID.
+  - **Separatori Nomi PDF**: Uniformato il separatore dei compagni a `' & '` (eliminando il vecchio `' / '`) con wrapping sicuro `overflow-wrap: anywhere;` per evitare troncamenti.
+  - **Safe-Area Mobile Ancoraggio**: Corretta l'altezza e il margine inferiore della barra flottante di sorteggio su iOS (`bottom-[calc(4rem+env(safe-area-inset-bottom))]`).
+  - **Tie-Breaker Standings**: Assegnato 1 punto a testa in caso di `draw` nei tornei all'italiana e aggiunto tie-breaker terziario su `gamesWon`.
+  - **Bonifica Icone**: Rimosso il testo "X" grezzo nel modal tornei a squadre, sostituito con icona vettoriale.
+- **Suite di Test & Simulazioni**:
+  - Creati 21 nuovi test e simulazioni end-to-end (`mexicanEngine.test.ts` e `mexicanSimulation.test.ts`), raggiungendo 149/149 test passati su 15 suite con 0 errori TypeScript.
+
 ## v6.10.5 — 2026-11-09
 - **Fix Stampa su iOS (AirPrint Diretto & Risoluzione Schermata Browser Bloccata)**:
   - Implementata la stampa nativa in-window su iOS (`printInWindow`): inserimento dinamico di `#padel-print-root` nel DOM e isolamento `@media print`, permettendo ad AirPrint di aprirsi istantaneamente sopra l'app attiva in Safari e in PWA standalone mode.

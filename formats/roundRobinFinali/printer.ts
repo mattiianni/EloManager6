@@ -76,7 +76,7 @@ export const generateRoundRobinPdfHtml = (
         const t2p2 = getPlayerById(match.team2[1]);
 
         const team1Name = printableTeamName([t1p1, t1p2]);
-        const team2Name = printableTeamName([t2p1, t2p2], ' / ');
+        const team2Name = printableTeamName([t2p1, t2p2]);
         const scoreHtml = formatScoreBoxes(match.sets, false);
 
         return `

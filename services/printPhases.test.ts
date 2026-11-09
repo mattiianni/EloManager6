@@ -9,6 +9,7 @@ import {
     printRanking
 } from './printService.ts';
 import { generateRoundRobinPdfHtml } from '../formats/roundRobinFinali/printer.ts';
+import { printMexicanTournamentReport, generateMexicanPdfHtml } from '../formats/messicano/printer.ts';
 import { Match, Player, FieldPosition, TournamentType, Tournament } from '../types.ts';
 
 const match = (id: string, phase: Match['phase'], score: [number, number]): Match => ({
@@ -483,6 +484,88 @@ describe('Verifica Completezza PDF - Singoli e Coppie (Tutte le fasi incluse)', 
         expect(html).toContain('<svg');
         expect(html).toContain('#0055D4');
         expect(html).not.toContain('#1e3a6e');
+    });
+
+    it('8. printMexicanTournamentReport: include turni JIT, classifica individuale, stili Apple HIG, icone SVG moderne e zero emoji legacy (in bianco e completato)', () => {
+        const tourn: Tournament = {
+            id: 't-mex-test',
+            name: 'Torneo Messicano Milano',
+            club: 'Milano Padel Club',
+            date: '2026-11-09',
+            type: TournamentType.Mexican,
+            status: 'completed',
+            mexicanFields: 2,
+            mexicanRounds: 3,
+            mexicanScoringType: 'games-diff',
+            matchIds: ['m1', 'm2']
+        };
+
+        const matches: Match[] = [
+            {
+                id: 'm1',
+                date: '2026-11-09',
+                team1: ['p1', 'p4'],
+                team2: ['p2', 'p3'],
+                sets: [{ team1: 6, team2: 3 }],
+                winner: 'team1',
+                roundNumber: 1,
+                courtNumber: 1
+            },
+            {
+                id: 'm2',
+                date: '2026-11-09',
+                team1: ['p5', 'p8'],
+                team2: ['p6', 'p7'],
+                sets: [{ team1: 6, team2: 4 }],
+                winner: 'team1',
+                roundNumber: 1,
+                courtNumber: 2
+            }
+        ];
+
+        // 1. Report Completato via printMexicanTournamentReport
+        const completedHtml = capturePrintHtml(() => {
+            printMexicanTournamentReport(tourn, matches, getPlayer, undefined, false);
+        });
+
+        expect(completedHtml).toContain('Torneo Messicano Milano');
+        expect(completedHtml).toContain('Milano Padel Club');
+        expect(completedHtml).toContain('Torneo Messicano (JIT Coppie Mobili)');
+        expect(completedHtml).toContain('TURNI E PARTITE SUI CAMPI');
+        expect(completedHtml).toContain('CLASSIFICA INDIVIDUALE');
+        expect(completedHtml).toContain('Campo 1');
+        expect(completedHtml).toContain('Campo 2');
+        expect(completedHtml).toContain('1°');
+        expect(completedHtml).toContain('2°');
+        expect(completedHtml).toContain('3°');
+
+        // Stile Apple HIG
+        expect(completedHtml).toContain('<svg');
+        expect(completedHtml).toContain('#0055D4');
+        expect(completedHtml).not.toContain('#1e3a6e');
+
+        // Zero emoji legacy
+        expect(completedHtml).not.toContain('🏆');
+        expect(completedHtml).not.toContain('📦');
+        expect(completedHtml).not.toContain('🥇');
+        expect(completedHtml).not.toContain('🥈');
+        expect(completedHtml).not.toContain('🥉');
+        expect(completedHtml).not.toContain('📅');
+
+        // 2. Report in Bianco (Tabellone vuoto)
+        const blankHtml = capturePrintHtml(() => {
+            printMexicanTournamentReport(tourn, matches, getPlayer, undefined, true);
+        });
+
+        expect(blankHtml).toContain('Tabellone Vuoto');
+        expect(blankHtml).toContain('[1° Class.] & [4° Class.]');
+        expect(blankHtml).toContain('[2° Class.] & [3° Class.]');
+        expect(blankHtml).toContain('score-box');
+        expect(blankHtml).not.toContain('CLASSIFICA INDIVIDUALE');
+        expect(blankHtml).toContain('<svg');
+        expect(blankHtml).toContain('#0055D4');
+        expect(blankHtml).not.toContain('🏆');
+        expect(blankHtml).not.toContain('🥇');
     });
 });
 

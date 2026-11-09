@@ -12,6 +12,8 @@ import { HIGSheet } from './ui/HIGSheet.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
 import CustomTournamentFlow from './CustomTournamentFlow.tsx';
+import MexicanTournamentFlow from './MexicanTournamentFlow.tsx';
+import { MexicanDrawMode } from '../formats/messicano/types.ts';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
@@ -32,13 +34,14 @@ interface TournamentFlowProps {
  customFlowConfig?: any;
 }
 
-type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-quarterfinals' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
+type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'messicano-info' | 'round-robin-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-quarterfinals' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
 
 type TournamentFormat =
  | 'match-singolo'
  | 'torneotto-30'
  | 'round-robin-finali'
  | 'americano'
+ | 'mexicano'
  | 'torneo-libero'
  | 'gironi-fase-finale'
  | 'beat-the-box'
@@ -242,7 +245,14 @@ const generateAmericanoMatches = (
   rounds: number
 ): Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] => {
   const matches: Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[] = [];
-  const players = pairs.flat(); // All individual players
+  // Deduplicate players by ID in case input comes from singles mode ([p, p] pairs)
+  const playersMap = new Map<string, Player>();
+  pairs.flat().forEach(p => {
+    if (p && p.id && !playersMap.has(p.id)) {
+      playersMap.set(p.id, p);
+    }
+  });
+  const players = Array.from(playersMap.values());
   const n = players.length;
 
   if (n < 4) {
@@ -346,6 +356,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     if (initialFormat) {
       switch (initialFormat) {
         case 'americano': return 'americano-info';
+        case 'mexicano': return 'messicano-info';
         case 'round-robin-finali': return 'round-robin-info';
         case 'torneo-libero': return 'torneo-libero-setup';
         case 'gironi-fase-finale': return 'gironi-setup';
@@ -448,6 +459,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [isTournamentSaved, setIsTournamentSaved] = useState(false);
  const [americanoRounds, setAmericanoRounds] = useState(2);
  const [americanoScoringType, setAmericanoScoringType] = useState<'games-diff' | 'points'>('games-diff');
+
+ // Mexicano specific states
+ const [mexicanFields, setMexicanFields] = useState<number>(() => Math.max(2, Math.floor(pairs.flat().length / 4)));
+ const [mexicanRounds, setMexicanRounds] = useState<number>(3);
+ const [mexicanScoringType, setMexicanScoringType] = useState<'games-diff' | 'points'>('games-diff');
+ const [mexicanDrawMode, setMexicanDrawMode] = useState<MexicanDrawMode>('Normal');
  const [savedTournamentType, setSavedTournamentType] = useState<string>('');
  const [roundRobinMatchCount, setRoundRobinMatchCount] = useState(0); // Track number of round robin matches for print
 
@@ -519,6 +536,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  case 'torneotto-30': return 'TorneOtto 30\'';
  case 'round-robin-finali': return 'Round Robin + Finali';
  case 'americano': return 'Americano';
+ case 'mexicano': return 'Messicano';
  case 'torneo-libero': return 'Torneo Libero';
  case 'gironi-fase-finale': return 'Gironi + Fase Finale';
  case 'beat-the-box': return 'Beat the Box';
@@ -543,6 +561,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     // Route to format-specific info/setup screen if required:
     if (format === 'americano') {
       setStep('americano-info');
+    } else if (format === 'mexicano') {
+      setStep('messicano-info');
     } else if (format === 'round-robin-finali') {
       setStep('round-robin-info');
     } else if (format === 'torneo-libero') {
@@ -556,10 +576,22 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     }
   };
 
-  // Calculate max unique rounds for Americano: (numPlayers - 1), where numPlayers = pairs.length * 2
-  const maxAmericanoRounds = pairs.length * 2 - 1;
+  // Calculate distinct players count (handling both normal pairs and singles mode)
+  const totalUniquePlayers = useMemo(() => {
+    const idSet = new Set<string>();
+    pairs.flat().forEach(p => { if (p?.id) idSet.add(p.id); });
+    return idSet.size;
+  }, [pairs]);
+
+  // Calculate max unique rounds for Americano: (numPlayers - 1)
+  const maxAmericanoRounds = Math.max(2, totalUniquePlayers - 1);
+  const maxMexicanRounds = Math.max(2, totalUniquePlayers - 1);
 
  const handleAmericanoInfoContinue = () => {
+ setStep('setup');
+ };
+
+ const handleMexicanInfoContinue = () => {
  setStep('setup');
  };
 
@@ -1385,6 +1417,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     return;
   }
 
+  // For Messicano, render dedicated flow
+  if (selectedFormat === 'mexicano') {
+    setStep('scoring');
+    return;
+  }
+
  // For Round Robin + Finali, generate Round Robin matches
  if (isRoundRobinFinali) {
  console.log('🎯 Generating Round Robin matches for', pairs.length, 'pairs');
@@ -1828,6 +1866,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } else if (existingTournament.type === TournamentType.Americano) {
  setSelectedFormat('americano');
  console.log('📋 Set selectedFormat to: americano');
+ } else if (existingTournament.type === TournamentType.Mexican) {
+ setSelectedFormat('mexicano');
+ console.log('📋 Set selectedFormat to: mexicano');
  } else if (existingTournament.type === TournamentType.TorneOtto) {
  setSelectedFormat('torneotto-30');
  console.log('📋 Set selectedFormat to: torneotto-30');
@@ -2000,6 +2041,131 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </Card>
  );
  }
+
+  if (step === 'messicano-info') {
+    return (
+      <Card title="Info Torneo Messicano">
+        <div className="space-y-6 px-4">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              Formato Selezionato: Messicano (JIT)
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Numero di campi disponibili
+            </label>
+            <div className="flex items-center flex-wrap gap-2">
+              {[2, 3, 4, 5, 6].map(num => (
+                <Button
+                  key={num}
+                  type="button"
+                  variant={mexicanFields === num ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setMexicanFields(num)}
+                  className="!px-4"
+                >
+                  {num}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Numero di turni (max: {maxMexicanRounds})
+            </label>
+            <div className="relative">
+              <div className="overflow-x-auto max-w-full pb-2 pt-1 flex items-center gap-2 flex-nowrap md:flex-wrap">
+                {Array.from({ length: maxMexicanRounds - 1 }, (_, i) => i + 2).map(num => (
+                  <Button
+                    key={num}
+                    type="button"
+                    variant={mexicanRounds === num ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setMexicanRounds(num)}
+                    className="!px-4 shrink-0"
+                  >
+                    {num}
+                  </Button>
+                ))}
+              </div>
+              <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-white dark:from-gray-900 to-transparent md:hidden" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Tipo di calcolo punteggio
+            </label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={mexicanScoringType === 'games-diff' ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setMexicanScoringType('games-diff')}
+                className="flex-1"
+              >
+                Differenza Games
+              </Button>
+              <Button
+                type="button"
+                variant={mexicanScoringType === 'points' ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setMexicanScoringType('points')}
+                className="flex-1"
+              >
+                Punti
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              Modalità sorteggio Turno 1
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(['Normal', 'Seeded', 'Balanced', 'Manual'] as MexicanDrawMode[]).map(m => (
+                <Button
+                  key={m}
+                  type="button"
+                  variant={mexicanDrawMode === m ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setMexicanDrawMode(m)}
+                  className="!px-2 text-xs"
+                >
+                  {m === 'Normal' ? 'Casuale' : m === 'Seeded' ? 'Ranking ELO' : m === 'Balanced' ? 'Bilanciato' : 'Manuale'}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <Button
+              onClick={() => {
+                if (initialFormat) {
+                  onFinish();
+                } else {
+                  setStep('tournament-selection');
+                }
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Indietro
+            </Button>
+            <Button
+              onClick={handleMexicanInfoContinue}
+              className="flex-1"
+            >
+              Procedi
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   if (step === 'round-robin-info') {
     return (
@@ -2877,6 +3043,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onClick={() => {
  if (selectedFormat === 'americano') {
  setStep('americano-info');
+ } else if (selectedFormat === 'mexicano') {
+ setStep('messicano-info');
  } else if (selectedFormat === 'round-robin-finali') {
  setStep('round-robin-info');
  } else if (selectedFormat === 'torneo-libero') {
@@ -3150,6 +3318,25 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
           clubName={clubName}
           tournamentName={(isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || ''}
           giornataName={preselectedTournamentName || undefined}
+        />
+      );
+    }
+
+    // Render Messicano dedicated flow
+    if (selectedFormat === 'mexicano') {
+      const distinctPlayers = Array.from(new Map(pairs.flat().map(p => [p.id, p])).values());
+      return (
+        <MexicanTournamentFlow
+          players={distinctPlayers}
+          onFinish={onFinish}
+          tournamentDate={tournamentDate}
+          clubName={clubName}
+          tournamentName={(isCreatingNew ? tournamentName : selectedTournamentName) || tournamentName || ''}
+          giornataName={preselectedTournamentName || undefined}
+          fieldsCount={mexicanFields}
+          roundsCount={mexicanRounds}
+          scoringType={mexicanScoringType}
+          drawMode={mexicanDrawMode}
         />
       );
     }

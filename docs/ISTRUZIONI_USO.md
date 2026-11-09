@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.10.5)
+# Istruzioni d'Uso (v6.11.0)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.10.5` — `Nov 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.11.0` — `Nov 2026`).
 
 ## Accesso
 
@@ -36,7 +36,7 @@ In `Sorteggi` il flusso guidato ti permette di scegliere la modalità desiderata
 
 Per il sorteggio puoi alternare tramite pill in alto tra:
 - **Coppie Fisse**: seleziona i partecipanti, scegli la modalità (casuale, bilanciato, teste di serie, manuale) e genera o conferma le coppie.
-- **Giocatori Singoli**: seleziona il numero di partecipanti (4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16...) e i giocatori. Il flusso propone direttamente i formati dedicati ai singoli: **Torneo Americano** (rotazione continua su tutti i campi), **Box (Beat the Box Singoli)** con distribuzione a teste di serie ELO (Seed 1 e Seed 2 separati) e **Crea Torneo Personale**. Nelle card partita le squadre sono ben distanziate in alto e i campi punteggio sotto per garantire leggibilità perfetta su smartphone.
+- **Giocatori Singoli**: seleziona il numero di partecipanti (multipli di 4 per Messicano: 8, 12, 16, 20, 24; oppure 4, 5, 6, 7, 8... per altri formati) e i giocatori. Il flusso propone direttamente i formati dedicati ai singoli: **Torneo Messicano** (algoritmo Just-In-Time con campi Top/Mid/Flop di merito e anti-ripetizione compagni), **Torneo Americano** (rotazione continua su tutti i campi), **Box (Beat the Box Singoli)** con distribuzione a teste di serie ELO (Seed 1 e Seed 2 separati) e **Crea Torneo Personale**. Nelle card partita le squadre sono ben distanziate in alto e i campi punteggio sotto per garantire leggibilità perfetta su smartphone.
 
 ## Creazione torneo
 
@@ -54,6 +54,7 @@ Dopo il draw entri nel flow torneo:
 - TorneOtto 30'
 - Round Robin + Finali (Gestione campi, Andata/Ritorno, Riposi equi e 3 opzioni di fase finale: Solo Girone, Solo Finale, Semifinali + Finali)
 - Americano
+- Messicano (JIT Coppie Mobili)
 - Beat the Box
 - Gironi + Fase Finale
 - Eliminazione Diretta (TPRA)

@@ -4,7 +4,7 @@ import { TeamTournamentConfig, TeamTournamentMatchday, TeamTournamentTeam, Tourn
 import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
-import { ArrowLeftIcon, PencilIcon } from '../components/ui/Icons.tsx';
+import { ArrowLeftIcon, PencilIcon, XIcon } from '../components/ui/Icons.tsx';
 import { printTeamTournamentMatchdayReport, isIOS } from '../services/printService.ts';
 import { requestHIGConfirmation } from '../utils/higDialogService.ts';
 
@@ -1004,11 +1004,11 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                                 }
                                             }}
                                             disabled={isSavingResults || loading || resultsLocked}
-                                            className={`absolute -top-1 -right-1 h-6 w-6 rounded-full text-xs font-bold border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700`}
+                                            className={`absolute -top-1 -right-1 h-6 w-6 rounded-full text-xs font-bold border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center`}
                                             title="Annulla partita"
                                             aria-label="Annulla partita"
                                         >
-                                            X
+                                            <XIcon className="h-3 w-3" />
                                         </button>
                                         
                                         <div className="text-center sm:text-right">

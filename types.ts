@@ -14,6 +14,7 @@ export enum TournamentType {
     TorneoASquadre = "Torneo a Squadre",
     EliminazioneDiretta = "Eliminazione Diretta",
     TorneoPersonale = "Torneo Personale",
+    Mexican = "Mexicano",
 }
 
 export interface Player {
@@ -70,6 +71,9 @@ export interface Tournament {
     status: 'scheduled' | 'completed';
     americanoFields?: number; // Numero di campi per tornei Americano
     americanoScoringType?: 'games-diff' | 'points'; // Tipo di scoring per Americano
+    mexicanFields?: number; // Numero di campi per tornei Messicano
+    mexicanRounds?: number; // Numero di turni per tornei Messicano
+    mexicanScoringType?: 'games-diff' | 'points'; // Tipo di scoring per Messicano
     roundRobinFields?: number; // Numero di campi per Round Robin
     roundRobinHomeAway?: boolean; // Andata e Ritorno
     roundRobinPlayoffType?: 'no_finals' | 'finals_only' | 'semifinals' | 'quarterfinals'; // Tipo di fase finale per Round Robin

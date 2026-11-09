@@ -48,8 +48,11 @@ export function calculateTournamentStandings(
         // Assign points
         if (match.winner === 'team1') {
             team1Stats.points += 3;
-        } else {
+        } else if (match.winner === 'team2') {
             team2Stats.points += 3;
+        } else if (match.winner === 'draw') {
+            team1Stats.points += 1;
+            team2Stats.points += 1;
         }
 
         // Calculate games
@@ -72,12 +75,15 @@ export function calculateTournamentStandings(
         });
     }
 
-    // Sort standings: by points, then by game difference
+    // Sort standings: by points, then by game difference, then by gamesWon
     standings.sort((a, b) => {
         if (b.points !== a.points) {
             return b.points - a.points;
         }
-        return b.gameDifference - a.gameDifference;
+        if (b.gameDifference !== a.gameDifference) {
+            return b.gameDifference - a.gameDifference;
+        }
+        return b.gamesWon - a.gamesWon;
     });
 
     return standings;

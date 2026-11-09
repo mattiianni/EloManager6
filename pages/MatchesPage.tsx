@@ -3380,25 +3380,25 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   </div>
   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
   <div className="min-w-0 text-left">
-  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
-  <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
-  {formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}
-  </p>
-  <p className="text-[10px] text-gray-500">
-  ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}
-  </p>
+  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
+  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+  {formatPlayerShortName(team1[0])}
+  </div>
+  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+  {formatPlayerShortName(team1[1])}
+  </div>
   </div>
   <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
   VS
   </div>
   <div className="min-w-0 text-right">
-  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
-  <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
-  {formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}
-  </p>
-  <p className="text-[10px] text-gray-500">
-  ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
-  </p>
+  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
+  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+  {formatPlayerShortName(team2[0])}
+  </div>
+  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+  {formatPlayerShortName(team2[1])}
+  </div>
   </div>
   </div>
   <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
@@ -4009,19 +4009,25 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
  <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {formatPlayerShortName(team1[0])} & {formatPlayerShortName(team1[1])}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[1])}
+ </div>
  </div>
  <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
  VS
  </div>
  <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {formatPlayerShortName(team2[0])} & {formatPlayerShortName(team2[1])}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[1])}
+ </div>
  </div>
  </div>
  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
@@ -4083,19 +4089,25 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
  <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {team1[0].name} {team1[0].surname} & {team1[1].name} {team1[1].surname}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[1])}
+ </div>
  </div>
  <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
  VS
  </div>
  <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {team2[0].name} {team2[0].surname} & {team2[1].name} {team2[1].surname}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[1])}
+ </div>
  </div>
  </div>
  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
@@ -4243,19 +4255,25 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
  <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {team1[0].name} {team1[0].surname} & {team1[1].name} {team1[1].surname}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team1[1])}
+ </div>
  </div>
  <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
  VS
  </div>
  <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">
- {team2[0].name} {team2[0].surname} & {team2[1].name} {team2[1].surname}
- </p>
+ <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[0])}
+ </div>
+ <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
+ {formatPlayerShortName(team2[1])}
+ </div>
  </div>
  </div>
  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">

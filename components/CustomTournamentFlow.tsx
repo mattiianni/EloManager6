@@ -190,7 +190,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   }, [boxesData]);
 
   // Transizione a Semifinali o Finali
-  const handleProceedFromBoxes = () => {
+  const handleProceedFromBoxes = async () => {
     if (!areAllBoxMatchesComplete) {
       showHIGAlert('Inserisci i risultati di tutte le partite dei Box per procedere.');
       return;
@@ -203,7 +203,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
       generateFinalsFromBoxes();
       setStep('finals');
     } else {
-      setStep('results');
+      await handleCompleteTournament();
     }
   };
 
@@ -319,10 +319,18 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
   // Completa Torneo (status: 'completed')
   const handleCompleteTournament = async () => {
-    const allFinalsDone = finalMatches.length > 0 && finalMatches.every(m => m.winner !== null);
-    if (!allFinalsDone) {
-      showHIGAlert('Inserisci i risultati di tutte le finali prima di completare il torneo.');
-      return;
+    if (hasFinals) {
+      const allFinalsDone = finalMatches.length > 0 && finalMatches.every(m => m.winner !== null);
+      if (!allFinalsDone) {
+        showHIGAlert('Inserisci i risultati di tutte le finali prima di completare il torneo.');
+        return;
+      }
+    } else {
+      const allBoxesDone = boxesData.every(b => b.matches.every(m => m.winner !== null));
+      if (!allBoxesDone) {
+        showHIGAlert('Inserisci i risultati di tutte le partite dei Box prima di completare il torneo.');
+        return;
+      }
     }
 
     if (isSubmitting) return;
@@ -765,7 +773,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                   disabled={!areAllBoxMatchesComplete}
                   className="w-full sm:flex-1 font-bold"
                 >
-                  {hasSemifinals ? 'Procedi alle Semifinali →' : hasFinals ? 'Procedi alle Finali →' : 'Avanti →'}
+                  {hasSemifinals ? 'Procedi alle Semifinali →' : hasFinals ? 'Procedi alle Finali →' : 'Completa Torneo'}
                 </Button>
               </div>
             </div>

@@ -513,7 +513,7 @@ const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     }
 };
 
-const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
+export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
         const iOS = isIOS();
 
@@ -5890,16 +5890,16 @@ export const printBeatTheBoxBlank = (
 
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-            const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+            const team1Name = escapeHtml(`${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`);
+            const team2Name = escapeHtml(`${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`);
 
             return `
                 <tr style="height: 24px;">
-                    <td style="width: 38%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                    <td style="width: 38%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team1Name}</td>
                     <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                         <span class="score-box">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold;">-</span> <span class="score-box">&nbsp;</span>
                     </td>
-                    <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                    <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team2Name}</td>
                 </tr>
             `;
         }).join('');
@@ -6108,17 +6108,17 @@ export const printBeatTheBoxComplete = (
 
         if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-        const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-        const team2Name = `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+        const team1Name = escapeHtml(`${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`);
+        const team2Name = escapeHtml(`${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`);
         const scoreHtml = formatScoreBoxes(match.sets, false);
 
         return `
             <tr style="height: 24px;">
-                <td style="width: 38%; text-align: right; ${match.winner === 'team1' ? 'font-weight: 700; color: #0055D4;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                <td style="width: 38%; text-align: right; ${match.winner === 'team1' ? 'font-weight: 700; color: #0055D4;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team1Name}</td>
                 <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                     ${scoreHtml}
                 </td>
-                <td style="width: 38%; text-align: left; ${match.winner === 'team2' ? 'font-weight: 700; color: #0055D4;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                <td style="width: 38%; text-align: left; ${match.winner === 'team2' ? 'font-weight: 700; color: #0055D4;' : ''} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team2Name}</td>
             </tr>
         `;
     };
@@ -6554,19 +6554,21 @@ export const printCustomTournamentBlank = (
 
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-            const team2Name = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+            const rawTeam1 = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+            const rawTeam2 = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            const team1Name = escapeHtml(rawTeam1);
+            const team2Name = escapeHtml(rawTeam2);
             const roundBadge = match.roundNumber ? `<span style="display: inline-block; font-size: 9px; color: #0055D4; font-weight: 700; background: #eff6ff; padding: 1px 5px; border-radius: 4px; margin-right: 6px; border: 1px solid #bfdbfe;">T${match.roundNumber}</span>` : '';
 
             return `
                 <tr style="height: 24px;">
-                    <td style="width: 38%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <td style="width: 38%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">
                         ${roundBadge}${team1Name}
                     </td>
                     <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                         <span class="score-box">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold;">-</span> <span class="score-box">&nbsp;</span>
                     </td>
-                    <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">
                         ${team2Name}
                     </td>
                 </tr>
@@ -6948,17 +6950,19 @@ export const printCustomTournamentComplete = (
 
         if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-        const team1Name = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-        const team2Name = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} / ${t2p2.name} ${t2p2.surname}`;
+        const rawTeam1 = t1p1.id === t1p2.id ? `${t1p1.name} ${t1p1.surname}` : `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
+        const rawTeam2 = t2p1.id === t2p2.id ? `${t2p1.name} ${t2p1.surname}` : `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+        const team1Name = escapeHtml(rawTeam1);
+        const team2Name = escapeHtml(rawTeam2);
         const scoreHtml = formatScoreBoxes(match.sets, false);
 
         return `
             <tr style="height: 24px;">
-                <td style="width: 38%; text-align: right; ${match.winner === 'team1' ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team1Name}</td>
+                <td style="width: 38%; text-align: right; ${match.winner === 'team1' ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team1Name}</td>
                 <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                     ${scoreHtml}
                 </td>
-                <td style="width: 38%; text-align: left; ${match.winner === 'team2' ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team2Name}</td>
+                <td style="width: 38%; text-align: left; ${match.winner === 'team2' ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">${team2Name}</td>
             </tr>
         `;
     };

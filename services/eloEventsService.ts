@@ -161,7 +161,9 @@ export function buildPlayerEloTimeline(
             }
         }
 
-        const dateKey = new Date(dateOfDay).toISOString().split('T')[0];
+        const parsedDate = new Date(dateOfDay);
+        const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+        const dateKey = validDate.toISOString().split('T')[0];
         
         // 3. Define unique grouping key per tournament/giornata
         let typePrefix = 'friendly';

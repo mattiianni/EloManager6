@@ -6,6 +6,7 @@ export type SingleTournamentFormat =
   | 'torneotto-30'
   | 'round-robin-finali'
   | 'americano'
+  | 'mexicano'
   | 'torneo-libero'
   | 'gironi-fase-finale'
   | 'beat-the-box'
@@ -17,6 +18,7 @@ export const getFormatDisplayName = (format: SingleTournamentFormat): string => 
         case 'torneotto-30': return 'TorneOtto 30\'';
         case 'round-robin-finali': return 'Round Robin + Finali';
         case 'americano': return 'Americano';
+        case 'mexicano': return 'Messicano';
         case 'torneo-libero': return 'Torneo Libero';
         case 'gironi-fase-finale': return 'Gironi + Fase Finale';
         case 'beat-the-box': return 'Beat the Box';
@@ -31,6 +33,7 @@ const FORMAT_DESCRIPTIONS: Record<SingleTournamentFormat, string> = {
     'torneotto-30': "3 coppie si sfidano in 3 partite da 30' ciascuna.",
     'beat-the-box': '4 giocatori si sfidano su un singolo campo, in 3 partite. I migliori procedono alla fase finale.',
     'americano': 'Tutti contro tutti, le coppie ruotano continuamente.',
+    'mexicano': 'Iscrizione individuale con coppie mobili e campi per merito (JIT). Chi vince sale, chi perde scende.',
     'round-robin-finali': "Campionato a girone singolo all'italiana. Possibilità di andata e ritorno. Fase finale opzionale.",
     'gironi-fase-finale': "Gironi all'italiana. Tabellone finale a eliminazione.",
     'eliminazione-diretta': 'Torneo a eliminazione diretta. Possibilità di BYE.',
@@ -42,6 +45,7 @@ const ALL_FORMATS: SingleTournamentFormat[] = [
     'torneotto-30',
     'beat-the-box',
     'americano',
+    'mexicano',
     'round-robin-finali',
     'gironi-fase-finale',
     'eliminazione-diretta',
@@ -50,6 +54,7 @@ const ALL_FORMATS: SingleTournamentFormat[] = [
 
 const SINGLES_FORMATS: SingleTournamentFormat[] = [
     'americano',
+    'mexicano',
     'beat-the-box',
     'torneo-personale'
 ];
@@ -64,6 +69,7 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
     const formatsToShow = playerMode === 'singles' ? SINGLES_FORMATS : ALL_FORMATS;
 
     const getSinglesDescription = (format: SingleTournamentFormat): string => {
+        if (format === 'mexicano') return 'Iscrizione individuale, coppie mobili e campi per merito (JIT). Chi vince sale, chi perde scende.';
         if (format === 'americano') return 'Tutti contro tutti, rotazione individuale continua su tutti i campi.';
         if (format === 'beat-the-box') return 'Gironi da 4 o 5 singoli con rotazione interna e qualificazione alla fase finale.';
         if (format === 'torneo-personale') return 'Torneo personalizzabile in tutte le sue fasi per singoli.';

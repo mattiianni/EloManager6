@@ -23,7 +23,10 @@ export interface BoxStanding {
 }
 
 export function distributePlayersIntoBoxes(pairs: [Player, Player][]): Player[][] {
-    const numBoxes = pairs.length / 2;
+    if (!pairs || pairs.length < 4 || pairs.length % 2 !== 0) {
+        throw new Error('Beat the Box richiede un numero pari di coppie (minimo 4 coppie).');
+    }
+    const numBoxes = Math.floor(pairs.length / 2);
     const boxes: Player[][] = Array(numBoxes).fill(null).map(() => []);
     
     for (let i = 0; i < numBoxes; i++) {

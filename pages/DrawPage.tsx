@@ -1149,6 +1149,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         'torneotto-30': 4,
                         'beat-the-box': 4,
                         'americano': 4,
+                        'mexicano': 8,
                         'round-robin-finali': 4,
                         'gironi-fase-finale': 6,
                         'eliminazione-diretta': 4,
@@ -1157,7 +1158,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     };
                     const initialPairs = initialPairsByFormat[format] || 4;
                     setSelectedFormatForNewFlow(format);
-                    if (format !== 'torneo-personale' && format !== 'americano') {
+                    if (format === 'mexicano') {
+                        setPlayerMode('singles');
+                        setDrawnPairs(null);
+                    } else if (format !== 'torneo-personale' && format !== 'americano') {
                         setPlayerMode('pairs');
                         setDrawnPairs(null);
                     }
@@ -1257,7 +1261,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 </div>
 
                 {/* Fixed Floating Bottom Action Bar */}
-                <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xl z-40 flex items-stretch gap-2.5">
+                <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-6 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xl z-30 flex items-stretch gap-2.5">
                     <Button 
                         variant="secondary" 
                         onClick={() => setDrawnPairs(null)}
@@ -2335,7 +2339,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
 
                                         let allowedPairs = Array.from({ length: 8 }, (_, i) => i + 3); // 3..10
                                         if (selectedFormatForNewFlow === 'torneotto-30') allowedPairs = [4];
-                                        else if (selectedFormatForNewFlow === 'beat-the-box') allowedPairs = [3, 4, 6, 8, 10];
+                                        else if (selectedFormatForNewFlow === 'mexicano') allowedPairs = [8, 12, 16, 20, 24];
+                                        else if (selectedFormatForNewFlow === 'beat-the-box') allowedPairs = [4, 6, 8, 10];
                                         else if (selectedFormatForNewFlow === 'americano') allowedPairs = [6, 7, 8, 9, 10, 11, 12];
                                         else if (selectedFormatForNewFlow === 'round-robin-finali') allowedPairs = [4, 5, 6, 7, 8, 9, 10];
                                         else if (selectedFormatForNewFlow === 'gironi-fase-finale') allowedPairs = [6, 7, 8, 9, 10, 12];
@@ -2360,7 +2365,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         ));
                                     })()}
                                     
-                                    {(!selectedFormatForNewFlow || !['torneotto-30'].includes(selectedFormatForNewFlow)) && (
+                                    {(!selectedFormatForNewFlow || !['torneotto-30', 'mexicano'].includes(selectedFormatForNewFlow)) && (
                                         <Button
                                             type="button"
                                             variant={isCustomNumPairs ? 'primary' : 'secondary'}
@@ -2384,7 +2389,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                         </Button>
                                     )}
 
-                                    {isCustomNumPairs && (!selectedFormatForNewFlow || selectedFormatForNewFlow !== 'torneotto-30') && (
+                                    {isCustomNumPairs && (!selectedFormatForNewFlow || !['torneotto-30', 'mexicano'].includes(selectedFormatForNewFlow)) && (
                                         <div className="flex items-center gap-2 ml-0 sm:ml-2">
                                             <button
                                                 type="button"
