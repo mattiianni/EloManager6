@@ -1,3 +1,15 @@
+## v6.11.1 — 2026-11-09
+- **Stampa "Giocatori Singolo Torneo" con Filtro Automatico e Andamento ELO**:
+  - Aggiunta nel modal di stampa dei giocatori (`PlayerPrintModal.tsx`) la terza opzione intermedia: **"Giocatori Singolo Torneo..."** con icona trofeo.
+  - Implementata la schermata di selezione torneo (Fase 3): menù a tendina `<select>` Apple HIG con tutti i tornei attivi a DB (ordinati cronologicamente) che aggrega automaticamente tutte le giornate del torneo selezionato.
+  - Filtro automatico rigoroso: estrazione e visualizzazione dei soli giocatori che hanno disputato almeno 1 partita con punteggio registrato nel torneo.
+  - Card di riepilogo con conteggio giornate, partite disputate e chip dei giocatori partecipanti con rating ELO.
+  - Motore di stampa (`printService.ts`): calcolo di partite, vittorie, sconfitte, games, win rate, compagni e avversari circoscritto al 100% al torneo scelto.
+  - Grafico Andamento ELO coerente con la schermata profilo utente: variazione per ogni giornata di torneo (`Start` ed `E1` per torneo a 1 giornata, oppure `Start`, `E1`, `E2`, `E3`... per tornei multi-giornata).
+  - Intestazione di stampa personalizzata con badge `TORNEO: [Nome Torneo]` e footer con riferimento al torneo.
+- **Suite di Test**:
+  - Creati test dedicati in `playerPrintTournamentFilter.test.ts` e aggiunti test di isolamento in `printService.test.ts` (153/153 test passati).
+
 ## v6.11.0 — 2026-11-09
 - **Nuovo Formato: Torneo Messicano Individuale (JIT)**:
   - Introdotto il formato competitivo a coppie mobili su quote rigorosamente sature e multiple di 4 (8, 12, 16, 20 o 24 partecipanti).

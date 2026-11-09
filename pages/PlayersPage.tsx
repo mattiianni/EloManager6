@@ -455,11 +455,24 @@ const PlayersPage: React.FC = () => {
                 isOpen={isPrintModalOpen}
                 onClose={() => setIsPrintModalOpen(false)}
                 players={players}
+                matches={matches}
+                tournaments={tournaments}
+                eloHistory={eloHistory}
                 onPrintAll={() => {
                     printPlayerProfiles(players.map(p => p.id), players, matches, eloHistory, tournaments);
                 }}
                 onPrintSelected={(selectedIds) => {
                     printPlayerProfiles(selectedIds, players, matches, eloHistory, tournaments);
+                }}
+                onPrintTournament={(tournamentGroup, playerIds) => {
+                    printPlayerProfiles(playerIds, players, matches, eloHistory, tournaments, {
+                        tournamentFilter: {
+                            tournamentId: tournamentGroup.groupId,
+                            tournamentName: tournamentGroup.displayName,
+                            tournamentIds: tournamentGroup.tournamentIds,
+                            tournamentDate: tournamentGroup.date,
+                        }
+                    });
                 }}
             />
 

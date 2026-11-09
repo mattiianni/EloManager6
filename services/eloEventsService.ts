@@ -134,7 +134,7 @@ export function buildPlayerEloTimeline(
     matches: Match[],
     tournaments: Tournament[],
     teamMatchdays: TeamTournamentMatchday[] = [],
-    scope: { parentTournamentName?: string | null } = {}
+    scope: { parentTournamentName?: string | null; tournamentIds?: string[] | null } = {}
 ): EloVariationEvent[] {
     // 1. Get ONLY the entries for this player
     const playerEntries = eloHistory.filter(e => e.playerId === playerId);
@@ -151,7 +151,26 @@ export function buildPlayerEloTimeline(
         );
 
         // Apply scoping/filtering if requested
-        if (scope.parentTournamentName) {
+        if (scope.tournamentIds && scope.tournamentIds.length > 0) {
+            const tSet = new Set(scope.tournamentIds);
+            let matchesTournament = false;
+            if (entry.type === 'tournament' && tSet.has(entry.eventId)) {
+                matchesTournament = true;
+            } else if (entry.type === 'match') {
+                const match = matches.find(m => m.id === entry.eventId);
+                if (match && match.tournamentId && tSet.has(match.tournamentId)) {
+                    matchesTournament = true;
+                }
+            } else if (entry.type === 'team_tournament_matchday') {
+                const matchday = teamMatchdays.find(md => md.id === entry.eventId);
+                if (matchday && (tSet.has(matchday.tournamentDayId) || tSet.has(matchday.rootTournamentId))) {
+                    matchesTournament = true;
+                }
+            }
+            if (!matchesTournament) {
+                return;
+            }
+        } else if (scope.parentTournamentName) {
             const normScope = scope.parentTournamentName.trim().toLowerCase();
             const matchesScope = 
                 (parentTournamentName && parentTournamentName.trim().toLowerCase() === normScope) ||

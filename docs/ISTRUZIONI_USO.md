@@ -1,6 +1,6 @@
-# Istruzioni d'Uso (v6.11.0)
+# Istruzioni d'Uso (v6.11.1)
 
-Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.11.0` — `Nov 2026`).
+Guida pratica allineata all'interfaccia ed al comportamento attuale (Versione `v6.11.1` — `Nov 2026`).
 
 ## Accesso
 
@@ -20,7 +20,10 @@ In `Giocatori` puoi:
 - modificare nome, cognome, posizione, ed ELO/Playtomic
 - eliminare un giocatore
 - aprire il profilo giocatore
-- stampare il riepilogo profili
+- stampare il riepilogo profili con 3 opzioni:
+  1. **Tutti i Giocatori**: stampa l'intero archivio
+  2. **Giocatori Singolo Torneo**: seleziona un torneo attivo a DB e stampa solo chi vi ha giocato con statistiche e grafico ELO (Start, E1, E2...) circoscritti a quel torneo
+  3. **Scegli Giocatori**: selezione manuale tramite spunta
 
 ## Sorteggi (Cosa Vuoi Organizzare Oggi)
 

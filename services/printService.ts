@@ -7685,15 +7685,28 @@ export const printTorneoLiberoComplete = (
     return openPrintWindow(`${displayName.replace(' - ', ', ')}, Torneo Libero, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
+export interface PrintPlayerProfilesOptions {
+    tournamentFilter?: {
+        tournamentId: string;
+        tournamentName: string;
+        tournamentIds?: string[];
+        tournamentDate?: string;
+    };
+}
+
 // Stampa profili giocatori - 1 giocatore per pagina A4
 export const printPlayerProfiles = (
     playerIds: string[],
     allPlayers: Player[],
     allMatches: Match[],
     allEloHistory: EloHistoryEntry[],
-    allTournaments: Tournament[]
+    allTournaments: Tournament[],
+    options?: PrintPlayerProfilesOptions
 ): boolean => {
     const getPlayer = (id: string) => allPlayers.find(p => p.id === id);
+    const filterIds = options?.tournamentFilter
+        ? new Set(options.tournamentFilter.tournamentIds || [options.tournamentFilter.tournamentId])
+        : null;
 
     // Helper: generate SVG line chart
     const generateEloSvg = (chartPoints: { elo: number; label: string }[], width: number, height: number): string => {
@@ -7770,8 +7783,12 @@ export const printPlayerProfiles = (
 
         const playerMatches = allMatches
             .filter(m => m.team1.includes(playerId) || m.team2.includes(playerId))
-            // Conta TUTTE le partite salvate — nessun filtro sul winner
+            // Se c'è un filtro torneo, isola solo le partite di quel torneo con risultati
             .filter(m => {
+                if (filterIds) {
+                    if (!m.tournamentId || !filterIds.has(m.tournamentId)) return false;
+                    return m.winner || (m.sets && m.sets.some(s => Number(s.team1 || 0) > 0 || Number(s.team2 || 0) > 0));
+                }
                 if (!m.tournamentId) return true;
                 const t = allTournaments.find(t2 => t2.id === m.tournamentId);
                 return t?.status === 'completed';
@@ -7816,27 +7833,66 @@ export const printPlayerProfiles = (
         const gameWinRate = (gamesWon + gamesLost) > 0 ? (gamesWon / (gamesWon + gamesLost) * 100) : 0;
 
         // ELO history + per-tournament data using central service
-        const timeline = buildPlayerEloTimeline(playerId, allEloHistory, allMatches, allTournaments);
+        const timeline = buildPlayerEloTimeline(
+            playerId,
+            allEloHistory,
+            allMatches,
+            allTournaments,
+            [],
+            filterIds ? {
+                parentTournamentName: options?.tournamentFilter?.tournamentName,
+                tournamentIds: Array.from(filterIds)
+            } : {}
+        );
         const chronologicalTimeline = [...timeline].reverse();
 
-        const lastDelta = timeline.length > 0 ? timeline[0].delta : 0;
+        let lastDelta = timeline.length > 0 ? timeline[0].delta : 0;
+        let chartPoints: { elo: number; label: string }[] = [];
+        let peakElo = player.initialElo || 1500;
 
-        let currentElo = player.initialElo || 1500;
-        let peakElo = currentElo;
-        const chartPoints: { elo: number; label: string }[] = [{ elo: currentElo, label: 'Start' }];
+        if (filterIds) {
+            const playerTournamentEntries = allEloHistory
+                .filter(e => e.playerId === playerId && filterIds.has(e.eventId))
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        chronologicalTimeline.forEach(event => {
-            currentElo += event.delta;
-            peakElo = Math.max(peakElo, currentElo);
-            chartPoints.push({
-                elo: currentElo,
-                label: new Date(event.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+            const totalTournamentDelta = chronologicalTimeline.reduce((sum, ev) => sum + ev.delta, 0);
+            const startElo = (playerTournamentEntries.length > 0 && playerTournamentEntries[0].eloBefore != null)
+                ? playerTournamentEntries[0].eloBefore
+                : (player.currentElo - totalTournamentDelta);
+
+            let runningElo = startElo;
+            peakElo = startElo;
+            chartPoints.push({ elo: startElo, label: 'Start' });
+
+            chronologicalTimeline.forEach((event, idx) => {
+                runningElo += event.delta;
+                peakElo = Math.max(peakElo, runningElo);
+                const label = chronologicalTimeline.length === 1 ? 'E1' : `E${idx + 1}`;
+                chartPoints.push({
+                    elo: runningElo,
+                    label
+                });
             });
-        });
+
+            lastDelta = totalTournamentDelta;
+        } else {
+            let currentElo = player.initialElo || 1500;
+            peakElo = currentElo;
+            chartPoints.push({ elo: currentElo, label: 'Start' });
+
+            chronologicalTimeline.forEach(event => {
+                currentElo += event.delta;
+                peakElo = Math.max(peakElo, currentElo);
+                chartPoints.push({
+                    elo: currentElo,
+                    label: new Date(event.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+                });
+            });
+        }
 
         // Per-tournament breakdown
         const completedTournaments = allTournaments
-            .filter(t => t.status === 'completed')
+            .filter(t => filterIds ? filterIds.has(t.id) : t.status === 'completed')
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         const tournamentBreakdown = completedTournaments.map(t => {
@@ -7981,11 +8037,11 @@ export const printPlayerProfiles = (
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div>
                         <div style="font-size:22px;font-weight:bold;color:#1e3a5f;">${p.name} ${p.surname}</div>
-                        <div style="font-size:10px;color:#666;">Posizione: ${p.position} &middot; Ranking: #${data.rank} &middot; Giornate giocate: ${data.tournamentsPlayed}</div>
+                        <div style="font-size:10px;color:#666;">${options?.tournamentFilter ? `<span style="color:#0055D4;font-weight:700;">TORNEO: ${escapeHtml(options.tournamentFilter.tournamentName)}</span> &middot; ` : ''}Posizione: ${p.position} &middot; Ranking: #${data.rank} &middot; Giornate giocate: ${data.tournamentsPlayed}</div>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:28px;font-weight:bold;color:#1e3a6e;">${p.currentElo.toFixed(2)}</div>
-                        <div style="font-size:11px;font-weight:bold;color:${deltaColor};">${deltaSign}${data.lastDelta.toFixed(1)} ultimo evento</div>
+                        <div style="font-size:11px;font-weight:bold;color:${deltaColor};">${deltaSign}${data.lastDelta.toFixed(1)} ${options?.tournamentFilter ? 'nel torneo' : 'ultimo evento'}</div>
                     </div>
                 </div>
                 <div style="border-bottom:2px solid #1e3a6e;margin-bottom:10px;"></div>
@@ -8064,7 +8120,7 @@ export const printPlayerProfiles = (
 
                 <!-- Footer -->
                 <div class="page-footer">
-                    Padel ELO Manager v${APP_VERSION} &middot; ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')} &middot; Profilo ${p.name} ${p.surname}
+                    Padel ELO Manager v${APP_VERSION} &middot; ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')} &middot; Profilo ${p.name} ${p.surname}${options?.tournamentFilter ? ` &middot; ${escapeHtml(options.tournamentFilter.tournamentName)}` : ''}
                 </div>
             </div>
         `;
@@ -8153,5 +8209,8 @@ export const printPlayerProfiles = (
         }
     `;
 
-    return openPrintWindow('Profili Giocatori - Padel ELO Manager', pagesHtml, pageStyles);
+    const docTitle = options?.tournamentFilter
+        ? `${options.tournamentFilter.tournamentName} - Profili Giocatori - Padel ELO Manager`
+        : 'Profili Giocatori - Padel ELO Manager';
+    return openPrintWindow(docTitle, pagesHtml, pageStyles);
 };

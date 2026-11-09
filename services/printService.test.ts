@@ -193,4 +193,147 @@ describe('printService document helpers', () => {
             delete (globalThis as any).document;
         }
     });
+
+    it('printPlayerProfiles con tournamentFilter: isola le partite del torneo, imposta etichette ELO Start/E1 e personalizza header/footer', async () => {
+        const { printPlayerProfiles } = vi.importActual('./printService.ts') as any;
+        // Mock window per catturare l'HTML di openPrintWindow
+        let capturedTitle = '';
+        let capturedHtml = '';
+
+        const mockWindow = {
+            document: {
+                open: vi.fn(),
+                write: vi.fn((html: string) => {
+                    capturedHtml += html;
+                }),
+                close: vi.fn(),
+            },
+            focus: vi.fn(),
+            print: vi.fn(),
+        };
+
+        const originalOpen = (globalThis as any).window?.open;
+        (globalThis as any).window = {
+            open: vi.fn((url: string, name: string) => {
+                capturedTitle = name;
+                return mockWindow;
+            }),
+            location: { origin: 'http://localhost:3000' }
+        };
+
+        const mockPlayers = [
+            { id: 'p1', name: 'Alessio', surname: 'Campinoti', currentElo: 1510, initialElo: 1500, position: 'Destra' },
+            { id: 'p2', name: 'Francesco', surname: 'Silenzi', currentElo: 1520, initialElo: 1500, position: 'Sinistra' },
+            { id: 'p3', name: 'Roberto', surname: 'Monti', currentElo: 1490, initialElo: 1500, position: 'Sinistra' },
+            { id: 'p4', name: 'Mirko', surname: 'Manetti', currentElo: 1480, initialElo: 1500, position: 'Destra' },
+            { id: 'p99', name: 'Giocatore', surname: 'Esterno', currentElo: 1500, initialElo: 1500, position: 'Indifferente' },
+        ];
+
+        const mockTournaments = [
+            {
+                id: 't-mex-1',
+                name: 'Sociale Messicano',
+                type: 'Mexicano' as any,
+                date: '2026-11-09T18:00:00.000Z',
+                status: 'completed' as const,
+                matchIds: ['m1', 'm2']
+            },
+            {
+                id: 't-other',
+                name: 'Altro Torneo Esterno',
+                type: 'Americano' as any,
+                date: '2026-10-01T18:00:00.000Z',
+                status: 'completed' as const,
+                matchIds: ['m99']
+            }
+        ];
+
+        const mockMatches: Match[] = [
+            {
+                id: 'm1',
+                tournamentId: 't-mex-1',
+                date: '2026-11-09T18:00:00.000Z',
+                team1: ['p1', 'p2'],
+                team2: ['p3', 'p4'],
+                sets: [{ team1: 6, team2: 3 }],
+                winner: 'team1',
+            } as Match,
+            {
+                id: 'm2',
+                tournamentId: 't-mex-1',
+                date: '2026-11-09T19:00:00.000Z',
+                team1: ['p1', 'p4'],
+                team2: ['p2', 'p3'],
+                sets: [{ team1: 6, team2: 4 }],
+                winner: 'team1',
+            } as Match,
+            {
+                id: 'm99',
+                tournamentId: 't-other',
+                date: '2026-10-01T18:00:00.000Z',
+                team1: ['p1', 'p99'],
+                team2: ['p2', 'p3'],
+                sets: [{ team1: 2, team2: 6 }],
+                winner: 'team2',
+            } as Match
+        ];
+
+        const mockEloHistory = [
+            {
+                id: 'h1',
+                playerId: 'p1',
+                eventId: 't-mex-1',
+                eloBefore: 1500,
+                eloAfter: 1516,
+                delta: 16,
+                date: '2026-11-09T18:00:00.000Z',
+                type: 'tournament' as const,
+                sourceLabel: 'Sociale Messicano'
+            }
+        ];
+
+        try {
+            // Esegui la stampa per p1 filtrando per il torneo Sociale Messicano
+            const { printPlayerProfiles: actualPrint } = await import('./printService.ts');
+            const result = actualPrint(
+                ['p1'],
+                mockPlayers as any,
+                mockMatches,
+                mockEloHistory as any,
+                mockTournaments as any,
+                {
+                    tournamentFilter: {
+                        tournamentId: 't-mex-1',
+                        tournamentName: 'Sociale Messicano',
+                        tournamentIds: ['t-mex-1'],
+                        tournamentDate: '2026-11-09T18:00:00.000Z'
+                    }
+                }
+            );
+
+            expect(result).toBe(true);
+            expect(capturedHtml).toContain('Alessio Campinoti');
+            expect(capturedHtml).toContain('TORNEO: Sociale Messicano');
+            expect(capturedHtml).toContain('nel torneo');
+
+            // Partite filtrate: solo le 2 partite del torneo Sociale Messicano (non m99 dell'altro torneo)
+            // p1 ha vinto entrambe le partite (m1 e m2) in Sociale Messicano -> 2 vinte, 0 perse (100%)
+            expect(capturedHtml).toContain('Partite</div>');
+            expect(capturedHtml).toContain('>2</div>'); // total matches = 2
+            expect(capturedHtml).toContain('Vinte</div>');
+
+            // Grafico ELO: etichette Start e E1
+            expect(capturedHtml).toContain('>Start</text>');
+            expect(capturedHtml).toContain('>E1</text>');
+
+            // Footer con il nome del torneo
+            expect(capturedHtml).toContain('Sociale Messicano');
+        } finally {
+            if (originalOpen) {
+                (globalThis as any).window.open = originalOpen;
+            } else {
+                delete (globalThis as any).window;
+            }
+        }
+    });
 });
