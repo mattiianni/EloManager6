@@ -26,6 +26,9 @@ import {
  groupMatchesByPlayerSets,
 } from '../services/beatTheBoxService.ts';
 import { TournamentRegistry } from '../formats/registry.ts';
+import { PlayoffBypassHeader } from '../components/ui/PlayoffBypassHeader.tsx';
+import { PlayoffMatchCard } from '../components/ui/PlayoffMatchCard.tsx';
+import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
 
 // Helper: build fetch headers with auth token
 const authHeaders = (): Record<string, string> => {
@@ -331,6 +334,24 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [gironiFinalMatches, setGironiFinalMatches] = useState<Match[]>([]);
  const [showGironiCompleteConfirm, setShowGironiCompleteConfirm] = useState(false);
  const [showGironiCompleteSuccess, setShowGironiCompleteSuccess] = useState(false);
+ const [isBypassingPlayoffs, setIsBypassingPlayoffs] = useState(false);
+ const [draftPlayoffMatches, setDraftPlayoffMatches] = useState<Match[]>([]);
+ const [isCustomizedPlayoffs, setIsCustomizedPlayoffs] = useState(false);
+
+ const editingTournamentPlayers = useMemo(() => {
+     const t = editingTournament || finalsFlowTournament;
+     if (!t) return [];
+     const tMatches = matches.filter(m => m.tournamentId === t.id);
+     const playerIds = new Set<string>();
+     tMatches.forEach(m => {
+         m.team1?.forEach(id => id && playerIds.add(id));
+         m.team2?.forEach(id => id && playerIds.add(id));
+     });
+     return Array.from(playerIds)
+         .map(id => getPlayerById(id))
+         .filter((p): p is Player => !!p)
+         .sort((a, b) => a.name.localeCompare(b.name));
+ }, [editingTournament, finalsFlowTournament, matches, getPlayerById]);
 
  const resetAllFlowStates = () => {
      setEditingTournament(null);
@@ -343,6 +364,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      setIsInGironiQuarterfinalsPhase(false);
      setIsInGironiSemifinalsPhase(false);
      setIsInGironiFinalsPhase(false);
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+     setIsCustomizedPlayoffs(false);
  };
  const gironiQualifiedKeys = useMemo(() => {
  const playoffType = (finalsFlowTournament || editingTournament)?.gironiPlayoffType || 'semifinals';
@@ -2172,7 +2196,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  const existing = allNewMatches.filter(m => !m.id.startsWith('temp-'));
  if (existing.length > 0) {
-     await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
+     await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner, team1: m.team1, team2: m.team2 })), true);
  }
 
  const temp = allNewMatches.filter(m => m.id.startsWith('temp-'));
@@ -3336,83 +3360,102 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   {(() => {
     const isQuarters = finalsMatches.some(m => m.phase === 'quarterfinal');
     const isSemis = finalsMatches.some(m => m.phase === 'semifinal');
+    const headerTitle = isQuarters ? 'Partite Quarti di Finale' : (isSemis ? 'Partite Semifinali' : 'Partite Finali');
+    const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : finalsMatches;
+    const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+    const handleStartBypass = () => {
+      setDraftPlayoffMatches(JSON.parse(JSON.stringify(finalsMatches)));
+      setIsBypassingPlayoffs(true);
+    };
+
+    const handleConfirmNewPairs = () => {
+      const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+      if (err) {
+        showHIGAlert(err);
+        return;
+      }
+      setFinalsMatches(draftPlayoffMatches);
+      setIsCustomizedPlayoffs(true);
+      setIsBypassingPlayoffs(false);
+    };
+
+    const handleCancelBypass = () => {
+      setIsBypassingPlayoffs(false);
+      setDraftPlayoffMatches([]);
+    };
+
     return (
-      <h4 className="font-semibold text-gray-700 dark:text-gray-300">
-        {isQuarters ? 'Partite Quarti di Finale' : (isSemis ? 'Partite Semifinali' : 'Partite Finali')}
-      </h4>
+      <>
+        <PlayoffBypassHeader
+          title={headerTitle}
+          subtitle="Inserisci i risultati o modifica le coppie partecipanti."
+          isEditing={isBypassingPlayoffs}
+          onStartBypass={handleStartBypass}
+          onConfirmNewPairs={handleConfirmNewPairs}
+          onCancelBypass={handleCancelBypass}
+          isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+        />
+        <div className="space-y-4 max-h-[30vh] overflow-y-auto p-1">
+          {activeMatches.map((match, index) => {
+            let matchTitle = `Partita ${index + 1}`;
+            let cardClass = 'bg-sky-50 dark:bg-sky-900 border border-sky-400 dark:border-sky-600';
+            let titleClass = 'text-sky-700 dark:text-sky-300';
+
+            if (match.phase === 'quarterfinal') {
+              matchTitle = `Quarto di Finale ${index + 1}`;
+              cardClass = 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-300 dark:border-indigo-700';
+              titleClass = 'text-indigo-700 dark:text-indigo-300';
+            } else if (match.phase === 'semifinal') {
+              matchTitle = `Semifinale ${index + 1}`;
+              cardClass = 'bg-purple-50 dark:bg-purple-950/40 border border-purple-300 dark:border-purple-700';
+              titleClass = 'text-purple-700 dark:text-purple-300';
+            } else if (match.phase === 'final_1_2') {
+              matchTitle = 'Finale 1°-2° Posto';
+              cardClass = 'bg-emerald-50 dark:bg-emerald-900 border border-emerald-400 dark:border-emerald-600';
+              titleClass = 'text-emerald-700 dark:text-emerald-300';
+            } else if (match.phase === 'final_3_4') {
+              matchTitle = 'Finale 3°-4° Posto';
+              cardClass = 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700';
+              titleClass = 'text-amber-700 dark:text-amber-300';
+            }
+
+            return (
+              <PlayoffMatchCard
+                key={match.id || index}
+                title={matchTitle}
+                matchIndex={index}
+                team1={match.team1}
+                team2={match.team2}
+                sets={finalsScores[match.id] || (match.sets && match.sets.length > 0 ? match.sets : [{team1: 0, team2: 0}])}
+                onSetsChange={isBypassingPlayoffs ? undefined : (sets) => setFinalsScores(prev => ({ ...prev, [match.id]: sets }))}
+                isEditing={isBypassingPlayoffs}
+                tournamentPlayers={editingTournamentPlayers}
+                selectedPlayerIdsInPhase={selectedPlayerIds}
+                onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                  setDraftPlayoffMatches(prev => {
+                    const updated = [...prev];
+                    const currentMatch = { ...updated[mIdx] };
+                    const team = [...currentMatch[teamKey]] as [string, string];
+                    team[playerIdx] = newPlayerId;
+                    currentMatch[teamKey] = team;
+                    updated[mIdx] = currentMatch;
+                    return updated;
+                  });
+                }}
+                getPlayerById={getPlayerById}
+                bgColor={cardClass}
+                titleColor={titleClass}
+                scoreDisabled={isSubmitting}
+              />
+            );
+          })}
+        </div>
+      </>
     );
   })()}
-  <div className="space-y-4 max-h-[30vh] overflow-y-auto p-1">
-  {finalsMatches.map((match, index) => {
-  const team1 = match.team1.map(p => getPlayerById(p)!);
-  const team2 = match.team2.map(p => getPlayerById(p)!);
-  if (!team1[0] || !team2[0]) return null;
-
-  let matchTitle = `Partita ${index + 1}`;
-  let cardClass = 'bg-sky-50 dark:bg-sky-900 border-2 border-sky-400 dark:border-sky-600';
-  let titleClass = 'text-sky-700 dark:text-sky-300';
-
-  if (match.phase === 'quarterfinal') {
-    matchTitle = `Quarto di Finale ${index + 1}`;
-    cardClass = 'bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700';
-    titleClass = 'text-indigo-700 dark:text-indigo-300';
-  } else if (match.phase === 'semifinal') {
-    matchTitle = `Semifinale ${index + 1}`;
-    cardClass = 'bg-purple-50 dark:bg-purple-950/40 border-2 border-purple-300 dark:border-purple-700';
-    titleClass = 'text-purple-700 dark:text-purple-300';
-  } else if (match.phase === 'final_1_2') {
-    matchTitle = 'Finale 1°-2° Posto';
-    cardClass = 'bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-400 dark:border-emerald-600';
-    titleClass = 'text-emerald-700 dark:text-emerald-300';
-  } else if (match.phase === 'final_3_4') {
-    matchTitle = 'Finale 3°-4° Posto';
-    cardClass = 'bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700';
-    titleClass = 'text-amber-700 dark:text-amber-300';
-  }
-
-  return (
-  <div
-  key={match.id}
-  className={`p-3 rounded-xl border shadow-sm space-y-2 ${cardClass}`}
-  >
-  <div className={`text-[11px] font-bold uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40 ${titleClass}`}>
-  {matchTitle}
   </div>
-  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-  <div className="min-w-0 text-left">
-  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
-  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
-  {formatPlayerShortName(team1[0])}
-  </div>
-  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
-  {formatPlayerShortName(team1[1])}
-  </div>
-  </div>
-  <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
-  VS
-  </div>
-  <div className="min-w-0 text-right">
-  <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
-  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
-  {formatPlayerShortName(team2[0])}
-  </div>
-  <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
-  {formatPlayerShortName(team2[1])}
-  </div>
-  </div>
-  </div>
-  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
-  <MatchScoreInput
-  sets={finalsScores[match.id] || (match.sets && match.sets.length > 0 ? match.sets : [{team1: 0, team2: 0}])}
-  onSetsChange={(sets) => setFinalsScores(prev => ({ ...prev, [match.id]: sets }))}
-  disabled={isSubmitting}
-  />
-  </div>
-  </div>
-  );
-  })}
-  </div>
-  </div>
+  {!isBypassingPlayoffs && (
   <div className="flex gap-2.5 pt-3 border-t border-slate-200/80 dark:border-white/10">
   <Button
   onClick={() => {
@@ -3464,6 +3507,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
   </Button>
   )}
   </div>
+  )}
   </div>
  </HIGSheet>
 
@@ -3529,88 +3573,98 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </HIGSheet>
 
  {/* Modal for Beat the Box Semifinals */}
- <HIGSheet
+  <HIGSheet
  isOpen={isInBeatBoxSemifinalsPhase}
  onClose={() => {
  setIsInBeatBoxSemifinalsPhase(false);
+ setIsBypassingPlayoffs(false);
+ setDraftPlayoffMatches([]);
  setShowBeatBoxStandingsModal(true);
  }}
  title="Beat the Box - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900 rounded-lg">
- <h3 className="font-semibold text-purple-800 dark:text-purple-200">Semifinali</h3>
- <p className="text-sm text-purple-700 dark:text-purple-300">
- Inserisci i risultati delle semifinali.
- </p>
- </div>
+ {(() => {
+   const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : beatBoxSemifinalMatches;
+   const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
- <div className="space-y-4">
- {beatBoxSemifinalMatches.map((match, idx) => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+   const handleStartBypass = () => {
+     setDraftPlayoffMatches(JSON.parse(JSON.stringify(beatBoxSemifinalMatches)));
+     setIsBypassingPlayoffs(true);
+   };
 
- const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
- const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+   const handleConfirmNewPairs = () => {
+     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     if (err) {
+       showHIGAlert(err);
+       return;
+     }
+     setBeatBoxSemifinalMatches(draftPlayoffMatches);
+     setIsCustomizedPlayoffs(true);
+     setIsBypassingPlayoffs(false);
+   };
 
- return (
- <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
- <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
- Semifinale {idx + 1}
- </div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
- <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
- {team1[0] ? formatPlayerName(team1[0]) : ''}
- </p>
- {!isT1Single && team1[1] && (
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
- {formatPlayerName(team1[1])}
- </p>
- )}
- </div>
+   const handleCancelBypass = () => {
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+   };
 
- <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
- VS
- </div>
+   return (
+     <>
+       <PlayoffBypassHeader
+         title="Semifinali"
+         subtitle="Inserisci i risultati delle semifinali o modifica le coppie partecipanti."
+         isEditing={isBypassingPlayoffs}
+         onStartBypass={handleStartBypass}
+         onConfirmNewPairs={handleConfirmNewPairs}
+         onCancelBypass={handleCancelBypass}
+         isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+       />
 
- <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
- {team2[0] ? formatPlayerName(team2[0]) : ''}
- </p>
- {!isT2Single && team2[1] && (
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
- {formatPlayerName(team2[1])}
- </p>
- )}
- </div>
- </div>
+       <div className="space-y-4">
+         {activeMatches.map((match, idx) => (
+           <PlayoffMatchCard
+             key={match.id || idx}
+             title={`Semifinale ${idx + 1}`}
+             matchIndex={idx}
+             team1={match.team1}
+             team2={match.team2}
+             sets={match.sets || []}
+             onSetsChange={isBypassingPlayoffs ? undefined : (sets) => {
+               const newMatches = [...beatBoxSemifinalMatches];
+               const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+               const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+               newMatches[idx] = {
+                 ...match,
+                 sets,
+                 winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw'
+               };
+               setBeatBoxSemifinalMatches(newMatches);
+             }}
+             isEditing={isBypassingPlayoffs}
+             tournamentPlayers={editingTournamentPlayers}
+             selectedPlayerIdsInPhase={selectedPlayerIds}
+             onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+               setDraftPlayoffMatches(prev => {
+                 const updated = [...prev];
+                 const currentMatch = { ...updated[mIdx] };
+                 const team = [...currentMatch[teamKey]] as [string, string];
+                 team[playerIdx] = newPlayerId;
+                 currentMatch[teamKey] = team;
+                 updated[mIdx] = currentMatch;
+                 return updated;
+               });
+             }}
+             getPlayerById={getPlayerById}
+             scoreDisabled={isSubmitting}
+           />
+         ))}
+       </div>
+     </>
+   );
+ })()}
 
- <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
- <MatchScoreInput
- sets={match.sets || []}
- onSetsChange={(sets) => {
- const newMatches = [...beatBoxSemifinalMatches];
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- newMatches[idx] = {
- ...match,
- sets,
- winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw'
- };
- setBeatBoxSemifinalMatches(newMatches);
- }}
- disabled={isSubmitting}
- />
- </div>
- </div>
- );
- })}
- </div>
-
+ {!isBypassingPlayoffs && (
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
@@ -3632,7 +3686,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </Button>
  <Button
  onClick={async () => {
- // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (beatBoxSemifinalMatches.length < 2) {
  showHIGAlert('Errore: semifinali non generate correttamente.');
  return;
@@ -3643,7 +3696,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return;
  }
 
- // Crea finali dai risultati delle semifinali
  const activeT = finalsFlowTournament || editingTournament!;
  const sfResults = {
      sf1Winner: beatBoxSemifinalMatches[0].winner as 'team1' | 'team2',
@@ -3656,11 +3708,30 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
      sfResults,
      activeT.playoffType || 'semifinals'
  );
- setBeatBoxFinalMatches(finals.map((m, i) => ({
-     ...m,
-     id: `temp-final-${i}`,
-     tournamentId: activeT.id
- })));
+
+ const sf1WinnerTeam = sfResults.sf1Winner === 'team1' ? beatBoxSemifinalMatches[0].team1 : beatBoxSemifinalMatches[0].team2;
+ const sf2WinnerTeam = sfResults.sf2Winner === 'team1' ? beatBoxSemifinalMatches[1].team1 : beatBoxSemifinalMatches[1].team2;
+ const sf1LoserTeam = sfResults.sf1Winner === 'team1' ? beatBoxSemifinalMatches[0].team2 : beatBoxSemifinalMatches[0].team1;
+ const sf2LoserTeam = sfResults.sf2Winner === 'team1' ? beatBoxSemifinalMatches[1].team2 : beatBoxSemifinalMatches[1].team1;
+
+ setBeatBoxFinalMatches(finals.map((m, i) => {
+     let t1 = m.team1;
+     let t2 = m.team2;
+     if (i === 0 && beatBoxSemifinalMatches[0] && beatBoxSemifinalMatches[1]) {
+         t1 = sf1WinnerTeam;
+         t2 = sf2WinnerTeam;
+     } else if (i === 1 && beatBoxSemifinalMatches[0] && beatBoxSemifinalMatches[1]) {
+         t1 = sf1LoserTeam;
+         t2 = sf2LoserTeam;
+     }
+     return {
+         ...m,
+         team1: t1,
+         team2: t2,
+         id: `temp-final-${i}`,
+         tournamentId: activeT.id
+     };
+ }));
 
  setIsInBeatBoxSemifinalsPhase(false);
  setTimeout(() => {
@@ -3672,14 +3743,17 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Procedi alle Finali
  </Button>
  </div>
+ )}
  </div>
  </HIGSheet>
 
  {/* Modal for Beat the Box Finals */}
- <HIGSheet
+  <HIGSheet
  isOpen={isInBeatBoxFinalsPhase}
  onClose={() => {
  setIsInBeatBoxFinalsPhase(false);
+ setIsBypassingPlayoffs(false);
+ setDraftPlayoffMatches([]);
  if (beatBoxSemifinalMatches.length > 0) {
  setTimeout(() => setIsInBeatBoxSemifinalsPhase(true), 100);
  } else {
@@ -3689,84 +3763,94 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  title="Beat the Box - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
- <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Fase Finale</h3>
- <p className="text-sm text-yellow-700 dark:text-yellow-300">
- Inserisci i risultati delle finali per determinare la classifica finale.
- </p>
- </div>
+ {(() => {
+   const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : beatBoxFinalMatches;
+   const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
- <div className="space-y-4">
- {beatBoxFinalMatches.map((match, idx) => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+   const handleStartBypass = () => {
+     setDraftPlayoffMatches(JSON.parse(JSON.stringify(beatBoxFinalMatches)));
+     setIsBypassingPlayoffs(true);
+   };
 
- let matchTitle = '';
- if (idx === 0) matchTitle = 'Finale 1° - 2° Posto';
- else if (idx === 1) matchTitle = 'Finalina 3° - 4° Posto';
- else if (idx === 2) matchTitle = 'Partita Consolazione';
+   const handleConfirmNewPairs = () => {
+     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     if (err) {
+       showHIGAlert(err);
+       return;
+     }
+     setBeatBoxFinalMatches(draftPlayoffMatches);
+     setIsCustomizedPlayoffs(true);
+     setIsBypassingPlayoffs(false);
+   };
 
- const isT1Single = !team1[1] || team1[0].id === team1[1]?.id;
- const isT2Single = !team2[1] || team2[0].id === team2[1]?.id;
+   const handleCancelBypass = () => {
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+   };
 
- return (
- <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
- <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
- {matchTitle}
- </div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
- <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
- {team1[0] ? formatPlayerName(team1[0]) : ''}
- </p>
- {!isT1Single && team1[1] && (
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
- {formatPlayerName(team1[1])}
- </p>
- )}
- </div>
+   return (
+     <>
+       <PlayoffBypassHeader
+         title="Fase Finale"
+         subtitle="Inserisci i risultati delle finali o modifica le coppie partecipanti."
+         isEditing={isBypassingPlayoffs}
+         onStartBypass={handleStartBypass}
+         onConfirmNewPairs={handleConfirmNewPairs}
+         onCancelBypass={handleCancelBypass}
+         isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+       />
 
- <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
- VS
- </div>
+       <div className="space-y-4">
+         {activeMatches.map((match, idx) => {
+           let matchTitle = '';
+           if (idx === 0) matchTitle = 'Finale 1° - 2° Posto';
+           else if (idx === 1) matchTitle = 'Finalina 3° - 4° Posto';
+           else if (idx === 2) matchTitle = 'Partita Consolazione';
 
- <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
- {team2[0] ? formatPlayerName(team2[0]) : ''}
- </p>
- {!isT2Single && team2[1] && (
- <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
- {formatPlayerName(team2[1])}
- </p>
- )}
- </div>
- </div>
+           return (
+             <PlayoffMatchCard
+               key={match.id || idx}
+               title={matchTitle}
+               matchIndex={idx}
+               team1={match.team1}
+               team2={match.team2}
+               sets={match.sets || []}
+               onSetsChange={isBypassingPlayoffs ? undefined : (sets) => {
+                 const newMatches = [...beatBoxFinalMatches];
+                 const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+                 const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+                 newMatches[idx] = {
+                   ...match,
+                   sets,
+                   winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw'
+                 };
+                 setBeatBoxFinalMatches(newMatches);
+               }}
+               isEditing={isBypassingPlayoffs}
+               tournamentPlayers={editingTournamentPlayers}
+               selectedPlayerIdsInPhase={selectedPlayerIds}
+               onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                 setDraftPlayoffMatches(prev => {
+                   const updated = [...prev];
+                   const currentMatch = { ...updated[mIdx] };
+                   const team = [...currentMatch[teamKey]] as [string, string];
+                   team[playerIdx] = newPlayerId;
+                   currentMatch[teamKey] = team;
+                   updated[mIdx] = currentMatch;
+                   return updated;
+                 });
+               }}
+               getPlayerById={getPlayerById}
+               scoreDisabled={isSubmitting}
+             />
+           );
+         })}
+       </div>
+     </>
+   );
+ })()}
 
- <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
- <MatchScoreInput
- sets={match.sets || []}
- onSetsChange={(sets) => {
- const newMatches = [...beatBoxFinalMatches];
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- newMatches[idx] = {
- ...match,
- sets,
- winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw'
- };
- setBeatBoxFinalMatches(newMatches);
- }}
- disabled={isSubmitting}
- />
- </div>
- </div>
- );
- })}
- </div>
-
+ {!isBypassingPlayoffs && (
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
@@ -3805,6 +3889,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Completa Torneo
  </Button>
  </div>
+ )}
  </div>
  </HIGSheet>
 
@@ -3991,55 +4076,92 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </HIGSheet>
 
  {/* Modal for Gironi + Fase Finale Quarterfinals */}
- <HIGSheet
+  <HIGSheet
  isOpen={isInGironiQuarterfinalsPhase}
- onClose={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}
+ onClose={() => {
+ setIsInGironiQuarterfinalsPhase(false);
+ setIsBypassingPlayoffs(false);
+ setDraftPlayoffMatches([]);
+ setShowGironiStandingsModal(true);
+ }}
  title="Gironi + Fase Finale - Quarti"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <p className="text-sm text-gray-700 dark:text-gray-300">Inserisci i risultati dei quarti. Ogni partita deve avere un vincitore.</p>
- {gironiQuarterfinalMatches.map((match, idx) => {
- const team1 = match.team1.map(id => getPlayerById(id)!);
- const team2 = match.team2.map(id => getPlayerById(id)!);
- if (!team1[0] || !team2[0]) return null;
- return (
- <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-2">
- <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
- Quarto {idx + 1}
- </div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
- <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[1])}
- </div>
- </div>
- <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
- VS
- </div>
- <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[1])}
- </div>
- </div>
- </div>
- <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
- <MatchScoreInput sets={match.sets} onSetsChange={(sets) => {
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- setGironiQuarterfinalMatches(current => current.map((item, index) => index === idx ? { ...item, sets, winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null } : item));
- }} disabled={isSubmitting}/>
- </div>
- </div>
- );
- })}
+ {(() => {
+   const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : gironiQuarterfinalMatches;
+   const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+   const handleStartBypass = () => {
+     setDraftPlayoffMatches(JSON.parse(JSON.stringify(gironiQuarterfinalMatches)));
+     setIsBypassingPlayoffs(true);
+   };
+
+   const handleConfirmNewPairs = () => {
+     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     if (err) {
+       showHIGAlert(err);
+       return;
+     }
+     setGironiQuarterfinalMatches(draftPlayoffMatches);
+     setIsCustomizedPlayoffs(true);
+     setIsBypassingPlayoffs(false);
+   };
+
+   const handleCancelBypass = () => {
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+   };
+
+   return (
+     <>
+       <PlayoffBypassHeader
+         title="Quarti di Finale"
+         subtitle="Inserisci i risultati dei quarti o modifica le coppie partecipanti."
+         isEditing={isBypassingPlayoffs}
+         onStartBypass={handleStartBypass}
+         onConfirmNewPairs={handleConfirmNewPairs}
+         onCancelBypass={handleCancelBypass}
+         isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+       />
+
+       <div className="space-y-4">
+         {activeMatches.map((match, idx) => (
+           <PlayoffMatchCard
+             key={match.id || idx}
+             title={`Quarto ${idx + 1}`}
+             matchIndex={idx}
+             team1={match.team1}
+             team2={match.team2}
+             sets={match.sets || []}
+             onSetsChange={isBypassingPlayoffs ? undefined : (sets) => {
+               const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+               const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+               setGironiQuarterfinalMatches(current => current.map((item, index) => index === idx ? { ...item, sets, winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null } : item));
+             }}
+             isEditing={isBypassingPlayoffs}
+             tournamentPlayers={editingTournamentPlayers}
+             selectedPlayerIdsInPhase={selectedPlayerIds}
+             onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+               setDraftPlayoffMatches(prev => {
+                 const updated = [...prev];
+                 const currentMatch = { ...updated[mIdx] };
+                 const team = [...currentMatch[teamKey]] as [string, string];
+                 team[playerIdx] = newPlayerId;
+                 currentMatch[teamKey] = team;
+                 updated[mIdx] = currentMatch;
+                 return updated;
+               });
+             }}
+             getPlayerById={getPlayerById}
+             scoreDisabled={isSubmitting}
+           />
+         ))}
+       </div>
+     </>
+   );
+ })()}
+
+ {!isBypassingPlayoffs && (
  <div className="flex gap-3 pt-4">
  <Button variant="outline" className="flex-1" onClick={() => { setIsInGironiQuarterfinalsPhase(false); setShowGironiStandingsModal(true); }}>Indietro</Button>
  <Button variant="success" className="flex-1" disabled={isSubmitting} onClick={() => savePhaseMatches(gironiQuarterfinalMatches, (finalsFlowTournament || editingTournament)!.id, setGironiQuarterfinalMatches)}>Salva</Button>
@@ -4056,82 +4178,103 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  setIsInGironiSemifinalsPhase(true);
  }}>Procedi alle Semifinali</Button>
  </div>
+ )}
  </div>
  </HIGSheet>
 
  {/* Modal for Gironi + Fase Finale Semifinals */}
- <HIGSheet
+  <HIGSheet
  isOpen={isInGironiSemifinalsPhase}
  onClose={() => {
  setIsInGironiSemifinalsPhase(false);
+ setIsBypassingPlayoffs(false);
+ setDraftPlayoffMatches([]);
  setShowGironiStandingsModal(true);
  }}
  title="Gironi + Fase Finale - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <div className="mb-4 p-1">
- <h3 className="font-semibold text-gray-900 dark:text-white">Semifinali</h3>
- <p className="text-sm text-gray-700 dark:text-gray-300">
- Inserisci i risultati delle semifinali.
- </p>
- </div>
+ {(() => {
+   const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : gironiSemifinalMatches;
+   const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
- <div className="space-y-4">
- {gironiSemifinalMatches.map((match, idx) => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+   const handleStartBypass = () => {
+     setDraftPlayoffMatches(JSON.parse(JSON.stringify(gironiSemifinalMatches)));
+     setIsBypassingPlayoffs(true);
+   };
 
- return (
- <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-2">
- <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
- Semifinale {idx + 1}
- </div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
- <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[1])}
- </div>
- </div>
- <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
- VS
- </div>
- <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[1])}
- </div>
- </div>
- </div>
- <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
- <MatchScoreInput
- sets={match.sets || [{ team1: 0, team2: 0 }]}
- onSetsChange={(sets) => {
- const newMatches = [...gironiSemifinalMatches];
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- newMatches[idx] = {
- ...match,
- sets,
- winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null
- };
- setGironiSemifinalMatches(newMatches);
- }}
- disabled={isSubmitting}
- />
- </div>
- </div>
- );
- })}
- </div>
+   const handleConfirmNewPairs = () => {
+     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     if (err) {
+       showHIGAlert(err);
+       return;
+     }
+     setGironiSemifinalMatches(draftPlayoffMatches);
+     setIsCustomizedPlayoffs(true);
+     setIsBypassingPlayoffs(false);
+   };
 
+   const handleCancelBypass = () => {
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+   };
+
+   return (
+     <>
+       <PlayoffBypassHeader
+         title="Semifinali"
+         subtitle="Inserisci i risultati delle semifinali o modifica le coppie partecipanti."
+         isEditing={isBypassingPlayoffs}
+         onStartBypass={handleStartBypass}
+         onConfirmNewPairs={handleConfirmNewPairs}
+         onCancelBypass={handleCancelBypass}
+         isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+       />
+
+       <div className="space-y-4">
+         {activeMatches.map((match, idx) => (
+           <PlayoffMatchCard
+             key={match.id || idx}
+             title={`Semifinale ${idx + 1}`}
+             matchIndex={idx}
+             team1={match.team1}
+             team2={match.team2}
+             sets={match.sets || [{ team1: 0, team2: 0 }]}
+             onSetsChange={isBypassingPlayoffs ? undefined : (sets) => {
+               const newMatches = [...gironiSemifinalMatches];
+               const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+               const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+               newMatches[idx] = {
+                 ...match,
+                 sets,
+                 winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null
+               };
+               setGironiSemifinalMatches(newMatches);
+             }}
+             isEditing={isBypassingPlayoffs}
+             tournamentPlayers={editingTournamentPlayers}
+             selectedPlayerIdsInPhase={selectedPlayerIds}
+             onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+               setDraftPlayoffMatches(prev => {
+                 const updated = [...prev];
+                 const currentMatch = { ...updated[mIdx] };
+                 const team = [...currentMatch[teamKey]] as [string, string];
+                 team[playerIdx] = newPlayerId;
+                 currentMatch[teamKey] = team;
+                 updated[mIdx] = currentMatch;
+                 return updated;
+               });
+             }}
+             getPlayerById={getPlayerById}
+             scoreDisabled={isSubmitting}
+           />
+         ))}
+       </div>
+     </>
+   );
+ })()}
+
+ {!isBypassingPlayoffs && (
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
@@ -4153,7 +4296,6 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </Button>
  <Button
  onClick={async () => {
- // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (gironiSemifinalMatches.length < 2) {
  showHIGAlert('Errore: semifinali non generate correttamente.');
  return;
@@ -4164,45 +4306,41 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  return;
  }
 
- // Calcola vincitori e perdenti delle semifinali
+ const tournament = finalsFlowTournament || editingTournament!;
  const semi1 = gironiSemifinalMatches[0];
  const semi2 = gironiSemifinalMatches[1];
 
- const semi1Winner = semi1.winner === 'team1' ? semi1.team1 : semi1.team2;
- const semi1Loser = semi1.winner === 'team1' ? semi1.team2 : semi1.team1;
- const semi2Winner = semi2.winner === 'team1' ? semi2.team1 : semi2.team2;
- const semi2Loser = semi2.winner === 'team1' ? semi2.team2 : semi2.team1;
+ const semi1Winner = semi1.winner;
+ const semi1Loser = semi1Winner === 'team1' ? 'team2' : 'team1';
 
- const activeT = finalsFlowTournament || editingTournament!;
+ const semi2Winner = semi2.winner;
+ const semi2Loser = semi2Winner === 'team1' ? 'team2' : 'team1';
 
- // Crea finale 1°-2°
  const finale12 = {
- id: 'temp-gironi-final-1',
- date: activeT.date,
- team1: semi1Winner,
- team2: semi2Winner,
+ id: `temp-gironi-final-12-${Date.now()}`,
+ date: tournament.date,
+ team1: semi1Winner === 'team1' ? semi1.team1 : semi1.team2,
+ team2: semi2Winner === 'team1' ? semi2.team1 : semi2.team2,
  sets: [{ team1: 0, team2: 0 }],
- winner: null as 'team1' | 'team2' | null,
- tournamentId: activeT.id,
+ winner: null,
+ tournamentId: tournament.id,
  phase: 'final_1_2' as const,
- roundNumber: 3,
+ roundNumber: 3
  };
 
- // Crea finalina 3°-4°
  const finale34 = {
- id: 'temp-gironi-final-2',
- date: activeT.date,
- team1: semi1Loser,
- team2: semi2Loser,
+ id: `temp-gironi-final-34-${Date.now()}`,
+ date: tournament.date,
+ team1: semi1Loser === 'team1' ? semi1.team1 : semi1.team2,
+ team2: semi2Loser === 'team1' ? semi2.team1 : semi2.team2,
  sets: [{ team1: 0, team2: 0 }],
- winner: null as 'team1' | 'team2' | null,
- tournamentId: activeT.id,
+ winner: null,
+ tournamentId: tournament.id,
  phase: 'final_3_4' as const,
- roundNumber: 3,
+ roundNumber: 3
  };
 
- setGironiFinalMatches([finale34, finale12]); // Prima finalina, poi finale
-
+ setGironiFinalMatches([finale34, finale12]);
  setIsInGironiSemifinalsPhase(false);
  setTimeout(() => {
  setIsInGironiFinalsPhase(true);
@@ -4213,91 +4351,116 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  Procedi alle Finali
  </Button>
  </div>
+ )}
  </div>
  </HIGSheet>
 
  {/* Modal for Gironi + Fase Finale Finals */}
- <HIGSheet
+  <HIGSheet
  isOpen={isInGironiFinalsPhase}
  onClose={() => {
  setIsInGironiFinalsPhase(false);
+ setIsBypassingPlayoffs(false);
+ setDraftPlayoffMatches([]);
  setTimeout(() => setIsInGironiSemifinalsPhase(true), 100);
  }}
  title="Gironi + Fase Finale - Finali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <div className="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-lg">
- <h3 className="font-semibold text-green-800 dark:text-green-200">Fase Finale</h3>
- <p className="text-sm text-green-700 dark:text-green-300">
- Inserisci i risultati delle finali per determinare la classifica finale.
- </p>
- </div>
+ {(() => {
+   const activeMatches = isBypassingPlayoffs ? draftPlayoffMatches : gironiFinalMatches;
+   const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
- <div className="space-y-4">
- {gironiFinalMatches.map((match, idx) => {
- const team1 = match.team1.map(p => getPlayerById(p)!);
- const team2 = match.team2.map(p => getPlayerById(p)!);
- if (!team1[0] || !team2[0]) return null;
+   const handleStartBypass = () => {
+     setDraftPlayoffMatches(JSON.parse(JSON.stringify(gironiFinalMatches)));
+     setIsBypassingPlayoffs(true);
+   };
 
- const isFinale = idx === 1; // Index 1 = finale 1°-2°
- const title = isFinale ?"Finale 1°-2° Posto" :"Finalina 3°-4° Posto";
- const bgColor = isFinale
- ?"bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
- :"bg-green-100 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-700";
- const titleColor = isFinale
- ?"text-green-900 dark:text-green-300"
- :"text-green-800 dark:text-green-400";
+   const handleConfirmNewPairs = () => {
+     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     if (err) {
+       showHIGAlert(err);
+       return;
+     }
+     setGironiFinalMatches(draftPlayoffMatches);
+     setIsCustomizedPlayoffs(true);
+     setIsBypassingPlayoffs(false);
+   };
 
- return (
- <div key={idx} className={`${bgColor} p-3 rounded-xl border shadow-sm space-y-2 mb-2`}>
- <div className={`text-[11px] font-bold uppercase tracking-wider text-center pb-1 border-b border-gray-100 dark:border-gray-700/40 ${titleColor}`}>
- {title}
- </div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
- <div className="min-w-0 text-left">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra A</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team1[1])}
- </div>
- </div>
- <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
- VS
- </div>
- <div className="min-w-0 text-right">
- <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-0.5">Squadra B</div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[0])}
- </div>
- <div className="text-xs sm:text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-100">
- {formatPlayerShortName(team2[1])}
- </div>
- </div>
- </div>
- <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
- <MatchScoreInput
- sets={match.sets || [{ team1: 0, team2: 0 }]}
- onSetsChange={(sets) => {
- const newMatches = [...gironiFinalMatches];
- const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
- const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
- newMatches[idx] = {
- ...match,
- sets,
- winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null
- };
- setGironiFinalMatches(newMatches);
- }}
- disabled={isSubmitting}
- />
- </div>
- </div>
- );
- })}
- </div>
+   const handleCancelBypass = () => {
+     setIsBypassingPlayoffs(false);
+     setDraftPlayoffMatches([]);
+   };
 
+   return (
+     <>
+       <PlayoffBypassHeader
+         title="Fase Finale"
+         subtitle="Inserisci i risultati delle finali per determinare la classifica finale."
+         isEditing={isBypassingPlayoffs}
+         onStartBypass={handleStartBypass}
+         onConfirmNewPairs={handleConfirmNewPairs}
+         onCancelBypass={handleCancelBypass}
+         isCustomized={isCustomizedPlayoffs || editingTournament?.playoffsCustomized}
+       />
+
+       <div className="space-y-4">
+         {activeMatches.map((match, idx) => {
+           const isFinale = idx === 1;
+           const title = isFinale ? "Finale 1°-2° Posto" : "Finalina 3°-4° Posto";
+           const bgColor = isFinale
+             ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+             : "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700";
+           const titleColor = isFinale
+             ? "text-green-900 dark:text-green-300"
+             : "text-green-800 dark:text-green-400";
+
+           return (
+             <PlayoffMatchCard
+               key={match.id || idx}
+               title={title}
+               matchIndex={idx}
+               team1={match.team1}
+               team2={match.team2}
+               sets={match.sets || [{ team1: 0, team2: 0 }]}
+               onSetsChange={isBypassingPlayoffs ? undefined : (sets) => {
+                 const newMatches = [...gironiFinalMatches];
+                 const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+                 const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+                 newMatches[idx] = {
+                   ...match,
+                   sets,
+                   winner: team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : null
+                 };
+                 setGironiFinalMatches(newMatches);
+               }}
+               isEditing={isBypassingPlayoffs}
+               tournamentPlayers={editingTournamentPlayers}
+               selectedPlayerIdsInPhase={selectedPlayerIds}
+               onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                 setDraftPlayoffMatches(prev => {
+                   const updated = [...prev];
+                   const currentMatch = { ...updated[mIdx] };
+                   const team = [...currentMatch[teamKey]] as [string, string];
+                   team[playerIdx] = newPlayerId;
+                   currentMatch[teamKey] = team;
+                   updated[mIdx] = currentMatch;
+                   return updated;
+                 });
+               }}
+               getPlayerById={getPlayerById}
+               bgColor={bgColor}
+               titleColor={titleColor}
+               scoreDisabled={isSubmitting}
+             />
+           );
+         })}
+       </div>
+     </>
+   );
+ })()}
+
+ {!isBypassingPlayoffs && (
  <div className="flex gap-3 pt-4">
  <Button
  onClick={() => {
@@ -4319,71 +4482,59 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </Button>
  <Button
  onClick={() => {
-                            const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
-                            if (!allComplete) {
-                                showHIGAlert('Inserisci i risultati di tutte le finali.');
-                                return;
-                            }
-                            setProceedConfirmData({
-                                isOpen: true,
-                                title: "Completa Torneo",
-                                message: "Confermi di voler completare il torneo? Gli ELO verranno aggiornati definitivamente.",
-                                actionText: "Finalizza Torneo",
-                                onConfirm: async () => {
-                                    const tournament = finalsFlowTournament || editingTournament;
-                                    if (!tournament) return;
-                                    setIsSubmitting(true);
-                                    try {
-                                        const allNewMatches = [...gironiQuarterfinalMatches, ...gironiSemifinalMatches, ...gironiFinalMatches];
-                                        const existingMatches = allNewMatches.filter(match => !match.id.startsWith('temp'));
-                                        if (existingMatches.length > 0) {
-                                            await updateTournamentMatches(existingMatches.map(match => ({ matchId: match.id, sets: match.sets, winner: match.winner })), true);
-                                        }
-                                        for (const match of allNewMatches.filter(match => match.id.startsWith('temp'))) {
-                                            const res = await fetch('/api/matches', {
-                                                method: 'POST',
-                                                headers: authHeaders(),
-                                                body: JSON.stringify({ ...match, tournamentId: tournament.id })
-                                            });
-                                            if(!res.ok) throw new Error('Failed to save match');
-                                        }
-                                        const compRes = await fetch('/api/tournaments/complete', {
-                                            method: 'PUT',
-                                            headers: authHeaders(),
-                                            body: JSON.stringify({ tournamentId: tournament.id })
-                                        });
-                                        if(!compRes.ok) throw new Error('Failed to complete tournament');
-
-                                        setEditingTournament(null);
-                                        setFinalsFlowTournament(null);
-                                        setIsInGironiFinalsPhase(false);
-                                        setIsInGironiQuarterfinalsPhase(false);
-                                        setIsInGironiSemifinalsPhase(false);
-                                        setGironiFinalMatches([]);
-                                        setGironiQuarterfinalMatches([]);
-                                        setGironiSemifinalMatches([]);
-                                        setGironiStandings([]);
-                                        setShowGironiStandingsModal(false);
-                                        if (typeof setActivePage === 'function') {
-                                            setActivePage('Tournaments');
-                                        }
-                                        window.location.reload();
-                                    } catch (e) {
-                                        showHIGAlert('Errore.');
-                                    } finally {
-                                        setIsSubmitting(false);
-                                    }
-                                }
-                            });
-                        }}
-                        className="flex-1"
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? 'Salvataggio...' : 'Completa torneo'}
-                    </Button>
+     const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
+     if (!allComplete) {
+         showHIGAlert('Inserisci i risultati di tutte le finali.');
+         return;
+     }
+     setProceedConfirmData({
+         isOpen: true,
+         title: "Completa Torneo",
+         message: "Confermi di voler completare il torneo? Gli ELO verranno aggiornati definitivamente.",
+         actionText: "Finalizza Torneo",
+         onConfirm: async () => {
+             const tournament = finalsFlowTournament || editingTournament;
+             if (!tournament) return;
+             setIsSubmitting(true);
+             try {
+                 const allNewMatches = [...gironiQuarterfinalMatches, ...gironiSemifinalMatches, ...gironiFinalMatches];
+                 const existingMatches = allNewMatches.filter(match => !match.id.startsWith('temp'));
+                 if (existingMatches.length > 0) {
+                     await updateTournamentMatches(existingMatches.map(match => ({ matchId: match.id, sets: match.sets, winner: match.winner, team1: match.team1, team2: match.team2 })), true);
+                 }
+                 for (const match of allNewMatches.filter(match => match.id.startsWith('temp'))) {
+                     const res = await fetch('/api/matches', {
+                         method: 'POST',
+                         headers: authHeaders(),
+                         body: JSON.stringify({ ...match, tournamentId: tournament.id })
+                     });
+                     if(!res.ok) throw new Error('Failed to save match');
+                 }
+                 const compRes = await fetch('/api/tournaments/complete', {
+                     method: 'PUT',
+                     headers: authHeaders(),
+                     body: JSON.stringify({ tournamentId: tournament.id, playoffs_customized: tournament.playoffsCustomized || isCustomizedPlayoffs })
+                 });
+                 if(!compRes.ok) throw new Error('Failed to complete tournament');
+                 setShowGironiCompleteSuccess(true);
+             } catch(err) {
+                 console.error('Failed to complete tournament:', err);
+                 showHIGAlert('Errore nel completare il torneo.');
+             } finally {
+                 setIsSubmitting(false);
+             }
+         }
+     });
+ }}
+ className="flex-1"
+ disabled={isSubmitting}
+ >
+ Completa Torneo
+ </Button>
  </div>
+ )}
  </div>
-             </HIGSheet>
+ </HIGSheet>
                         {/* Nuovi popup per conferme e successi */}
             <HIGSheet
                 isOpen={proceedConfirmData.isOpen}

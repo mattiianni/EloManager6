@@ -23,6 +23,9 @@ import { formatPlayerShortName } from '../utils/format.ts';
 import { buildQuarterfinalPairings, buildSemifinalPairings, GironiPlayoffType, GironiStandingLike, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 import { getCanonicalTeamKey } from '../utils/matchIdentity.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
+import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
+import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
+import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -457,6 +460,25 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const [gironiSemifinalsMatches, setGironiSemifinalsMatches] = useState<Match[]>([]);
  const [gironiFinalsMatches, setGironiFinalsMatches] = useState<Match[]>([]);
  const [isTournamentSaved, setIsTournamentSaved] = useState(false);
+ const [isBypassingGironiQuarters, setIsBypassingGironiQuarters] = useState(false);
+ const [draftGironiQuarters, setDraftGironiQuarters] = useState<Match[]>([]);
+ const [isBypassingGironiSemis, setIsBypassingGironiSemis] = useState(false);
+ const [draftGironiSemis, setDraftGironiSemis] = useState<Match[]>([]);
+ const [isBypassingGironiFinals, setIsBypassingGironiFinals] = useState(false);
+ const [draftGironiFinals, setDraftGironiFinals] = useState<Match[]>([]);
+ const [isBypassingRoundRobinFinals, setIsBypassingRoundRobinFinals] = useState(false);
+ const [draftRoundRobinFinals, setDraftRoundRobinFinals] = useState<Omit<Match, 'id' | 'date' | 'winner' | 'sets'>[]>([]);
+ const [isCustomizedPlayoffs, setIsCustomizedPlayoffs] = useState(false);
+
+ const allTournamentPlayers = useMemo(() => {
+  const map = new Map<string, Player>();
+  pairs.flat().forEach(p => {
+   if (p && p.id && !map.has(p.id)) {
+    map.set(p.id, p);
+   }
+  });
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+ }, [pairs]);
  const [americanoRounds, setAmericanoRounds] = useState(2);
  const [americanoScoringType, setAmericanoScoringType] = useState<'games-diff' | 'points'>('games-diff');
 
@@ -935,6 +957,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  status: 'completed' as const,
  numGironi: gironi.length,
  gironiPlayoffType,
+ playoffsCustomized: isCustomizedPlayoffs,
  };
 
  await addMultipleMatches(allMatches, tournamentData);
@@ -1300,6 +1323,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  ,roundRobinPlayoffType,
  roundRobinFields,
  roundRobinHomeAway: roundRobinHomeAway,
+ playoffsCustomized: isCustomizedPlayoffs,
  };
 
  const finalMatches: Omit<Match, 'id'>[] = allMatches.map((match, index) => {
@@ -2698,191 +2722,280 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     }
 
     if (step === 'gironi-quarterfinals') {
+      const activeMatches = isBypassingGironiQuarters ? draftGironiQuarters : gironiQuarterfinalsMatches;
+      const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+      const handleStartBypass = () => {
+        setDraftGironiQuarters(JSON.parse(JSON.stringify(gironiQuarterfinalsMatches)));
+        setIsBypassingGironiQuarters(true);
+      };
+
+      const handleConfirmNewPairs = () => {
+        const err = validatePlayoffPhaseTeams(draftGironiQuarters);
+        if (err) {
+          showHIGAlert(err);
+          return;
+        }
+        setGironiQuarterfinalsMatches(draftGironiQuarters);
+        setIsCustomizedPlayoffs(true);
+        setIsBypassingGironiQuarters(false);
+      };
+
+      const handleCancelBypass = () => {
+        setIsBypassingGironiQuarters(false);
+        setDraftGironiQuarters([]);
+      };
+
       return (
         <Card title="Quarti di Finale">
           <div className="space-y-6 px-1">
-            {gironiQuarterfinalsMatches.map((match, idx) => {
-              const team1Pair = pairs.find(pair => pair.some(player => player.id === match.team1[0]));
-              const team2Pair = pairs.find(pair => pair.some(player => player.id === match.team2[0]));
-              if (!team1Pair || !team2Pair) return null;
-              return (
-                <div key={match.id || idx} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2 mb-3">
-                  <div className="text-center pb-1 border-b border-gray-100 dark:border-gray-700/40">
-                    <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Quarto {idx + 1}</h4>
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    <div className="min-w-0 text-left">
-                      <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
-                    </div>
-                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">VS</div>
-                    <div className="min-w-0 text-right">
-                      <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
-                    </div>
-                  </div>
-                  <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">
-                    <MatchScoreInput
-                      sets={match.sets}
-                      onSetsChange={(sets) => setGironiQuarterfinalsMatches(current => current.map((item, index) => index === idx ? { ...item, sets } : item))}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            <PlayoffBypassHeader
+              title="Quarti di Finale"
+              subtitle="Le migliori coppie dei gironi si sfidano nei quarti"
+              isEditing={isBypassingGironiQuarters}
+              onStartBypass={handleStartBypass}
+              onConfirmNewPairs={handleConfirmNewPairs}
+              onCancelBypass={handleCancelBypass}
+              isCustomized={isCustomizedPlayoffs}
+            />
+
+            {activeMatches.map((match, idx) => (
+              <PlayoffMatchCard
+                key={match.id || idx}
+                title={`Quarto ${idx + 1}`}
+                matchIndex={idx}
+                team1={match.team1}
+                team2={match.team2}
+                sets={match.sets || []}
+                onSetsChange={isBypassingGironiQuarters ? undefined : (sets) => {
+                  setGironiQuarterfinalsMatches(current => current.map((item, index) => index === idx ? { ...item, sets } : item));
+                }}
+                isEditing={isBypassingGironiQuarters}
+                tournamentPlayers={allTournamentPlayers}
+                selectedPlayerIdsInPhase={selectedPlayerIds}
+                onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                  setDraftGironiQuarters(prev => {
+                    const updated = [...prev];
+                    const currentMatch = { ...updated[mIdx] };
+                    const team = [...currentMatch[teamKey]] as [string, string];
+                    team[playerIdx] = newPlayerId;
+                    currentMatch[teamKey] = team;
+                    updated[mIdx] = currentMatch;
+                    return updated;
+                  });
+                }}
+                getPlayerById={getPlayerById}
+                bgColor="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm"
+                titleColor="text-gray-800 dark:text-gray-200"
+              />
+            ))}
+
             {resultValidationError && <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-300">{resultValidationError}</p>}
-            <div className="flex gap-3 mt-6">
-              <Button onClick={() => setStep('gironi-standings-intro')} variant="outline" className="flex-1">Indietro</Button>
-              <Button onClick={handleQuarterfinalsComplete} className="flex-1">Conferma Quarti e Passa alle Semifinali</Button>
-            </div>
+
+            {!isBypassingGironiQuarters && (
+              <div className="flex gap-3 mt-6">
+                <Button onClick={() => setStep('gironi-standings-intro')} variant="outline" className="flex-1">Indietro</Button>
+                <Button onClick={handleQuarterfinalsComplete} className="flex-1">Conferma Quarti e Passa alle Semifinali</Button>
+              </div>
+            )}
           </div>
         </Card>
       );
     }
 
     if (step === 'gironi-semifinals') {
+      const activeMatches = isBypassingGironiSemis ? draftGironiSemis : gironiSemifinalsMatches;
+      const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+      const handleStartBypass = () => {
+        setDraftGironiSemis(JSON.parse(JSON.stringify(gironiSemifinalsMatches)));
+        setIsBypassingGironiSemis(true);
+      };
+
+      const handleConfirmNewPairs = () => {
+        const err = validatePlayoffPhaseTeams(draftGironiSemis);
+        if (err) {
+          showHIGAlert(err);
+          return;
+        }
+        setGironiSemifinalsMatches(draftGironiSemis);
+        setIsCustomizedPlayoffs(true);
+        setIsBypassingGironiSemis(false);
+      };
+
+      const handleCancelBypass = () => {
+        setIsBypassingGironiSemis(false);
+        setDraftGironiSemis([]);
+      };
+
       return (
         <Card title="Semifinali">
           <div className="space-y-6 px-1">
-            {gironiSemifinalsMatches.map((match, idx) => {
-              const team1Pair = pairs.find(p =>
-                (p[0].id === match.team1[0] && p[1].id === match.team1[1]) ||
-                (p[0].id === match.team1[1] && p[1].id === match.team1[0])
-              );
-              const team2Pair = pairs.find(p =>
-                (p[0].id === match.team2[0] && p[1].id === match.team2[1]) ||
-                (p[0].id === match.team2[1] && p[1].id === match.team2[0])
-              );
+            <PlayoffBypassHeader
+              title="Semifinali"
+              subtitle="Le coppie qualificate si sfidano nelle semifinali"
+              isEditing={isBypassingGironiSemis}
+              onStartBypass={handleStartBypass}
+              onConfirmNewPairs={handleConfirmNewPairs}
+              onCancelBypass={handleCancelBypass}
+              isCustomized={isCustomizedPlayoffs}
+            />
 
-              if (!team1Pair || !team2Pair) return null;
-
-              return (
-                <div key={idx} className="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2 mb-3">
-                  <div className="text-center pb-1 border-b border-green-200/50 dark:border-green-800/30">
-                    <h4 className="font-bold text-sm text-green-900 dark:text-green-300">Semifinale {idx + 1}</h4>
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    <div className="min-w-0 text-left">
-                      <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra A</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
-                    </div>
-                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-green-200/60 dark:bg-green-800/40 text-[10px] font-black text-green-700 dark:text-green-300">VS</div>
-                    <div className="min-w-0 text-right">
-                      <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra B</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
-                    </div>
-                  </div>
-                  <div className="pt-2 flex justify-center border-t border-green-200/50 dark:border-green-800/30">
-                    <MatchScoreInput
-                      sets={match.sets}
-                      onSetsChange={(sets) => {
-                        const newMatches = [...gironiSemifinalsMatches];
-                        newMatches[idx] = { ...match, sets };
-                        setGironiSemifinalsMatches(newMatches);
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={() => setStep(gironiPlayoffType === 'quarterfinals' ? 'gironi-quarterfinals' : 'gironi-phase')}
-                variant="outline"
-                className="flex-1"
-              >
-                Indietro
-              </Button>
-              <Button
-                onClick={() => {
-                  handleSemifinalsComplete();
+            {activeMatches.map((match, idx) => (
+              <PlayoffMatchCard
+                key={match.id || idx}
+                title={`Semifinale ${idx + 1}`}
+                matchIndex={idx}
+                team1={match.team1}
+                team2={match.team2}
+                sets={match.sets || []}
+                onSetsChange={isBypassingGironiSemis ? undefined : (sets) => {
+                  const newMatches = [...gironiSemifinalsMatches];
+                  newMatches[idx] = { ...match, sets };
+                  setGironiSemifinalsMatches(newMatches);
                 }}
-                className="flex-1"
-              >
-                Conferma Semifinali e Passa alle Finali
-              </Button>
-            </div>
+                isEditing={isBypassingGironiSemis}
+                tournamentPlayers={allTournamentPlayers}
+                selectedPlayerIdsInPhase={selectedPlayerIds}
+                onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                  setDraftGironiSemis(prev => {
+                    const updated = [...prev];
+                    const currentMatch = { ...updated[mIdx] };
+                    const team = [...currentMatch[teamKey]] as [string, string];
+                    team[playerIdx] = newPlayerId;
+                    currentMatch[teamKey] = team;
+                    updated[mIdx] = currentMatch;
+                    return updated;
+                  });
+                }}
+                getPlayerById={getPlayerById}
+                bgColor="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 shadow-sm"
+                titleColor="text-green-900 dark:text-green-300"
+              />
+            ))}
+
+            {resultValidationError && <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-300">{resultValidationError}</p>}
+
+            {!isBypassingGironiSemis && (
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={() => setStep(gironiPlayoffType === 'quarterfinals' ? 'gironi-quarterfinals' : 'gironi-phase')}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Indietro
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleSemifinalsComplete();
+                  }}
+                  className="flex-1"
+                >
+                  Conferma Semifinali e Passa alle Finali
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
       );
     }
 
     if (step === 'gironi-finals') {
+      const activeMatches = isBypassingGironiFinals ? draftGironiFinals : gironiFinalsMatches;
+      const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+      const handleStartBypass = () => {
+        setDraftGironiFinals(JSON.parse(JSON.stringify(gironiFinalsMatches)));
+        setIsBypassingGironiFinals(true);
+      };
+
+      const handleConfirmNewPairs = () => {
+        const err = validatePlayoffPhaseTeams(draftGironiFinals);
+        if (err) {
+          showHIGAlert(err);
+          return;
+        }
+        setGironiFinalsMatches(draftGironiFinals);
+        setIsCustomizedPlayoffs(true);
+        setIsBypassingGironiFinals(false);
+      };
+
+      const handleCancelBypass = () => {
+        setIsBypassingGironiFinals(false);
+        setDraftGironiFinals([]);
+      };
+
       return (
         <Card title="Finali">
           <div className="space-y-6 px-1">
-            {gironiFinalsMatches.map((match, idx) => {
+            <PlayoffBypassHeader
+              title="Finali"
+              subtitle="Ultimi match per determinare il podio"
+              isEditing={isBypassingGironiFinals}
+              onStartBypass={handleStartBypass}
+              onConfirmNewPairs={handleConfirmNewPairs}
+              onCancelBypass={handleCancelBypass}
+              isCustomized={isCustomizedPlayoffs}
+            />
+
+            {activeMatches.map((match, idx) => {
               const isFinale = idx === 1; // Index 1 = finale 1°-2°
               const title = isFinale ? "Finale 1°-2° Posto" : "Finalina 3°-4° Posto";
 
-              const team1Pair = pairs.find(p =>
-                (p[0].id === match.team1[0] && p[1].id === match.team1[1]) ||
-                (p[0].id === match.team1[1] && p[1].id === match.team1[0])
-              );
-              const team2Pair = pairs.find(p =>
-                (p[0].id === match.team2[0] && p[1].id === match.team2[1]) ||
-                (p[0].id === match.team2[1] && p[1].id === match.team2[0])
-              );
-
-              if (!team1Pair || !team2Pair) return null;
-
-              const matchKey = `final-${match.team1.join('-')}-vs-${match.team2.join('-')}`;
-
               return (
-                <div key={matchKey} className="bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2 mb-3">
-                  <div className="text-center pb-1 border-b border-black/5 dark:border-white/5">
-                    <h4 className="font-bold text-sm text-green-900 dark:text-green-300">{title}</h4>
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    <div className="min-w-0 text-left">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team1Pair[1])}</p>
-                    </div>
-                    <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[10px] font-black text-slate-500">VS</div>
-                    <div className="min-w-0 text-right">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[0])}</p>
-                      <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{formatPlayerShortName(team2Pair[1])}</p>
-                    </div>
-                  </div>
-                  <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
-                    <MatchScoreInput
-                      sets={match.sets}
-                      onSetsChange={(sets) => {
-                        const newMatches = [...gironiFinalsMatches];
-                        newMatches[idx] = { ...match, sets };
-                        setGironiFinalsMatches(newMatches);
-                      }}
-                    />
-                  </div>
-                </div>
+                <PlayoffMatchCard
+                  key={match.id || idx}
+                  title={title}
+                  matchIndex={idx}
+                  team1={match.team1}
+                  team2={match.team2}
+                  sets={match.sets || []}
+                  onSetsChange={isBypassingGironiFinals ? undefined : (sets) => {
+                    const newMatches = [...gironiFinalsMatches];
+                    newMatches[idx] = { ...match, sets };
+                    setGironiFinalsMatches(newMatches);
+                  }}
+                  isEditing={isBypassingGironiFinals}
+                  tournamentPlayers={allTournamentPlayers}
+                  selectedPlayerIdsInPhase={selectedPlayerIds}
+                  onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                    setDraftGironiFinals(prev => {
+                      const updated = [...prev];
+                      const currentMatch = { ...updated[mIdx] };
+                      const team = [...currentMatch[teamKey]] as [string, string];
+                      team[playerIdx] = newPlayerId;
+                      currentMatch[teamKey] = team;
+                      updated[mIdx] = currentMatch;
+                      return updated;
+                    });
+                  }}
+                  getPlayerById={getPlayerById}
+                  bgColor="bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 shadow-sm"
+                  titleColor="text-green-900 dark:text-green-300"
+                />
               );
             })}
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={() => setStep('gironi-semifinals')}
-                variant="outline"
-                className="flex-1"
-              >
-                Indietro
-              </Button>
-              <Button
-                onClick={() => {
-                  handleGironiFinalsConfirm();
-                }}
-                className="flex-1"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Salvataggio...' : 'Conferma Risultati'}
-              </Button>
-            </div>
+            {!isBypassingGironiFinals && (
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={() => setStep('gironi-semifinals')}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Indietro
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleGironiFinalsConfirm();
+                  }}
+                  className="flex-1"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Salvataggio...' : 'Conferma Risultati'}
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
       );
@@ -3608,126 +3721,152 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
 
  if (step === 'finals') {
- return (
- <>
- <Card title="Finali - Round Robin + Finali">
- <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900 rounded-lg">
- <h3 className="font-semibold text-emerald-800 dark:text-emerald-200">Fase Finale</h3>
- <p className="text-sm text-emerald-700 dark:text-emerald-300">Inserisci i risultati delle finali per determinare la classifica finale.</p>
- </div>
+  const activeRoundRobinFinals = isBypassingRoundRobinFinals ? draftRoundRobinFinals : finalsMatches;
+  const activeFinalsAsMatches = activeRoundRobinFinals.map((m, i) => ({
+   ...m,
+   id: `temp-final-${i}`,
+   date: tournamentDate,
+   sets: finalsScores[i] || [{ team1: 0, team2: 0 }],
+   winner: null,
+  }) as Match);
+  const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeFinalsAsMatches);
 
- {/* Show Round Robin standings */}
- <div className="mb-6">
- <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Classifica Round Robin</h4>
- <div className="overflow-x-auto">
- <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
- <thead className="bg-gray-50 dark:bg-gray-800">
- <tr>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pos</th>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Squadra</th>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Punti</th>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">GW</th>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">GL</th>
- <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diff</th>
- </tr>
- </thead>
- <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
- {roundRobinStandings.map((standing, index) => (
- <tr key={index} className={index < 4 ?"bg-green-50 dark:bg-green-900" :""}>
- <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
- {index + 1}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.points}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gamesWon}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gamesLost}
- </td>
- <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
- {standing.gameDifference}
- </td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Le prime 4 squadre (evidenziate in verde) sono qualificate per le finali.</p>
- </div>
+  const handleStartBypass = () => {
+   setDraftRoundRobinFinals(JSON.parse(JSON.stringify(finalsMatches)));
+   setIsBypassingRoundRobinFinals(true);
+  };
 
- {/* Finals matches */}
- <div className="space-y-6 px-4">
- <h4 className="font-semibold text-gray-700 dark:text-gray-300">Partite Finali</h4>
- {finalsMatches.map((match, index) => {
- const team1 = getTeamPlayers(match.team1);
- const team2 = getTeamPlayers(match.team2);
- if (!team1 || !team2) return null;
+  const handleConfirmNewPairs = () => {
+   const err = validatePlayoffPhaseTeams(activeFinalsAsMatches);
+   if (err) {
+    showHIGAlert(err);
+    return;
+   }
+   setFinalsMatches(draftRoundRobinFinals);
+   setIsCustomizedPlayoffs(true);
+   setIsBypassingRoundRobinFinals(false);
+  };
 
- const isFinalePrimoSecondo = index === 0;
+  const handleCancelBypass = () => {
+   setIsBypassingRoundRobinFinals(false);
+   setDraftRoundRobinFinals([]);
+  };
+
   return (
-  <div key={index} className={`p-3.5 rounded-2xl border shadow-sm space-y-3 ${isFinalePrimoSecondo ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-600' : 'bg-sky-50/70 dark:bg-sky-950/20 border-sky-400 dark:border-sky-600'}`}>
-    <div className="flex items-center justify-between pb-1.5 border-b border-black/5 dark:border-white/5">
-      <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isFinalePrimoSecondo ? 'text-emerald-700 dark:text-emerald-300' : 'text-sky-700 dark:text-sky-300'}`}>
-        {isFinalePrimoSecondo ? (
-          <>
-            <span className="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-[10px]">1°</span>
-            Finale 1°-2° Posto
-          </>
-        ) : (
-          <>
-            <span className="w-5 h-5 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-[10px]">3°</span>
-            Finale 3°-4° Posto
-          </>
-        )}
-      </span>
-      <span className="text-[10px] font-semibold text-slate-400">Campo {index + 1}</span>
-    </div>
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-      <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
-      </div>
-      <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
-      <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
-      </div>
-    </div>
-    <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
-      <MatchScoreInput
-        sets={finalsScores[index] || [{team1: 0, team2: 0}]}
-        onSetsChange={(sets) => handleFinalsSetsChange(index, sets)}
-      />
-    </div>
+  <>
+  <Card title="Finali - Round Robin + Finali">
+  <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900 rounded-lg">
+  <h3 className="font-semibold text-emerald-800 dark:text-emerald-200">Fase Finale</h3>
+  <p className="text-sm text-emerald-700 dark:text-emerald-300">Inserisci i risultati delle finali per determinare la classifica finale.</p>
   </div>
-  );
- })}
- </div>
 
- <div className="flex gap-3 mt-6">
- <Button
- onClick={() => setStep('scoring')}
- variant="outline"
- className="flex-1"
- disabled={isSubmitting || isTournamentSaved}
- >
- Indietro
- </Button>
- <Button
- onClick={handleRequestFinishFinals}
- className="flex-1"
- disabled={isSubmitting || isTournamentSaved}
- >
- {isSubmitting ? 'Finalizzando...' : isTournamentSaved ? 'Torneo Salvato' : 'Finalizza Torneo'}
- </Button>
- </div>
+  {/* Show Round Robin standings */}
+  <div className="mb-6">
+  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Classifica Round Robin</h4>
+  <div className="overflow-x-auto">
+  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+  <thead className="bg-gray-50 dark:bg-gray-800">
+  <tr>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pos</th>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Squadra</th>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Punti</th>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">GW</th>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">GL</th>
+  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diff</th>
+  </tr>
+  </thead>
+  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+  {roundRobinStandings.map((standing, index) => (
+  <tr key={index} className={index < 4 ?"bg-green-50 dark:bg-green-900" :""}>
+  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+  {index + 1}
+  </td>
+  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+  {formatPlayerShortName(standing.team[0])} & {formatPlayerShortName(standing.team[1])}
+  </td>
+  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+  {standing.points}
+  </td>
+  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+  {standing.gamesWon}
+  </td>
+  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+  {standing.gamesLost}
+  </td>
+  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+  {standing.gameDifference}
+  </td>
+  </tr>
+  ))}
+  </tbody>
+  </table>
+  </div>
+  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Le prime 4 squadre (evidenziate in verde) sono qualificate per le finali.</p>
+  </div>
+
+  {/* Finals matches */}
+  <div className="space-y-6 px-4">
+  <PlayoffBypassHeader
+   title="Partite Finali"
+   subtitle="Inserisci i risultati delle finali per determinare la classifica finale."
+   isEditing={isBypassingRoundRobinFinals}
+   onStartBypass={handleStartBypass}
+   onConfirmNewPairs={handleConfirmNewPairs}
+   onCancelBypass={handleCancelBypass}
+   isCustomized={isCustomizedPlayoffs}
+  />
+  {activeRoundRobinFinals.map((match, index) => {
+   const isFinalePrimoSecondo = index === 0;
+   return (
+    <PlayoffMatchCard
+     key={index}
+     title={isFinalePrimoSecondo ? "Finale 1°-2° Posto" : "Finale 3°-4° Posto"}
+     matchIndex={index}
+     team1={match.team1}
+     team2={match.team2}
+     sets={finalsScores[index] || [{team1: 0, team2: 0}]}
+     onSetsChange={isBypassingRoundRobinFinals ? undefined : (sets) => handleFinalsSetsChange(index, sets)}
+     isEditing={isBypassingRoundRobinFinals}
+     tournamentPlayers={allTournamentPlayers}
+     selectedPlayerIdsInPhase={selectedPlayerIds}
+     onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+      setDraftRoundRobinFinals(prev => {
+       const updated = [...prev];
+       const current = { ...updated[mIdx] };
+       const team = [...current[teamKey]] as [string, string];
+       team[playerIdx] = newPlayerId;
+       current[teamKey] = team;
+       updated[mIdx] = current;
+       return updated;
+      });
+     }}
+     getPlayerById={getPlayerById}
+     bgColor={isFinalePrimoSecondo ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-400 dark:border-emerald-600' : 'bg-sky-50/70 dark:bg-sky-950/20 border border-sky-400 dark:border-sky-600'}
+     titleColor={isFinalePrimoSecondo ? 'text-emerald-700 dark:text-emerald-300' : 'text-sky-700 dark:text-sky-300'}
+    />
+   );
+  })}
+  </div>
+
+  {!isBypassingRoundRobinFinals && (
+  <div className="flex gap-3 mt-6">
+  <Button
+  onClick={() => setStep('scoring')}
+  variant="outline"
+  className="flex-1"
+  disabled={isSubmitting || isTournamentSaved}
+  >
+  Indietro
+  </Button>
+  <Button
+  onClick={handleRequestFinishFinals}
+  className="flex-1"
+  disabled={isSubmitting || isTournamentSaved}
+  >
+  {isSubmitting ? 'Finalizzando...' : isTournamentSaved ? 'Torneo Salvato' : 'Finalizza Torneo'}
+  </Button>
+  </div>
+  )}
  </Card>
 
  {/* Confirmation Modal for Finals */}

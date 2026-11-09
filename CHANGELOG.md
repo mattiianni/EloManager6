@@ -1,3 +1,19 @@
+## v6.12.0 — 2026-11-09
+- **Bypass / Modifica Fasi Finali Calcolate (Risoluzione Errori Referto Cartaceo)**:
+  - Introdotto pulsante pill rosso **"Bypass / Modifica"** in alto a destra in tutte le fasi finali calcolate (Beat the Box semifinali/finali, Gironi quarti/semifinali/finali, Round Robin finali, Torneo Personale semifinali/finali).
+  - Flusso di sicurezza a 3 click senza pericoli:
+    1. Click su *"Bypass / Modifica"*: apertura modal informativo di allerta (*"Stai per modificare la fase finale del torneo. L'azione è irreversibile. Vuoi proseguire?"*).
+    2. Click su *"Sì, procedi"*: attivazione della modalità di modifica dei campi con selettori a tendina per ciascun giocatore delle coppie.
+    3. Click su *"Conferma Nuove Coppie"*: validazione rigorosa (nessun duplicato e coppie complete) e salvataggio delle nuove formazioni.
+  - Meccanismo di anti-duplicazione rigoroso: ogni giocatore già selezionato in uno slot della fase attiva viene disabilitato negli altri menu a tendina.
+  - Candidati selezionabili ristretti rigorosamente ai soli giocatori che hanno preso parte al torneo.
+  - Conservazione immediata dei punteggi eventualmente già digitati nelle partite.
+  - Aggiornamento ELO naturale e automatico sulle coppie effettivamente scese in campo.
+  - Persistenza DB: aggiunto flag `playoffs_customized` nella tabella `tournaments` con migrazione automatica `ALTER TABLE`.
+  - Componenti dedicati e riutilizzabili: `PlayoffBypassHeader.tsx`, `PlayoffMatchCard.tsx` e modulo helper `utils/playoffBypass.ts`.
+- **Suite di Test**:
+  - Creati 5 test unitari dedicati in `utils/playoffBypass.test.ts` per verifica anti-duplicazione, validazione coppie e mutazione match (158/158 test complessivi superati).
+
 ## v6.11.1 — 2026-11-09
 - **Stampa "Giocatori Singolo Torneo" con Filtro Automatico e Andamento ELO**:
   - Aggiunta nel modal di stampa dei giocatori (`PlayerPrintModal.tsx`) la terza opzione intermedia: **"Giocatori Singolo Torneo..."** con icona trofeo.

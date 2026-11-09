@@ -99,6 +99,8 @@ export interface Tournament {
     player_mode?: 'pairs' | 'singles';
     numCampi?: number;
     num_campi?: number;
+    playoffsCustomized?: boolean; // Se la fase finale è stata modificata manualmente (bypass)
+    playoffs_customized?: boolean;
 }
 
 export interface EloHistoryEntry {

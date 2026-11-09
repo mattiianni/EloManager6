@@ -233,6 +233,13 @@ async function ensureTablesExist() {
     } catch (error) {
         logger.debug('Final standings column update attempt', { message: error.message });
     }
+
+    // Add playoffs_customized column for tournaments with manual playoff bypass
+    try {
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS playoffs_customized BOOLEAN DEFAULT FALSE`;
+    } catch (error) {
+        logger.debug('Playoffs customized column update attempt', { message: error.message });
+    }
     
     // Add giornata_name column if it doesn't exist
     try {
@@ -1787,7 +1794,7 @@ app.get('/api/data', async (req, res) => {
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
                     t.playoff_type, t.gironi_playoff_type, t.round_robin_playoff_type, t.round_robin_fields, t.round_robin_home_away, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
-                    t.custom_flow_config, t.player_mode, t.num_campi,
+                    t.custom_flow_config, t.player_mode, t.num_campi, t.playoffs_customized,
                     c.config_completed AS team_tournament_config_completed,
                     d.round_number AS team_tournament_round_number,
                     d.team1_number AS team_tournament_team1_number,
@@ -1845,6 +1852,7 @@ app.get('/api/data', async (req, res) => {
             customFlowConfig: t.custom_flow_config || null,
             playerMode: t.player_mode || null,
             numCampi: t.num_campi || null,
+            playoffsCustomized: !!t.playoffs_customized,
             teamTournamentConfigCompleted: !!t.team_tournament_config_completed,
             teamTournamentRootId: t.team_tournament_root_id || null,
             teamTournamentRoundNumber: t.team_tournament_round_number || null,
@@ -2489,6 +2497,14 @@ app.put('/api/tournaments', async (req, res) => {
             UPDATE tournaments SET name = ${name}, club = ${club}, date = ${date}
             WHERE id = ${id} AND workspace_id = ${req.workspaceId};
         `;
+
+        if (req.body.playoffsCustomized !== undefined || req.body.playoffs_customized !== undefined) {
+            const isCustom = !!(req.body.playoffsCustomized ?? req.body.playoffs_customized);
+            await sql`
+                UPDATE tournaments SET playoffs_customized = ${isCustom}
+                WHERE id = ${id} AND workspace_id = ${req.workspaceId};
+            `;
+        }
 
         if (isTeamTournamentRoot) {
             await sql`
@@ -5744,8 +5760,8 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
 
         const queries = [
             sql`
-                INSERT INTO tournaments (id, name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, gironi_playoff_type, round_robin_playoff_type, round_robin_fields, round_robin_home_away, idempotency_key, custom_flow_config, player_mode, num_campi, workspace_id)
-                VALUES (${tournamentId}, ${String(tournament.name).trim()}, ${tournament.type}, ${tournament.date}, ${String(tournament.club).trim()}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${tournament.gironiPlayoffType || 'semifinals'}, ${tournament.roundRobinPlayoffType || null}, ${tournament.roundRobinFields || null}, ${!!tournament.roundRobinHomeAway}, ${idempotencyKey}, ${tournament.customFlowConfig ? JSON.stringify(tournament.customFlowConfig) : null}, ${tournament.playerMode || null}, ${tournament.numCampi || null}, ${req.workspaceId})
+                INSERT INTO tournaments (id, name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, gironi_playoff_type, round_robin_playoff_type, round_robin_fields, round_robin_home_away, idempotency_key, custom_flow_config, player_mode, num_campi, playoffs_customized, workspace_id)
+                VALUES (${tournamentId}, ${String(tournament.name).trim()}, ${tournament.type}, ${tournament.date}, ${String(tournament.club).trim()}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${tournament.gironiPlayoffType || 'semifinals'}, ${tournament.roundRobinPlayoffType || null}, ${tournament.roundRobinFields || null}, ${!!tournament.roundRobinHomeAway}, ${idempotencyKey}, ${tournament.customFlowConfig ? JSON.stringify(tournament.customFlowConfig) : null}, ${tournament.playerMode || null}, ${tournament.numCampi || null}, ${!!(tournament.playoffsCustomized || tournament.playoffs_customized)}, ${req.workspaceId})
             `,
             ...normalizedMatches.map(match => sql`
                 INSERT INTO matches (id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, group_number, phase)
@@ -5781,7 +5797,7 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
 // PUT /api/tournaments/complete - Complete a tournament (update status and calculate ELO)
 app.put('/api/tournaments/complete', async (req, res) => {
     try {
-        const { tournamentId } = req.body;
+        const { tournamentId, playoffs_customized } = req.body;
         if (!tournamentId) {
             return res.status(400).json({ code: 'TOURNAMENT_ID_REQUIRED', message: 'Tournament ID is required' });
         }
@@ -5868,7 +5884,11 @@ app.put('/api/tournaments/complete', async (req, res) => {
                 `);
             }
         }
-        queries.push(sql`UPDATE tournaments SET status = 'completed' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
+        if (playoffs_customized !== undefined) {
+            queries.push(sql`UPDATE tournaments SET status = 'completed', playoffs_customized = ${Boolean(playoffs_customized)} WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
+        } else {
+            queries.push(sql`UPDATE tournaments SET status = 'completed' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
+        }
         await sql.transaction(queries);
 
         logger.tournament('complete', tournamentId, { updatedPlayers: playerEloChanges.size, status: 'success' });

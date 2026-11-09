@@ -24,6 +24,9 @@ import { PrintIcon, BoxIcon } from './ui/Icons.tsx';
 import { printBeatTheBoxBlank, printBeatTheBoxComplete } from '../services/printService.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
+import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
+import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
+import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams, updateMatchPlayer } from '../utils/playoffBypass.ts';
 
 interface BeatTheBoxFlowProps {
  pairs: [Player, Player][];
@@ -53,6 +56,11 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  const [boxStandings, setBoxStandings] = useState<BoxStanding[]>([]);
  const [semifinalMatches, setSemifinalMatches] = useState<Match[]>([]);
  const [finalMatches, setFinalMatches] = useState<Match[]>([]);
+ const [isBypassingSemifinals, setIsBypassingSemifinals] = useState(false);
+ const [draftSemifinalMatches, setDraftSemifinalMatches] = useState<Match[]>([]);
+ const [isBypassingFinals, setIsBypassingFinals] = useState(false);
+ const [draftFinalMatches, setDraftFinalMatches] = useState<Match[]>([]);
+ const [isCustomizedPlayoffs, setIsCustomizedPlayoffs] = useState(false);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [showSuccessModal, setShowSuccessModal] = useState(false);
  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -66,6 +74,16 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  
  const numBoxes = calculateNumBoxes(pairs.length);
  const numPairs = pairs.length;
+
+ const allTournamentPlayers = useMemo(() => {
+  const map = new Map<string, Player>();
+  pairs.flat().forEach(p => {
+   if (p && p.id && !map.has(p.id)) {
+    map.set(p.id, p);
+   }
+  });
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+ }, [pairs]);
 
 	// Helper: client-side ELO change approximation (per tournament) for UI display
 	// Usa gli ELO CORRETTI del torneo (da tournamentStartingElos)
@@ -447,13 +465,27 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  playoffType
  );
  
- setFinalMatches(finals.map((m, i) => ({
- ...m,
- id: `final-${i}`,
- date: tournamentDate,
- tournamentId: 'temp',
- } as Match)));
+ const updatedFinals = finals.map((m, i) => {
+  let t1 = m.team1;
+  let t2 = m.team2;
+  if (i === 0 && semifinalMatches[0] && semifinalMatches[1]) {
+   t1 = sf1Winner === 'team1' ? semifinalMatches[0].team1 : semifinalMatches[0].team2;
+   t2 = sf2Winner === 'team1' ? semifinalMatches[1].team1 : semifinalMatches[1].team2;
+  } else if (i === 1 && semifinalMatches[0] && semifinalMatches[1]) {
+   t1 = sf1Winner === 'team1' ? semifinalMatches[0].team2 : semifinalMatches[0].team1;
+   t2 = sf2Winner === 'team1' ? semifinalMatches[1].team2 : semifinalMatches[1].team1;
+  }
+  return {
+   ...m,
+   team1: t1,
+   team2: t2,
+   id: `final-${i}`,
+   date: tournamentDate,
+   tournamentId: 'temp',
+  } as Match;
+ });
  
+ setFinalMatches(updatedFinals);
  setStep('finals');
  };
  
@@ -488,6 +520,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  matchIds: [],
  status: 'completed',
  giornataName: giornataName || undefined,
+ playoffsCustomized: isCustomizedPlayoffs,
  // Gli ELO vengono salvati automaticamente in elo_history dal server
  };
  
@@ -845,164 +878,199 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  }
  
  if (step === 'semifinals') {
- return (
- <>
- <Card title="Beat the Box - Semifinali">
- <div className="space-y-6">
- <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6 border border-ios-blue/20">
- <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-  <SFIcon name="trophy.fill" size={18} className="text-amber-500" />
-  <span>Qualificati alle Semifinali</span>
- </h3>
- <p className="text-sm text-gray-600 dark:text-gray-300">
- I primi 2 classificati di ogni box si sfidano nelle semifinali
- </p>
- </div>
- 
- {semifinalMatches.map((match, idx) => {
- const t1p1 = getPlayerById(match.team1[0]);
- const t1p2 = getPlayerById(match.team1[1]);
- const t2p1 = getPlayerById(match.team2[0]);
- const t2p2 = getPlayerById(match.team2[1]);
- 
- if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return null;
+  const activeMatches = isBypassingSemifinals ? draftSemifinalMatches : semifinalMatches;
+  const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+  const handleStartBypass = () => {
+   setDraftSemifinalMatches(JSON.parse(JSON.stringify(semifinalMatches)));
+   setIsBypassingSemifinals(true);
+  };
+
+  const handleConfirmNewPairs = () => {
+   const err = validatePlayoffPhaseTeams(draftSemifinalMatches);
+   if (err) {
+    showHIGAlert(err);
+    return;
+   }
+   setSemifinalMatches(draftSemifinalMatches);
+   setIsCustomizedPlayoffs(true);
+   setIsBypassingSemifinals(false);
+  };
+
+  const handleCancelBypass = () => {
+   setIsBypassingSemifinals(false);
+   setDraftSemifinalMatches([]);
+  };
+
   return (
-  <div key={idx} className="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16 p-3.5 rounded-xl shadow-sm space-y-2">
-    <div className="text-center pb-1 border-b border-green-200/50 dark:border-green-800/30">
-      <h4 className="font-bold text-sm text-green-900 dark:text-green-300">
-        Semifinale {idx + 1}
-      </h4>
-    </div>
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-      <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
-      </div>
-      <div className="shrink-0 px-2 py-0.5 rounded-full bg-green-200/60 dark:bg-green-800/40 text-[10px] font-black text-green-700 dark:text-green-300">VS</div>
-      <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-green-700/60 dark:text-green-400/60">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
-      </div>
-    </div>
-    <div className="pt-2 flex justify-center border-t border-green-200/50 dark:border-green-800/30">
-      <MatchScoreInput
-        sets={match.sets || []}
-        onSetsChange={(sets) => {
-          const newMatches = [...semifinalMatches];
-          const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
-          const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
-          const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
-          newMatches[idx] = { ...match, sets, winner };
-          setSemifinalMatches(newMatches);
-        }}
-      />
-    </div>
+  <>
+  <Card title="Beat the Box - Semifinali">
+  <div className="space-y-6">
+  <PlayoffBypassHeader
+   title="Qualificati alle Semifinali"
+   subtitle="I primi 2 classificati di ogni box si sfidano nelle semifinali"
+   isEditing={isBypassingSemifinals}
+   onStartBypass={handleStartBypass}
+   onConfirmNewPairs={handleConfirmNewPairs}
+   onCancelBypass={handleCancelBypass}
+   isCustomized={isCustomizedPlayoffs}
+  />
+
+  {activeMatches.map((match, idx) => (
+   <PlayoffMatchCard
+    key={match.id || idx}
+    title={`Semifinale ${idx + 1}`}
+    matchIndex={idx}
+    team1={match.team1}
+    team2={match.team2}
+    sets={match.sets || []}
+    onSetsChange={isBypassingSemifinals ? undefined : (sets) => {
+     const newMatches = [...semifinalMatches];
+     const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+     const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+     const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
+     newMatches[idx] = { ...match, sets, winner };
+     setSemifinalMatches(newMatches);
+    }}
+    isEditing={isBypassingSemifinals}
+    tournamentPlayers={allTournamentPlayers}
+    selectedPlayerIdsInPhase={selectedPlayerIds}
+    onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+     setDraftSemifinalMatches(prev => {
+      const updated = [...prev];
+      const currentMatch = { ...updated[mIdx] };
+      const team = [...currentMatch[teamKey]] as [string, string];
+      team[playerIdx] = newPlayerId;
+      currentMatch[teamKey] = team;
+      updated[mIdx] = currentMatch;
+      return updated;
+     });
+    }}
+    getPlayerById={getPlayerById}
+    bgColor="bg-green-50/70 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16"
+    titleColor="text-green-900 dark:text-green-300"
+   />
+  ))}
+
+  {!isBypassingSemifinals && (
+   <div className="flex gap-3 mt-6">
+   <Button
+   onClick={() => setStep('boxes')}
+   variant="outline"
+   className="flex-1"
+   >
+   Indietro
+   </Button>
+   <Button
+   onClick={handleSemifinalsComplete}
+   className="flex-1"
+   >
+   Procedi
+   </Button>
+   </div>
+  )}
   </div>
+  </Card>
+  {renderModals()}
+  </>
   );
- })}
- 
- <div className="flex gap-3 mt-6">
- <Button
- onClick={() => setStep('boxes')}
- variant="outline"
- className="flex-1"
- >
- Indietro
- </Button>
- <Button
- onClick={handleSemifinalsComplete}
- className="flex-1"
- >
- Procedi
- </Button>
- </div>
- </div>
- </Card>
- {renderModals()}
- </>
- );
  }
- 
+
  if (step === 'finals') {
- const hasConsolazione = numBoxes === 3; // Solo con 6 coppie
- 
- return (
- <>
- <Card title="Beat the Box - Finali">
- <div className="space-y-6">
- <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg mb-6">
- <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-  <SFIcon name="trophy.fill" size={18} className="text-amber-500" />
-  <span>Finali</span>
- </h3>
- <p className="text-sm text-gray-600 dark:text-gray-300">
- Ultimi match per determinare la classifica finale
- </p>
- </div>
- 
- {finalMatches.map((match, idx) => {
- const t1p1 = getPlayerById(match.team1[0]);
- const t1p2 = getPlayerById(match.team1[1]);
- const t2p1 = getPlayerById(match.team2[0]);
- const t2p2 = getPlayerById(match.team2[1]);
- 
- if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return null;
- 
- let matchTitle = '';
- let bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
- let titleColor = 'text-green-800 dark:text-green-400';
- 
- if (idx === 0) {
- matchTitle = 'Finale 1° - 2° Posto';
- bgColor = 'bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16';
- titleColor = 'text-green-900 dark:text-green-300';
- } else if (idx === 1) {
- matchTitle = 'Finalina 3° - 4° Posto';
- bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
- titleColor = 'text-green-800 dark:text-green-400';
- } else if (hasConsolazione && idx === 2) {
- matchTitle = 'Partita Consolazione';
- bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
- titleColor = 'text-green-800 dark:text-green-400';
- }
+  const hasConsolazione = numBoxes === 3; // Solo con 6 coppie
+  const activeMatches = isBypassingFinals ? draftFinalMatches : finalMatches;
+  const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
+
+  const handleStartBypassFinals = () => {
+   setDraftFinalMatches(JSON.parse(JSON.stringify(finalMatches)));
+   setIsBypassingFinals(true);
+  };
+
+  const handleConfirmNewPairsFinals = () => {
+   const err = validatePlayoffPhaseTeams(draftFinalMatches);
+   if (err) {
+    showHIGAlert(err);
+    return;
+   }
+   setFinalMatches(draftFinalMatches);
+   setIsCustomizedPlayoffs(true);
+   setIsBypassingFinals(false);
+  };
+
+  const handleCancelBypassFinals = () => {
+   setIsBypassingFinals(false);
+   setDraftFinalMatches([]);
+  };
+
   return (
-  <div key={idx} className={`${bgColor} p-3.5 rounded-xl shadow-sm space-y-2`}>
-    <div className="text-center pb-1 border-b border-black/5 dark:border-white/5">
-      <h4 className={`font-bold text-sm ${titleColor}`}>
-        {matchTitle}
-      </h4>
-    </div>
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-      <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
-      </div>
-      <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[10px] font-black text-slate-500">VS</div>
-      <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
-      </div>
-    </div>
-    <div className="pt-2 flex justify-center border-t border-black/5 dark:border-white/5">
-      <MatchScoreInput
-        sets={match.sets || []}
-        onSetsChange={(sets) => {
-          const newMatches = [...finalMatches];
-          const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
-          const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
-          const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
-          newMatches[idx] = { ...match, sets, winner };
-          setFinalMatches(newMatches);
-        }}
-      />
-    </div>
-  </div>
-  );
- })}
+  <>
+  <Card title="Beat the Box - Finali">
+  <div className="space-y-6">
+  <PlayoffBypassHeader
+   title="Finali"
+   subtitle="Ultimi match per determinare la classifica finale"
+   isEditing={isBypassingFinals}
+   onStartBypass={handleStartBypassFinals}
+   onConfirmNewPairs={handleConfirmNewPairsFinals}
+   onCancelBypass={handleCancelBypassFinals}
+   isCustomized={isCustomizedPlayoffs}
+  />
+
+  {activeMatches.map((match, idx) => {
+   let matchTitle = '';
+   let bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
+   let titleColor = 'text-green-800 dark:text-green-400';
+
+   if (idx === 0) {
+    matchTitle = 'Finale 1° - 2° Posto';
+    bgColor = 'bg-green-50 dark:bg-green-900/20 border border-green-300/50 dark:border-green-300/16';
+    titleColor = 'text-green-900 dark:text-green-300';
+   } else if (idx === 1) {
+    matchTitle = 'Finalina 3° - 4° Posto';
+    bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
+    titleColor = 'text-green-800 dark:text-green-400';
+   } else if (hasConsolazione && idx === 2) {
+    matchTitle = 'Partita Consolazione';
+    bgColor = 'bg-green-100 dark:bg-green-900/30 border border-green-400/50 dark:border-green-300/20';
+    titleColor = 'text-green-800 dark:text-green-400';
+   }
+
+   return (
+    <PlayoffMatchCard
+     key={match.id || idx}
+     title={matchTitle}
+     matchIndex={idx}
+     team1={match.team1}
+     team2={match.team2}
+     sets={match.sets || []}
+     onSetsChange={isBypassingFinals ? undefined : (sets) => {
+      const newMatches = [...finalMatches];
+      const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
+      const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
+      const winner = team1Games > team2Games ? 'team1' : team2Games > team1Games ? 'team2' : 'draw';
+      newMatches[idx] = { ...match, sets, winner };
+      setFinalMatches(newMatches);
+     }}
+     isEditing={isBypassingFinals}
+     tournamentPlayers={allTournamentPlayers}
+     selectedPlayerIdsInPhase={selectedPlayerIds}
+     onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+      setDraftFinalMatches(prev => {
+       const updated = [...prev];
+       const currentMatch = { ...updated[mIdx] };
+       const team = [...currentMatch[teamKey]] as [string, string];
+       team[playerIdx] = newPlayerId;
+       currentMatch[teamKey] = team;
+       updated[mIdx] = currentMatch;
+       return updated;
+      });
+     }}
+     getPlayerById={getPlayerById}
+     bgColor={bgColor}
+     titleColor={titleColor}
+    />
+   );
+  })}
  
  {/* Anteprima Classifica Squadre Finale */}
  {finalMatches.length > 0 && (

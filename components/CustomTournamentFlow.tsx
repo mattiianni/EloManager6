@@ -9,6 +9,9 @@ import { HIGSheet } from './ui/HIGSheet.tsx';
 import { PrintIcon, BoxIcon } from './ui/Icons.tsx';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
+import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
+import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
+import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
 import { CustomTournamentFlowConfig } from '../types/customTournament.ts';
 import { printCustomTournamentBlank, printCustomTournamentComplete } from '../services/printService.ts';
 import {
@@ -75,6 +78,21 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingCalendar, setIsSavingCalendar] = useState(false);
   const [tournamentStartingElos, setTournamentStartingElos] = useState<Map<string, number>>(new Map());
+  const [isBypassingSemifinals, setIsBypassingSemifinals] = useState(false);
+  const [draftSemifinalMatches, setDraftSemifinalMatches] = useState<Match[]>([]);
+  const [isBypassingFinals, setIsBypassingFinals] = useState(false);
+  const [draftFinalMatches, setDraftFinalMatches] = useState<Match[]>([]);
+  const [isCustomizedPlayoffs, setIsCustomizedPlayoffs] = useState(false);
+
+  const allTournamentPlayers = useMemo(() => {
+    const map = new Map<string, Player>();
+    pairs.flat().forEach(p => {
+      if (p && p.id && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [pairs]);
 
   // Helper: format names
   const formatName = (p?: Player) => (p ? `${p.name} ${p.surname}` : 'TBD');
@@ -302,6 +320,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
         customFlowConfig: config,
         playerMode: config?.playerMode,
         numCampi: config?.numCampi,
+        playoffsCustomized: isCustomizedPlayoffs,
       };
 
       await addMultipleMatches(allMatchesList, tournamentData);
@@ -365,6 +384,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
         customFlowConfig: config,
         playerMode: config?.playerMode,
         numCampi: config?.numCampi,
+        playoffsCustomized: isCustomizedPlayoffs,
       };
 
       await addMultipleMatches(allMatchesList, tournamentData);
@@ -780,212 +800,210 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
           )}
 
           {/* STEP 2: SEMIFINALI */}
-          {step === 'semifinals' && (
-            <div className="space-y-6">
-              <div className="p-4 bg-sky-50 dark:bg-sky-950/30 rounded-2xl border border-sky-200/60 dark:border-sky-500/20">
-                <h3 className="font-bold text-sky-900 dark:text-sky-200 text-sm mb-1 flex items-center gap-1.5">
-                  <SFIcon name="bolt.fill" size={15} className="text-sky-600 dark:text-sky-400" />
-                  <span>Semifinali in Contemporanea</span>
-                </h3>
-                <p className="text-xs text-sky-700 dark:text-sky-300">
-                  Le migliori coppie si affrontano su 2 campi. Le vincitrici giocheranno la Finale 1°-2° posto, le perdenti la Finale 3°-4° posto.
-                </p>
-              </div>
+          {step === 'semifinals' && (() => {
+            const activeMatches = isBypassingSemifinals ? draftSemifinalMatches : semifinalMatches;
+            const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {semifinalMatches.map((match, idx) => {
-                  const t1p1 = getPlayerById(match.team1[0]);
-                  const t1p2 = getPlayerById(match.team1[1]);
-                  const t2p1 = getPlayerById(match.team2[0]);
-                  const t2p2 = getPlayerById(match.team2[1]);
+            const handleStartBypass = () => {
+              setDraftSemifinalMatches(JSON.parse(JSON.stringify(semifinalMatches)));
+              setIsBypassingSemifinals(true);
+            };
 
-                  const isTeam1Winner = match.winner === 'team1';
-                  const isTeam2Winner = match.winner === 'team2';
+            const handleConfirmNewPairs = () => {
+              const err = validatePlayoffPhaseTeams(draftSemifinalMatches);
+              if (err) {
+                showHIGAlert(err);
+                return;
+              }
+              setSemifinalMatches(draftSemifinalMatches);
+              setIsCustomizedPlayoffs(true);
+              setIsBypassingSemifinals(false);
+            };
 
-                  return (
-                    <div
-                      key={match.id}
-                      className="bg-white dark:bg-slate-800 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3"
+            const handleCancelBypass = () => {
+              setIsBypassingSemifinals(false);
+              setDraftSemifinalMatches([]);
+            };
+
+            return (
+              <div className="space-y-6">
+                <PlayoffBypassHeader
+                  title="Semifinali in Contemporanea"
+                  subtitle="Le migliori coppie si affrontano su 2 campi. Le vincitrici giocheranno la Finale 1°-2° posto, le perdenti la Finale 3°-4° posto."
+                  isEditing={isBypassingSemifinals}
+                  onStartBypass={handleStartBypass}
+                  onConfirmNewPairs={handleConfirmNewPairs}
+                  onCancelBypass={handleCancelBypass}
+                  isCustomized={isCustomizedPlayoffs}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {activeMatches.map((match, idx) => (
+                    <PlayoffMatchCard
+                      key={match.id || idx}
+                      title={`Semifinale ${idx + 1}`}
+                      matchIndex={idx}
+                      team1={match.team1}
+                      team2={match.team2}
+                      sets={match.sets || [{ team1: 0, team2: 0 }]}
+                      onSetsChange={isBypassingSemifinals ? undefined : (sets) => handleSfScoreChange(idx, sets)}
+                      isEditing={isBypassingSemifinals}
+                      tournamentPlayers={allTournamentPlayers}
+                      selectedPlayerIdsInPhase={selectedPlayerIds}
+                      onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                        setDraftSemifinalMatches(prev => {
+                          const updated = [...prev];
+                          const currentMatch = { ...updated[mIdx] };
+                          const team = [...currentMatch[teamKey]] as [string, string];
+                          team[playerIdx] = newPlayerId;
+                          currentMatch[teamKey] = team;
+                          updated[mIdx] = currentMatch;
+                          return updated;
+                        });
+                      }}
+                      getPlayerById={getPlayerById}
+                      bgColor="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 shadow-sm"
+                      titleColor="text-sky-600 dark:text-sky-400"
+                    />
+                  ))}
+                </div>
+
+                {!isBypassingSemifinals && (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                    <Button onClick={() => setStep('boxes')} variant="outline" className="w-full sm:w-auto font-bold">
+                      ← Torna ai Box
+                    </Button>
+                    <Button
+                      onClick={() => handleSaveCalendar(false)}
+                      variant="success"
+                      disabled={isSavingCalendar}
+                      className="w-full sm:w-auto font-bold"
                     >
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-                        <span className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                          Semifinale {idx + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-400">Campo {match.courtNumber || idx + 1}</span>
-                      </div>
-
-                      {/* Squadra A vs Squadra B */}
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
-                        <div className={`min-w-0 text-left transition-colors ${isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra A</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}</div>
-                        </div>
-
-                        <div className="flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
-                            VS
-                          </span>
-                        </div>
-
-                        <div className={`min-w-0 text-right transition-colors ${isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra B</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}</div>
-                        </div>
-                      </div>
-
-                      {/* Score Input SOTTO */}
-                      <div className="pt-2 flex justify-center border-t border-slate-200/50 dark:border-white/5">
-                        <MatchScoreInput
-                          sets={match.sets || [{ team1: 0, team2: 0 }]}
-                          onSetsChange={(sets) => handleSfScoreChange(idx, sets)}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                      {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
+                    </Button>
+                    <Button
+                      onClick={handleProceedFromSemifinals}
+                      disabled={semifinalMatches.some(m => !m.winner)}
+                      className="w-full sm:flex-1 font-bold"
+                    >
+                      Procedi alle Finali →
+                    </Button>
+                  </div>
+                )}
               </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                <Button onClick={() => setStep('boxes')} variant="outline" className="w-full sm:w-auto font-bold">
-                  ← Torna ai Box
-                </Button>
-                <Button
-                  onClick={() => handleSaveCalendar(false)}
-                  variant="success"
-                  disabled={isSavingCalendar}
-                  className="w-full sm:w-auto font-bold"
-                >
-                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
-                </Button>
-                <Button
-                  onClick={handleProceedFromSemifinals}
-                  disabled={semifinalMatches.some(m => !m.winner)}
-                  className="w-full sm:flex-1 font-bold"
-                >
-                  Procedi alle Finali →
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* STEP 3: FINALI */}
-          {step === 'finals' && (
-            <div className="space-y-6">
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200/60 dark:border-amber-500/20">
-                <h3 className="font-bold text-amber-900 dark:text-amber-200 text-sm mb-1 flex items-center gap-1.5">
-                  <SFIcon name="trophy.fill" size={15} className="text-amber-500" />
-                  <span>Fase Finale</span>
-                </h3>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Inserisci i risultati delle finali per completare il torneo e aggiornare le classifiche ELO.
-                </p>
-              </div>
+          {step === 'finals' && (() => {
+            const activeMatches = isBypassingFinals ? draftFinalMatches : finalMatches;
+            const selectedPlayerIds = getAssignedPlayerIdsInPhase(activeMatches);
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {finalMatches.map((match, idx) => {
-                  const t1p1 = getPlayerById(match.team1[0]);
-                  const t1p2 = getPlayerById(match.team1[1]);
-                  const t2p1 = getPlayerById(match.team2[0]);
-                  const t2p2 = getPlayerById(match.team2[1]);
+            const handleStartBypass = () => {
+              setDraftFinalMatches(JSON.parse(JSON.stringify(finalMatches)));
+              setIsBypassingFinals(true);
+            };
 
-                  const isFirstPlaceMatch = match.phase === 'final_1_2';
-                  const isTeam1Winner = match.winner === 'team1';
-                  const isTeam2Winner = match.winner === 'team2';
+            const handleConfirmNewPairs = () => {
+              const err = validatePlayoffPhaseTeams(draftFinalMatches);
+              if (err) {
+                showHIGAlert(err);
+                return;
+              }
+              setFinalMatches(draftFinalMatches);
+              setIsCustomizedPlayoffs(true);
+              setIsBypassingFinals(false);
+            };
 
-                  return (
-                    <div
-                      key={match.id}
-                      className={`bg-white dark:bg-slate-800 rounded-2xl p-3.5 sm:p-5 border shadow-sm space-y-3 ${
-                        isFirstPlaceMatch
-                          ? 'border-amber-400/60 dark:border-amber-500/30 ring-1 ring-amber-400/30'
-                          : 'border-slate-200/80 dark:border-white/10'
-                      }`}
+            const handleCancelBypass = () => {
+              setIsBypassingFinals(false);
+              setDraftFinalMatches([]);
+            };
+
+            return (
+              <div className="space-y-6">
+                <PlayoffBypassHeader
+                  title="Fase Finale"
+                  subtitle="Inserisci i risultati delle finali per completare il torneo e aggiornare le classifiche ELO."
+                  isEditing={isBypassingFinals}
+                  onStartBypass={handleStartBypass}
+                  onConfirmNewPairs={handleConfirmNewPairs}
+                  onCancelBypass={handleCancelBypass}
+                  isCustomized={isCustomizedPlayoffs}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {activeMatches.map((match, idx) => {
+                    const isFirstPlaceMatch = match.phase === 'final_1_2';
+                    return (
+                      <PlayoffMatchCard
+                        key={match.id || idx}
+                        title={isFirstPlaceMatch ? "Finale 1° / 2° Posto" : "Finale 3° / 4° Posto"}
+                        matchIndex={idx}
+                        team1={match.team1}
+                        team2={match.team2}
+                        sets={match.sets || [{ team1: 0, team2: 0 }]}
+                        onSetsChange={isBypassingFinals ? undefined : (sets) => handleFinalScoreChange(idx, sets)}
+                        isEditing={isBypassingFinals}
+                        tournamentPlayers={allTournamentPlayers}
+                        selectedPlayerIdsInPhase={selectedPlayerIds}
+                        onPlayerChange={(mIdx, teamKey, playerIdx, newPlayerId) => {
+                          setDraftFinalMatches(prev => {
+                            const updated = [...prev];
+                            const currentMatch = { ...updated[mIdx] };
+                            const team = [...currentMatch[teamKey]] as [string, string];
+                            team[playerIdx] = newPlayerId;
+                            currentMatch[teamKey] = team;
+                            updated[mIdx] = currentMatch;
+                            return updated;
+                          });
+                        }}
+                        getPlayerById={getPlayerById}
+                        bgColor={
+                          isFirstPlaceMatch
+                            ? 'bg-white dark:bg-slate-800 border-amber-400/60 dark:border-amber-500/30 ring-1 ring-amber-400/30'
+                            : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-white/10'
+                        }
+                        titleColor={isFirstPlaceMatch ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'}
+                      />
+                    );
+                  })}
+                </div>
+
+                {!isBypassingFinals && (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                    <Button
+                      onClick={() => setStep(hasSemifinals ? 'semifinals' : 'boxes')}
+                      variant="outline"
+                      className="w-full sm:w-auto font-bold"
                     >
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-                        <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                          isFirstPlaceMatch ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'
-                        }`}>
-                          {isFirstPlaceMatch ? (
-                            <>
-                              <span className="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-extrabold text-[10px]">1°</span>
-                              <span>Finale 1° / 2° Posto</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="w-5 h-5 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-[10px]">3°</span>
-                              <span>Finale 3° / 4° Posto</span>
-                            </>
-                          )}
+                      ← Indietro
+                    </Button>
+                    <Button
+                      onClick={() => handleSaveCalendar(false)}
+                      variant="success"
+                      disabled={isSavingCalendar}
+                      className="w-full sm:w-auto font-bold"
+                    >
+                      {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
+                    </Button>
+                    <Button
+                      onClick={handleCompleteTournament}
+                      disabled={isSubmitting || finalMatches.some(m => !m.winner)}
+                      className="w-full sm:flex-1 font-bold"
+                    >
+                      {isSubmitting ? 'Salvataggio in corso...' : (
+                        <span className="flex items-center justify-center gap-1.5">
+                          <SFIcon name="trophy.fill" size={16} />
+                          <span>Completa Torneo</span>
                         </span>
-                        <span className="text-xs font-semibold text-slate-400">Campo {match.courtNumber || idx + 1}</span>
-                      </div>
-
-                      {/* Squadra A vs Squadra B */}
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
-                        <div className={`min-w-0 text-left transition-colors ${isTeam1Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra A</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>{t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>{t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}</div>
-                        </div>
-
-                        <div className="flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
-                            VS
-                          </span>
-                        </div>
-
-                        <div className={`min-w-0 text-right transition-colors ${isTeam2Winner ? 'text-amber-600 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Squadra B</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>{t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}</div>
-                          <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>{t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}</div>
-                        </div>
-                      </div>
-
-                      {/* Score Input SOTTO */}
-                      <div className="pt-2 flex justify-center border-t border-slate-200/50 dark:border-white/5">
-                        <MatchScoreInput
-                          sets={match.sets || [{ team1: 0, team2: 0 }]}
-                          onSetsChange={(sets) => handleFinalScoreChange(idx, sets)}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                <Button
-                  onClick={() => setStep(hasSemifinals ? 'semifinals' : 'boxes')}
-                  variant="outline"
-                  className="w-full sm:w-auto font-bold"
-                >
-                  ← Indietro
-                </Button>
-                <Button
-                  onClick={() => handleSaveCalendar(false)}
-                  variant="success"
-                  disabled={isSavingCalendar}
-                  className="w-full sm:w-auto font-bold"
-                >
-                  {isSavingCalendar ? 'Salvataggio...' : 'Salva Torneo in corso'}
-                </Button>
-                <Button
-                  onClick={handleCompleteTournament}
-                  disabled={isSubmitting || finalMatches.some(m => !m.winner)}
-                  className="w-full sm:flex-1 font-bold"
-                >
-                  {isSubmitting ? 'Salvataggio in corso...' : (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <SFIcon name="trophy.fill" size={16} />
-                      <span>Completa Torneo</span>
-                    </span>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </Card>
     </>
