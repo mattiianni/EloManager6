@@ -3555,14 +3555,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
                                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                   <div className="min-w-0 text-left">
                                     <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[0])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[1])}</p>
                                   </div>
                                   <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
                                   <div className="min-w-0 text-right">
                                     <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
-                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[0])}</p>
+                                    <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[1])}</p>
                                   </div>
                                 </div>
                                 <div className="pt-2 flex justify-center border-t border-slate-100 dark:border-white/5">
@@ -3604,14 +3604,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <div className="min-w-0 text-left">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[0])}</p>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team1[1])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[1])}</p>
       </div>
       <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
       <div className="min-w-0 text-right">
         <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[0])}</p>
-        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">{formatPlayerShortName(team2[1])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[0])}</p>
+        <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[1])}</p>
       </div>
     </div>
     <div className="pt-2 flex justify-center border-t border-slate-100 dark:border-white/5">

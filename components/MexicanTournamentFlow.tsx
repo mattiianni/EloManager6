@@ -298,7 +298,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                     2°
                                 </div>
                                 <div className="mt-2 text-center">
-                                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[140px]">
+                                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white break-words [overflow-wrap:anywhere]">
                                         {top3[1] ? formatPlayerShortName(top3[1].player) : '—'}
                                     </p>
                                     <p className="text-[10px] sm:text-xs text-slate-500">
@@ -313,7 +313,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                     1°
                                 </div>
                                 <div className="mt-2 text-center">
-                                    <p className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[160px]">
+                                    <p className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white break-words [overflow-wrap:anywhere] max-w-[120px] sm:max-w-[160px]">
                                         {top3[0] ? formatPlayerShortName(top3[0].player) : '—'}
                                     </p>
                                     <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400">
@@ -328,7 +328,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                     3°
                                 </div>
                                 <div className="mt-2 text-center">
-                                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[140px]">
+                                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white break-words [overflow-wrap:anywhere]">
                                         {top3[2] ? formatPlayerShortName(top3[2].player) : '—'}
                                     </p>
                                     <p className="text-[10px] sm:text-xs text-slate-500">
@@ -532,10 +532,10 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                                 <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                                                     Squadra A
                                                 </div>
-                                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug">
+                                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
                                                     {t1p1 ? formatPlayerShortName(t1p1) : 'TBD'}
                                                 </div>
-                                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug">
+                                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
                                                     {t1p2 ? formatPlayerShortName(t1p2) : 'TBD'}
                                                 </div>
                                             </div>
@@ -552,10 +552,10 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                                 <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                                                     Squadra B
                                                 </div>
-                                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug">
+                                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
                                                     {t2p1 ? formatPlayerShortName(t2p1) : 'TBD'}
                                                 </div>
-                                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug">
+                                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
                                                     {t2p2 ? formatPlayerShortName(t2p2) : 'TBD'}
                                                 </div>
                                             </div>
@@ -604,7 +604,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                             <td className="px-2.5 py-1.5 text-center font-bold text-slate-700 dark:text-slate-300">
                                                 {st.rank}°
                                             </td>
-                                            <td className="px-2.5 py-1.5 font-semibold text-slate-900 dark:text-white truncate max-w-[150px]">
+                                            <td className="px-2.5 py-1.5 font-semibold text-slate-900 dark:text-white break-words max-w-[150px]">
                                                 {formatPlayerShortName(st.player)}
                                             </td>
                                             <td className="px-2.5 py-1.5 text-center font-black text-sky-600 dark:text-sky-400">

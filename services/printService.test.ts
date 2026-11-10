@@ -177,6 +177,15 @@ describe('printService document helpers', () => {
             expect(elements['padel-print-style'].textContent).toContain('display: none !important');
             expect(elements['padel-print-style'].textContent).toContain('size: A4');
 
+            // Regressione iOS: nessuna regola globale (table, h1-h3, body...) fuori da @media print,
+            // altrimenti l'interfaccia dell'app viene ristilizzata finché non scatta afterprint.
+            const cssText: string = elements['padel-print-style'].textContent;
+            const printIdx = cssText.indexOf('@media print');
+            expect(printIdx).toBeGreaterThan(-1);
+            const outsidePrint = cssText.slice(0, printIdx);
+            expect(outsidePrint).not.toMatch(/\btable\s*\{/);
+            expect(outsidePrint).not.toMatch(/\bh1,\s*h2/);
+
             // Il titolo deve essere aggiornato
             expect(mockDocument.title).toBe('Test Stampa iOS');
 
@@ -314,6 +323,9 @@ describe('printService document helpers', () => {
             expect(result).toBe(true);
             expect(capturedHtml).toContain('Alessio Campinoti');
             expect(capturedHtml).toContain('TORNEO: Sociale Messicano');
+            // Regressione pagine bianche: nessun divisore .page-break e nessun break-after sulle schede
+            expect(capturedHtml).not.toContain('class="page-break"');
+            expect(capturedHtml).toContain('.player-page + .player-page');
             expect(capturedHtml).toContain('nel torneo');
 
             // Partite filtrate: solo le 2 partite del torneo Sociale Messicano (non m99 dell'altro torneo)

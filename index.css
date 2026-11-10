@@ -119,8 +119,8 @@
     --ios-tertiarySystemFill: rgba(118, 118, 128, 0.24);
     --ios-quaternarySystemFill: rgba(116, 116, 128, 0.18);
 
-    /* System Colors (Apple HIG — Dark) */
-    --ios-systemBlue: #0055D4;
+    /* System Colors (Apple HIG — Dark): blu più chiaro per contrasto AA su sfondo scuro */
+    --ios-systemBlue: #4C8DFF;
     --ios-systemGreen: #10B981;
     --ios-systemRed: #EF4444;
     --ios-systemOrange: #F59E0B;

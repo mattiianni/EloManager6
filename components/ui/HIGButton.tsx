@@ -58,7 +58,7 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
     case 'tinted':
       return {
         backgroundColor: 'var(--hig-btn-tint-bg, rgba(0, 85, 212, 0.12))',
-        color: '#0055D4',
+        color: 'var(--ios-systemBlue, #0055D4)',
         borderRadius: 9999,
       };
     case 'gray':
@@ -70,7 +70,7 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
     case 'plain':
       return {
         backgroundColor: 'transparent',
-        color: '#0055D4',
+        color: 'var(--ios-systemBlue, #0055D4)',
         borderRadius: 9999,
       };
     case 'destructive':
@@ -192,6 +192,12 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
           .hig-btn-responsive-regular { min-height: 38px !important; font-size: 14px !important; padding-left: 18px !important; padding-right: 18px !important; }
           .hig-btn-responsive-small   { min-height: 32px !important; font-size: 13px !important; padding-left: 14px !important; padding-right: 14px !important; }
         }
+        /* HIG: target touch minimo 44pt (dopo la regola desktop, così vince anche su iPad) */
+        @media (pointer: coarse) {
+          .hig-btn-responsive-large,
+          .hig-btn-responsive-regular { min-height: 44px !important; }
+          .hig-btn-responsive-small   { min-height: 36px !important; min-width: 36px !important; }
+        }
       `}</style>
       {/* Inject tint-background CSS custom property scoped to dark / light */}
       {variant === 'tinted' && (
@@ -203,6 +209,9 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
             .${TINT_SCOPE_CLASS} {
               --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
             }
+          }
+          .dark .${TINT_SCOPE_CLASS} {
+            --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
           }
           [data-theme="dark"] .${TINT_SCOPE_CLASS} {
             --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);

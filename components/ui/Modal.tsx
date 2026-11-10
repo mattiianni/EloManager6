@@ -45,6 +45,15 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         };
 
         const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element | null;
+            // Un HIGAlert/HIGSheet aperto sopra il modal vive in un portal separato:
+            // un click lì non deve chiudere il modal sottostante.
+            if (target && typeof target.closest === 'function') {
+                if (target.closest('[role="alertdialog"]')) return;
+                const overlay = target.closest('[role="presentation"]');
+                // Backdrop di un altro overlay (es. HIGAlert/HIGSheet): non è il backdrop di questo modal
+                if (overlay && overlay !== modalRef.current?.parentElement) return;
+            }
             if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
                 onClose();
             }
@@ -78,10 +87,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4 transition-all duration-300" role="presentation">
-            <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="fade-in flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[22px] border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl transition-all">
+            <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="fade-in flex max-h-[92vh] supports-[height:100dvh]:max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[22px] border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl transition-all">
                 <header className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 px-5 py-3.5 bg-white dark:bg-slate-900">
                     <h2 id={titleId} className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">{title}</h2>
-                    <button onClick={onClose} className="hig-focus-ring min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full border border-slate-200/80 dark:border-white/10 bg-slate-100/70 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/20 transition-all" aria-label="Chiudi finestra">
+                    <button onClick={onClose} className="hig-focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border border-slate-200/80 dark:border-white/10 bg-slate-100/70 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/20 transition-all" aria-label="Chiudi finestra">
                         <MaterialIcon name="close" className="text-[18px]" />
                     </button>
                 </header>

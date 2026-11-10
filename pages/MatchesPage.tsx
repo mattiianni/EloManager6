@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getAuthToken } from '../hooks/useAuth.tsx';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player, SetScore, Tournament, Match, TournamentType, TournamentStandingEntry } from '../types.ts';
@@ -377,6 +377,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
     // Nuovi stati per conferme e successi (Salvataggio Parziale e Conferma Chiusura Fasi)
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
     const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+    // Id temporanei già salvati sul DB durante un completamento Gironi: evita di ri-postare
+    // (e duplicare partite/ELO) se l'utente riprova dopo un errore a metà.
+    const gironiSavedTempIdsRef = useRef<Set<string>>(new Set());
     const [proceedConfirmData, setProceedConfirmData] = useState<{ isOpen: boolean; title: string; message: string; actionText: string; onConfirm: () => void }>({ isOpen: false, title: "", message: "", actionText: "", onConfirm: () => {} });
 
  useEffect(() => {
@@ -2599,8 +2602,8 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  </div>
  <div className="flex items-center space-x-2" onClick={e => e.stopPropagation()}>
- <Button variant="success" size="sm" onClick={() => handleOpenTournament(day)} className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><PencilIcon /></Button>
- <Button variant="danger" size="sm" onClick={() => handleDeleteTournament(day.id)} className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><TrashIcon /></Button>
+ <Button variant="success" size="sm" onClick={() => handleOpenTournament(day)} aria-label="Modifica giornata" className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><PencilIcon /></Button>
+ <Button variant="danger" size="sm" onClick={() => handleDeleteTournament(day.id)} aria-label="Elimina giornata" className="!p-1.5 [&_svg]:h-4 [&_svg]:w-4"><TrashIcon /></Button>
  </div>
  </div>
  {isDayExpanded && (
@@ -4502,13 +4505,14 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                  if (existingMatches.length > 0) {
                      await updateTournamentMatches(existingMatches.map(match => ({ matchId: match.id, sets: match.sets, winner: match.winner, team1: match.team1, team2: match.team2 })), true);
                  }
-                 for (const match of allNewMatches.filter(match => match.id.startsWith('temp'))) {
+                 for (const match of allNewMatches.filter(match => match.id.startsWith('temp') && !gironiSavedTempIdsRef.current.has(match.id))) {
                      const res = await fetch('/api/matches', {
                          method: 'POST',
                          headers: authHeaders(),
                          body: JSON.stringify({ ...match, tournamentId: tournament.id })
                      });
                      if(!res.ok) throw new Error('Failed to save match');
+                     gironiSavedTempIdsRef.current.add(match.id);
                  }
                  const compRes = await fetch('/api/tournaments/complete', {
                      method: 'PUT',
@@ -4516,6 +4520,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                      body: JSON.stringify({ tournamentId: tournament.id, playoffs_customized: tournament.playoffsCustomized || isCustomizedPlayoffs })
                  });
                  if(!compRes.ok) throw new Error('Failed to complete tournament');
+                 gironiSavedTempIdsRef.current.clear();
                  setShowGironiCompleteSuccess(true);
              } catch(err) {
                  console.error('Failed to complete tournament:', err);

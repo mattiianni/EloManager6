@@ -813,14 +813,14 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="min-w-0 text-left">
           <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
-          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p1.name} {t1p1.surname}</p>
-          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t1p2.name} {t1p2.surname}</p>
+          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t1p1.name} {t1p1.surname}</p>
+          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t1p2.name} {t1p2.surname}</p>
         </div>
         <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">VS</div>
         <div className="min-w-0 text-right">
           <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
-          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p1.name} {t2p1.surname}</p>
-          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate">{t2p2.name} {t2p2.surname}</p>
+          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t2p1.name} {t2p1.surname}</p>
+          <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t2p2.name} {t2p2.surname}</p>
         </div>
       </div>
       <div className="pt-2 flex justify-center border-t border-gray-100 dark:border-gray-700/40">

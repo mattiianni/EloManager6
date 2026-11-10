@@ -1,3 +1,22 @@
+## v6.12.3 — 2026-11-10
+- **Stampe su iOS (iPhone / iPad, Safari e app installata)**:
+  - Il CSS di stampa di `printInWindow` è ora limitato a `@media print`: durante la finestra di stampa non può più alterare l'interfaccia dell'app (tabelle, titoli, sfondo).
+  - Pulizia dopo la stampa più robusta: oltre ad `afterprint`, fallback su `matchMedia('print')` (con ritardo) e timeout di 10 minuti. Le regole `@page` di primo livello vengono riportate fuori da `@media print`.
+  - Avvio della stampa dopo `document.fonts.ready` e due frame, al posto del ritardo fisso di 150 ms.
+  - Profili giocatore: eliminato il divisore `.page-break` e le interruzioni triple; resta un'unica regola `break-before: page` tra una scheda e l'altra (risolve le pagine bianche).
+  - Barra di stampa: pulsanti a 44px, icona stampante dedicata e padding per la safe area. Rimosso il blocco dello zoom dal meta viewport dei documenti di stampa.
+- **Sicurezza**: tutti i nomi (giocatori, tornei, circoli, squadre) sono ora passati da `escapeHtml` nell'HTML di stampa, titolo del documento incluso (nessun doppio escape nei titoli).
+- **Backend / dati**:
+  - Trasferimento torneo tra workspace realmente atomico (`sql.transaction`), al posto di `BEGIN/COMMIT` non effettivi sul driver HTTP.
+  - Completamento torneo: l'ELO viene ripristinato anche per i giocatori usciti dalle partite (es. dopo un bypass delle fasi finali).
+  - `cascade-reset` atomico e limitato alle partite del torneo; `reset-all-elo` atomico e riservato agli admin.
+  - Partite amichevoli: validazione delle squadre prima di scrivere e aggiornamento ELO relativo (niente ELO `NaN` o aggiornamenti persi).
+  - Eliminazione giocatore limitata al workspace del chiamante. Avviso all'avvio in produzione se `JWT_SECRET` o `ADMIN_SECRET` non sono impostati.
+- **Logica tornei**: una finale non giocata non genera più un podio inventato (Round Robin + Finali e classifica finale). Il retry del completamento Gironi non duplica le partite già salvate. Lo store ignora le risposte `fetchData` fuori ordine e riusa la chiave di idempotenza nei retry di salvataggio.
+- **Interfaccia (Apple HIG)**: target touch da 44px su dispositivi touch, input a 16px su mobile (niente zoom automatico di Safari), blu più chiaro nel tema scuro, bottoni "tinted" coerenti con il toggle dell'app, nomi su due righe al posto del troncamento, icone vettoriali al posto di due emoji, etichette di accessibilità in italiano, `lang="it"`. Il modal non si chiude più cliccando su un alert aperto sopra di esso, chiusura a 44px e altezza con `dvh`.
+- **Documentazione**: istruzioni d'uso riscritte e allineate all'app (Home, Messicano, Bypass / Modifica, stampa su iOS, Admin, ELO), guida HTML e PDF aggiornati, italiano rivisto in guide, presentazione e testi promo. `RELEASE_ROUTINE.md` riscritta.
+- **Test**: 160 test (nuovi test su CSS di stampa limitato a `@media print`, assenza di pagine bianche e finali non giocate).
+
 ## v6.12.2 — 2026-11-09
 - **Paginazione e Interruzioni di Pagina Stampa Giocatori (1 Giocatore per Pagina)**:
   - Inserito divisore esplicito `.page-break` tra le schede profilo dei giocatori con `break-before: page`, `page-break-before: always`, `break-after: page`, `page-break-after: always`.

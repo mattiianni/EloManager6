@@ -111,7 +111,7 @@ export const generateRoundRobinPlayoffs = (
             return { quarters, matchesToSave: quarters };
         }
 
-        if (currentPhase === 'quarterfinals' && completedPhaseMatches && completedPhaseMatches.length === 4) {
+        if (currentPhase === 'quarterfinals' && completedPhaseMatches && completedPhaseMatches.length === 4 && completedPhaseMatches.every(m => m.winner === 'team1' || m.winner === 'team2')) {
             const winners = completedPhaseMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
             const semis: Match[] = [
                 // Semifinale A: Winner Q1 vs Winner Q4
@@ -138,7 +138,7 @@ export const generateRoundRobinPlayoffs = (
             return { semifinals: semis, matchesToSave: semis };
         }
 
-        if ((currentPhase === 'semifinals' || currentPhase === 'quarterfinals') && completedPhaseMatches && completedPhaseMatches.length === 2) {
+        if ((currentPhase === 'semifinals' || currentPhase === 'quarterfinals') && completedPhaseMatches && completedPhaseMatches.length === 2 && completedPhaseMatches.every(m => m.winner === 'team1' || m.winner === 'team2')) {
             const winners = completedPhaseMatches.map(m => m.winner === 'team1' ? m.team1 : m.team2);
             const losers = completedPhaseMatches.map(m => m.winner === 'team1' ? m.team2 : m.team1);
 

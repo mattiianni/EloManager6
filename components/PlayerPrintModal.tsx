@@ -241,7 +241,7 @@ export default function PlayerPrintModal({
                         <select
                             value={selectedGroupId}
                             onChange={e => setSelectedGroupId(e.target.value)}
-                            className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-sm font-medium text-slate-900 dark:text-white transition-all"
+                            className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-base sm:text-sm font-medium text-slate-900 dark:text-white transition-all"
                         >
                             <option value="">-- Seleziona un Torneo ({tournamentGroups.length} disponibili) --</option>
                             {tournamentGroups.map(g => (
@@ -325,7 +325,7 @@ export default function PlayerPrintModal({
                     placeholder="Cerca giocatori..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-sm transition-all"
+                    className="block w-full bg-slate-50/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 rounded-xl shadow-sm py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-base sm:text-sm transition-all"
                 />
 
                 <div className="flex justify-between items-center text-xs font-semibold px-1">

@@ -39,6 +39,7 @@ export const PDF_ICONS = {
     box: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>`,
     medal: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><circle cx="12" cy="15" r="5"/></svg>`,
     standings: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M11 16V8"/><path d="M15 16v-6"/><path d="M19 16V4"/></svg>`,
+    printer: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>`,
     zap: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
     calendar: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px; display: inline-block;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`,
     users: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px; display: inline-block;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
@@ -185,7 +186,7 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 z-index: 9999;
                 background: #0055D4;
                 color: #ffffff;
-                padding: 10px 16px;
+                padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -212,8 +213,9 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 color: #0055D4;
                 border: none;
                 border-radius: 8px;
-                padding: 6px 14px;
-                font-size: 12px;
+                padding: 10px 16px;
+                min-height: 44px;
+                font-size: 13px;
                 font-weight: 700;
                 cursor: pointer;
                 display: inline-flex;
@@ -226,8 +228,9 @@ export const getPrintStyles = (fontImport: boolean = false) => `
                 color: #ffffff;
                 border: 1px solid rgba(255, 255, 255, 0.3);
                 border-radius: 8px;
-                padding: 6px 12px;
-                font-size: 12px;
+                padding: 10px 14px;
+                min-height: 44px;
+                font-size: 13px;
                 font-weight: 600;
                 cursor: pointer;
             }
@@ -370,6 +373,43 @@ export const isIOS = (): boolean => {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+/**
+ * Estrae le regole `@page` di primo livello da un blocco CSS (ignora quelle annidate in @media).
+ * Servono perché il CSS di stampa viene racchiuso in `@media print`: WebKit non garantisce
+ * il supporto di `@page` annidato, quindi le regole top-level vengono riportate fuori.
+ */
+const hoistTopLevelPageRules = (css: string): { pageRules: string; rest: string } => {
+    let depth = 0;
+    let pageRules = '';
+    let rest = '';
+    let i = 0;
+    while (i < css.length) {
+        const ch = css[i];
+        if (depth === 0 && css.startsWith('@page', i)) {
+            const open = css.indexOf('{', i);
+            if (open !== -1) {
+                let d = 1;
+                let j = open + 1;
+                while (j < css.length && d > 0) {
+                    if (css[j] === '{') d++;
+                    else if (css[j] === '}') d--;
+                    j++;
+                }
+                if (d === 0) {
+                    pageRules += css.slice(i, j) + '\n';
+                    i = j;
+                    continue;
+                }
+            }
+        }
+        if (ch === '{') depth++;
+        else if (ch === '}') depth = Math.max(0, depth - 1);
+        rest += ch;
+        i++;
+    }
+    return { pageRules, rest };
+};
+
 export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
@@ -395,6 +435,9 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
 
         const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
 
+        const hoistedPageStyles = hoistTopLevelPageRules(pageStyles);
+        const hoistedExtracted = hoistTopLevelPageRules(extractedStyles);
+
         const styleEl = document.createElement('style');
         styleEl.id = 'padel-print-style';
         styleEl.textContent = `
@@ -402,10 +445,20 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
                 size: A4;
                 margin: 12mm 10mm;
             }
+            ${hoistedPageStyles.pageRules}
+            ${hoistedExtracted.pageRules}
             #padel-print-root {
                 display: none !important;
             }
             @media print {
+                html {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    overflow: visible !important;
+                }
+                #root {
+                    display: none !important;
+                }
                 html, body {
                     width: 100% !important;
                     height: auto !important;
@@ -432,10 +485,10 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
                     padding: 0 !important;
                     overflow: visible !important;
                 }
-                ${pageStyles}
-                ${extractedStyles}
+                ${basePrintCss}
+                ${hoistedPageStyles.rest}
+                ${hoistedExtracted.rest}
             }
-            ${basePrintCss}
         `;
 
         const printRoot = document.createElement('div');
@@ -466,18 +519,58 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
             }
         };
 
-        window.addEventListener('afterprint', cleanup);
-        setTimeout(cleanup, 120000);
+        // iOS (specie PWA standalone) non emette sempre `afterprint`: ascoltiamo
+        // anche il cambio di media query `print` come fallback. Gli stili sono
+        // limitati a @media print, quindi un cleanup ritardato non altera l'app.
+        let mql: MediaQueryList | null = null;
+        let sawPrintMedia = false;
+        const onMediaChange = (ev: MediaQueryListEvent) => {
+            if (ev.matches) { sawPrintMedia = true; return; }
+            // Ritardo: su iOS la media query `print` può commutare mentre l'anteprima viene generata,
+            // prima che l'utente tocchi "Stampa" nel foglio di sistema.
+            if (sawPrintMedia) setTimeout(() => cleanup(), 1500);
+        };
+        try {
+            mql = window.matchMedia ? window.matchMedia('print') : null;
+            if (mql) {
+                if (mql.addEventListener) mql.addEventListener('change', onMediaChange);
+                else if ((mql as any).addListener) (mql as any).addListener(onMediaChange);
+            }
+        } catch { /* matchMedia non disponibile */ }
 
-        setTimeout(() => {
+        const baseCleanup = cleanup;
+        const fullCleanup = () => {
+            baseCleanup();
+            try {
+                window.removeEventListener('afterprint', fullCleanup);
+                if (mql) {
+                    if (mql.removeEventListener) mql.removeEventListener('change', onMediaChange);
+                    else if ((mql as any).removeListener) (mql as any).removeListener(onMediaChange);
+                }
+            } catch { /* noop */ }
+        };
+        window.addEventListener('afterprint', fullCleanup);
+        setTimeout(fullCleanup, 10 * 60 * 1000);
+
+        const startPrint = () => {
             try {
                 window.print();
             } catch (err) {
                 console.error('window.print error:', err);
-                cleanup();
+                fullCleanup();
                 showHIGAlert('Impossibile avviare la stampa su iOS.');
             }
-        }, 150);
+        };
+        const fontsReady: Promise<unknown> = (typeof document !== 'undefined' && (document as any).fonts && (document as any).fonts.ready)
+            ? Promise.race([(document as any).fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))])
+            : Promise.resolve();
+        fontsReady.then(() => {
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => requestAnimationFrame(startPrint));
+            } else {
+                setTimeout(startPrint, 50);
+            }
+        });
 
         return true;
     } catch (error) {
@@ -531,7 +624,7 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
             <div class="print-toolbar no-print">
                 <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
                 <div class="print-toolbar-actions">
-                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.box} Stampa / Salva PDF</button>
+                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa / Salva PDF</button>
                     <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
                 </div>
             </div>
@@ -541,8 +634,8 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
             <!DOCTYPE html>
             <html>
             <head>
-                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>${title}</title>
+                <meta name="viewport" content="width=1024, initial-scale=1.0">
+                <title>${escapeHtml(title)}</title>
                 <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles}</style>
                 ${getPrintStyles(true)}
             </head>
@@ -708,7 +801,7 @@ export const printChart = (chartContainerId: string): boolean => {
         <!DOCTYPE html>
         <html>
         <head>
-            <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <meta name="viewport" content="width=1024, initial-scale=1.0">
             <title>Grafico Andamento Storico ELO</title>
             ${getPrintStyles(true)}
             <style>${pageStyles}</style>
@@ -881,7 +974,7 @@ export const printEloChart = (
 
     const fullHtml = `<!DOCTYPE html><html>
 <head>
-    <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=1024, initial-scale=1.0">
     <title>Grafico Andamento Storico ELO</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -1431,7 +1524,7 @@ export const printTeamTournamentRoundRobinSchedule = (
 
     const teamNameByNumber = (teamNumber: number) => {
         const team = teams.find(t => t.teamNumber === teamNumber);
-        return team?.name || `Squadra ${teamNumber}`;
+        return escapeHtml(team?.name || `Squadra ${teamNumber}`);
     };
 
     // Defensive dedupe: some legacy/stale schedules could contain duplicates.
@@ -1536,12 +1629,12 @@ export const printTeamTournamentRoundRobinSchedule = (
             }
         </style>
         <div class="print-page">
-        <h1>${tournament.name}</h1>
-        <h2>${tournament.club}</h2>
+        <h1>${escapeHtml(tournament.name)}</h1>
+        <h2>${escapeHtml(tournament.club)}</h2>
         <div class="separator"></div>
         ${dayBlocks}
         <div class="footer">
-            <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+            <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
             <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
         </div>
         </div>
@@ -1565,8 +1658,8 @@ export const printTeamTournamentMatchdayCalendar = (
     // Copy the same visual language as other tournaments' blank printouts:
     // table layout + empty fields for handwriting results.
     const matchesContent = (matchday.subMatches || []).map((sm, idx) => {
-        const t1Players = (sm.team1Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
-        const t2Players = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
+        const t1Players = (sm.team1Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
+        const t2Players = (sm.team2Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
 
         return `
             <tr style="height: 22px;">
@@ -1664,8 +1757,8 @@ export const printTeamTournamentMatchdayCalendar = (
             }
         </style>
         <div class="print-page">
-        <h1>${tournament.name}</h1>
-        <h2>${tournament.club}</h2>
+        <h1>${escapeHtml(tournament.name)}</h1>
+        <h2>${escapeHtml(tournament.club)}</h2>
         <div class="separator"></div>
         <div class="meta">
             <div>${new Date(matchday.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</div>
@@ -1690,7 +1783,7 @@ export const printTeamTournamentMatchdayCalendar = (
             </tbody>
         </table>
         <div class="footer">
-            <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+            <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
             <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
         </div>
         </div>
@@ -1921,7 +2014,7 @@ const renderTeamTournamentPlayerStandingsTable = (
     const rows = sortedPlayers.map((p, idx) => `
         <tr style="height: 20px;">
             <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${idx + 1}</td>
-            <td style="font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700;">${p.name} ${p.surname}</td>
+            <td style="font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</td>
             <td style="font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; color: #4b5563;">${p.teamName}</td>
             <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb;">${p.matchesPlayed}</td>
             <td style="text-align:center; font-size: 10px; padding: 3px 4px; border: 1px solid #e5e7eb; font-weight: 700; color: #16a34a;">${p.matchesWon}</td>
@@ -1994,7 +2087,7 @@ const buildTeamTournamentFixtureContext = (
     const teamNameByNumber = (teamNumber: number | null | undefined) => {
         if (!teamNumber) return 'BYE';
         const team = teams.find(t => t.teamNumber === teamNumber);
-        return team?.name || `Squadra ${teamNumber}`;
+        return escapeHtml(team?.name || `Squadra ${teamNumber}`);
     };
 
     const matchdayByTournamentDayId = new Map<string, TeamTournamentMatchday>();
@@ -2186,18 +2279,19 @@ export const printTeamTournamentMatchdayReport = (
 
     const teamNameByNumber = (teamNumber: number) => {
         const team = teams.find(t => t.teamNumber === teamNumber);
-        return team?.name || `Squadra ${teamNumber}`;
+        return escapeHtml(team?.name || `Squadra ${teamNumber}`);
     };
 
     const team1Name = teamNameByNumber(matchday.team1Number);
     const team2Name = teamNameByNumber(matchday.team2Number);
-    const printTitle = `${team1Name} VS ${team2Name} - ${new Date(matchday.date || new Date()).toLocaleDateString('it-IT').replace(/\//g, '.')}`;
+    const rawTeamName = (teamNumber: number) => teams.find(t => t.teamNumber === teamNumber)?.name || `Squadra ${teamNumber}`;
+    const printTitle = `${rawTeamName(matchday.team1Number)} VS ${rawTeamName(matchday.team2Number)} - ${new Date(matchday.date || new Date()).toLocaleDateString('it-IT').replace(/\//g, '.')}`;
 
     const visibleSubMatches = (matchday.subMatches || []).filter(sm => !sm.cancelled);
 
     const matchRows = visibleSubMatches.map((sm, idx) => {
-        const t1Players = (sm.team1Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
-        const t2Players = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
+        const t1Players = (sm.team1Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
+        const t2Players = (sm.team2Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
         const sets = sm.sets;
         const scoreTextHtml = formatScoreBoxes(sets, false);
 
@@ -2314,8 +2408,8 @@ export const printTeamTournamentMatchdayReport = (
                 .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #666; }
             </style>
             <div class="print-page">
-                <h1>${tournament.name}</h1>
-                <h2>${tournament.club}</h2>
+                <h1>${escapeHtml(tournament.name)}</h1>
+                <h2>${escapeHtml(tournament.club)}</h2>
                 ${matchday.status !== 'completed' ? `
                 <div style="display:flex; justify-content:center; margin: 0 0 8px 0;">
                     <div style="display:inline-flex; align-items:center; border:1px solid #fcd34d; background:#fffbeb; color:#92400e; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800;">
@@ -2349,7 +2443,7 @@ export const printTeamTournamentMatchdayReport = (
                     ${reminderHtml}
                 </div>
                 <div class="footer">
-                    <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+                    <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
                     <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
                 </div>
             </div>
@@ -2426,8 +2520,8 @@ export const printTeamTournamentMatchdayReport = (
                 .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #666; }
 	        </style>
 	        <div class="print-page">
-	        <h1>${tournament.name}</h1>
-	        <h2>${tournament.club}</h2>
+	        <h1>${escapeHtml(tournament.name)}</h1>
+	        <h2>${escapeHtml(tournament.club)}</h2>
                 ${matchday.status !== 'completed' ? `
                 <div style="display:flex; justify-content:center; margin: 0 0 8px 0;">
                     <div style="display:inline-flex; align-items:center; border:1px solid #fcd34d; background:#fffbeb; color:#92400e; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800;">
@@ -2458,7 +2552,7 @@ export const printTeamTournamentMatchdayReport = (
 	            ${playerStandingsHtml}
 	        </div>
             <div class="footer">
-                <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+                <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
                 <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
             </div>
             </div>
@@ -2609,8 +2703,8 @@ export const printTeamTournamentReport = (
 
         const content = `
             <div class="print-page">
-                <h1>${tournament.name}</h1>
-                <h2>${tournament.club}</h2>
+                <h1>${escapeHtml(tournament.name)}</h1>
+                <h2>${escapeHtml(tournament.club)}</h2>
                 ${playedFixtures < totalFixtures ? `
                 <div style="display:flex; justify-content:center; margin: 0 0 8px 0;">
                     <div style="display:inline-flex; align-items:center; border:1px solid #fcd34d; background:#fffbeb; color:#92400e; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800;">
@@ -2626,7 +2720,7 @@ export const printTeamTournamentReport = (
                 </div>
                 ${bracketHtml}
                 <div class="footer">
-                    <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+                    <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
                     <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
                 </div>
             </div>
@@ -2652,7 +2746,7 @@ export const printTeamTournamentReport = (
 
     const teamNameByNumber = (teamNumber: number) => {
         const team = teams.find(t => t.teamNumber === teamNumber);
-        return team?.name || `Squadra ${teamNumber}`;
+        return escapeHtml(team?.name || `Squadra ${teamNumber}`);
     };
 
     const isFinalStageCompleted = (() => {
@@ -2716,8 +2810,8 @@ export const printTeamTournamentReport = (
 	        if (visible.length === 0) return '';
 
 	        const rows = visible.map((sm, idx) => {
-	            const rawT1 = (sm.team1Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
-	            const rawT2 = (sm.team2Players || []).map(p => `${p.name} ${p.surname}`.trim()).join(' & ');
+	            const rawT1 = (sm.team1Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
+	            const rawT2 = (sm.team2Players || []).map(p => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim()).join(' & ');
 
                 const t1Players = swap ? rawT2 : rawT1;
                 const t2Players = swap ? rawT1 : rawT2;
@@ -3016,7 +3110,7 @@ export const printTeamTournamentReport = (
                 return `
                 <tr style="height: 26px; ${medalStyle}">
                     <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; width: 52px; font-weight: 900;">${r.pos}.</td>
-                    <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; ${nameStyle}">${r.name}</td>
+                    <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; ${nameStyle}">${escapeHtml(r.name)}</td>
                 </tr>
                 `;
             })
@@ -3030,7 +3124,7 @@ export const printTeamTournamentReport = (
                 .filter(p => p.surname);
             if (roster.length === 0) return '—';
             return roster
-                .map((p, idx) => idx === 0 ? `${p.surname} (C)` : p.surname)
+                .map((p, idx) => idx === 0 ? `${escapeHtml(p.surname)} (C)` : escapeHtml(p.surname))
                 .join(', ');
         };
 
@@ -3052,7 +3146,7 @@ export const printTeamTournamentReport = (
                 return `
                     <div class="avoid-break" style="border: 1px solid #e5e7eb; padding: 10px 12px; ${bg} margin-top: 10px;">
                         <div style="font-size: 13px; font-weight: 900; color: #111; text-align: center;">
-                            ${ord} Classificata: ${r.name}
+                            ${ord} Classificata: ${escapeHtml(r.name)}
                         </div>
                         <div style="margin-top: 6px; font-size: 11px; color: #374151; text-align: center;">
                             ${roster}
@@ -3070,7 +3164,7 @@ export const printTeamTournamentReport = (
             .map(r => `
                 <tr style="height: 24px;">
                     <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; width: 52px; font-weight: 900;">${r.pos}.</td>
-                    <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; font-weight: 700;">${r.name}</td>
+                    <td style="text-align:center; font-size: 13px; padding: 7px 10px; border: 1px solid #e5e7eb; font-weight: 700;">${escapeHtml(r.name)}</td>
                 </tr>
             `)
             .join('');
@@ -3113,7 +3207,7 @@ export const printTeamTournamentReport = (
                 <div class="section-block">
                 <div style="border-bottom: 3px solid #1e3a6e; margin: 26px 0 26px 0;"></div>
                 <div style="font-size: 26px; margin: 0 0 10px 0; color: #111827; font-weight: 900; text-align: center;">
-                    Statistiche Torneo ${tournament.name}
+                    Statistiche Torneo ${escapeHtml(tournament.name)}
                 </div>
                 ${blocks}
                 </div>
@@ -3147,8 +3241,8 @@ export const printTeamTournamentReport = (
                 .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #666; }
 	        </style>
 	        <div class="print-page">
-	        <h1>${tournament.name}</h1>
-	        <h2>${tournament.club}</h2>
+	        <h1>${escapeHtml(tournament.name)}</h1>
+	        <h2>${escapeHtml(tournament.club)}</h2>
                 ${!isReportCompleted ? `
                 <div style="display:flex; justify-content:center; margin: 0 0 8px 0;">
                     <div style="display:inline-flex; align-items:center; border:1px solid #fcd34d; background:#fffbeb; color:#92400e; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800;">
@@ -3183,7 +3277,7 @@ export const printTeamTournamentReport = (
             `}
             ${appendedStatisticsHtml}
             <div class="footer">
-                <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}</div>
+                <div style="text-align: left; margin-bottom: 4px;">Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}</div>
                 <div style="text-align: right; font-size: 8px;">${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</div>
             </div>
             </div>
@@ -3201,7 +3295,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
 ): string => {
     const normalize = (s: string) => (s || '').trim().toLowerCase();
     const playerKey = (p: TeamTournamentPlayerEntry) => `${normalize(p.name)}|${normalize(p.surname)}`;
-    const playerLabel = (p: TeamTournamentPlayerEntry) => `${p.name} ${p.surname}`.trim();
+    const playerLabel = (p: TeamTournamentPlayerEntry) => `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`.trim();
 
     const totalRoundRobin = expectedTeamTournamentRoundRobinMatchdays(config);
     const completedMatchdays = matchdays.filter(md => md.status === 'completed');
@@ -3434,17 +3528,17 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                 Statistiche Avanzate
             </h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${smallListCard('Miglior Guadagno ELO', derivedStats.maggiorGuadagnoElo.map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `+${m.guadagno.toFixed(2)}` })))}
-                ${smallListCard('Peggior Perdita ELO', derivedStats.peggiorPerditaElo.map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `-${m.perdita.toFixed(2)}` })))}
-                ${smallListCard('MVP Giocatori', derivedStats.mvp.slice(0, 3).map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `${m.vittorieGiornate} vittorie` })))}
-                ${smallListCard('Miglior Difesa', derivedStats.difesaFerrea.slice(0, 3).map((d: any) => ({ label: `${d.player.name} ${d.player.surname}`, value: `${d.ratio ? d.ratio.toFixed(2) : (d.avgGameDifference ? d.avgGameDifference.toFixed(2) : 0)} ratio` })))}
+                ${smallListCard('Miglior Guadagno ELO', derivedStats.maggiorGuadagnoElo.map((m: any) => ({ label: `${escapeHtml(m.player.name)} ${escapeHtml(m.player.surname)}`, value: `+${m.guadagno.toFixed(2)}` })))}
+                ${smallListCard('Peggior Perdita ELO', derivedStats.peggiorPerditaElo.map((m: any) => ({ label: `${escapeHtml(m.player.name)} ${escapeHtml(m.player.surname)}`, value: `-${m.perdita.toFixed(2)}` })))}
+                ${smallListCard('MVP Giocatori', derivedStats.mvp.slice(0, 3).map((m: any) => ({ label: `${escapeHtml(m.player.name)} ${escapeHtml(m.player.surname)}`, value: `${m.vittorieGiornate} vittorie` })))}
+                ${smallListCard('Miglior Difesa', derivedStats.difesaFerrea.slice(0, 3).map((d: any) => ({ label: `${escapeHtml(d.player.name)} ${escapeHtml(d.player.surname)}`, value: `${d.ratio ? d.ratio.toFixed(2) : (d.avgGameDifference ? d.avgGameDifference.toFixed(2) : 0)} ratio` })))}
             </div>
             <div style="margin-top: 16px;">
                 <h4 style="font-size: 11px; font-weight: 900; color: #4b5563; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Stato di Forma (Ultime 5)</h4>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                     ${derivedStats.form.map((f: any) => `
                         <div style="display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 8px; background: #f9fafb;">
-                            <div style="font-size: 9px; font-weight: 800; color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">${f.player.name} ${f.player.surname}</div>
+                            <div style="font-size: 9px; font-weight: 800; color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">${escapeHtml(f.player.name)} ${escapeHtml(f.player.surname)}</div>
                             <div style="display: flex; gap: 2px; font-size: 8px;">
                                 ${f.form}
                             </div>
@@ -3520,7 +3614,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                     <tbody>
                         ${top5Players.map((p: any) => `
                             <tr style="height: 20px;">
-                                <td style="font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.name} ${p.surname}</td>
+                                <td style="font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesPlayed}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesWon}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesLost}</td>
@@ -3537,8 +3631,8 @@ const buildTeamTournamentStatisticsBlocksHtml = (
         </div>
 
         <div class="avoid-break" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; margin-bottom: 22px;">
-            ${smallListCard('Più games vinti', mostGamesWon.map(p => ({ label: `${p.name} ${p.surname}`, value: String(p.gamesWon) })))}
-            ${smallListCard('Più games persi', mostGamesLost.map(p => ({ label: `${p.name} ${p.surname}`, value: String(p.gamesLost) })))}
+            ${smallListCard('Più games vinti', mostGamesWon.map(p => ({ label: `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`, value: String(p.gamesWon) })))}
+            ${smallListCard('Più games persi', mostGamesLost.map(p => ({ label: `${escapeHtml(p.name)} ${escapeHtml(p.surname)}`, value: String(p.gamesLost) })))}
             ${smallListCard('Miglior coppia (Win Rate)', bestPairsByWinRate.map(p => ({ label: p.label, value: `${p.winRate.toFixed(0)}% in ${p.played} partite` })))}
             ${smallListCard('Streak - Serie vittorie', topStreak.map(s => ({ label: s.label, value: String(s.best) })))}
         </div>
@@ -3569,7 +3663,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                         ${playerStandings.map((p: any, idx: number) => `
                             <tr style="height: 20px;">
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${idx + 1}</td>
-                                <td style="font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.name} ${p.surname}</td>
+                                <td style="font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesPlayed}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesWon}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.matchesLost}</td>
@@ -3623,8 +3717,8 @@ export const printTeamTournamentStatistics = (
             th, td { border: 1px solid #e5e7eb; }
         </style>
         <div class="print-page">
-        <h1>${tournament.name}</h1>
-        <h2>${tournament.club}</h2>
+        <h1>${escapeHtml(tournament.name)}</h1>
+        <h2>${escapeHtml(tournament.club)}</h2>
         ${tournament.status !== 'completed' ? `
             <div style="display:flex; justify-content:center; margin: 0 0 8px 0;">
                 <div style="display:inline-flex; align-items:center; border:1px solid #fcd34d; background:#fffbeb; color:#92400e; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800;">
@@ -3659,9 +3753,9 @@ export const printBlankScoreSheet = (
         teamsContent = pairs.map((pair, index) => `
             <div class="team-box">
                 <div class="team-number">Squadra ${index + 1}</div>
-                <div style="color: #000;">${pair[0].name} ${pair[0].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[0].name)} ${escapeHtml(pair[0].surname)}</div>
                 <div style="color: #000; margin: 2px 0;">&</div>
-                <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[1].name)} ${escapeHtml(pair[1].surname)}</div>
             </div>
     `).join('');
     }
@@ -3682,8 +3776,8 @@ export const printBlankScoreSheet = (
             const t2p2 = getPlayerById(match.team2[1]);
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            const team1Name = escapeHtml(`${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`);
+            const team2Name = escapeHtml(`${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`);
 
             const maxCourts = americanoFields || 2;
             const court = `Campo ${(index % maxCourts) + 1}`;
@@ -3702,7 +3796,7 @@ export const printBlankScoreSheet = (
                 const restingPlayers = pairs.flat().filter(p => !playersInRound.has(p.id));
                 let restingText = '';
                 if (restingPlayers.length > 0) {
-                    restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-bottom: 4px; border-radius: 4px; font-weight: normal;"><b>Riposo:</b>${restingPlayers.map(p => `<div style="margin-top: 1px;">${p.name} ${p.surname}</div>`).join('')}</div>`;
+                    restingText = `<div style="font-size: 11px; color: #b45309; background: #fffbeb; padding: 4px; margin-bottom: 4px; border-radius: 4px; font-weight: normal;"><b>Riposo:</b>${restingPlayers.map(p => `<div style="margin-top: 1px;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</div>`).join('')}</div>`;
                 }
 
                 rowHtml += `
@@ -3737,8 +3831,8 @@ export const printBlankScoreSheet = (
             const t2p2 = getPlayerById(match.team2[1]);
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            const team1Name = escapeHtml(`${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`);
+            const team2Name = escapeHtml(`${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`);
             const round = match.roundNumber || Math.floor(index / 2) + 1;
             const indexInRound = matches
                 .slice(0, index)
@@ -3778,8 +3872,8 @@ export const printBlankScoreSheet = (
             const t2p2 = getPlayerById(match.team2[1]);
             if (!t1p1 || !t1p2 || !t2p1 || !t2p2) return '';
 
-            const team1Name = `${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`;
-            const team2Name = `${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`;
+            const team1Name = escapeHtml(`${t1p1.name} ${t1p1.surname} & ${t1p2.name} ${t1p2.surname}`);
+            const team2Name = escapeHtml(`${t2p1.name} ${t2p1.surname} & ${t2p2.name} ${t2p2.surname}`);
             let court = '-';
             if (tournamentDetails.type === TournamentType.TorneOtto) {
                 court = `Campo ${(index % 2) + 1}`;
@@ -3937,8 +4031,8 @@ export const printBlankScoreSheet = (
         </style>
 
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1>${tournamentDetails.name} - Scheda Punteggi</h1>
-            <h2>${tournamentDetails.club} - ${getTournamentTypeDisplayName(tournamentDetails.type)}</h2>
+            <h1>${escapeHtml(tournamentDetails.name)} - Scheda Punteggi</h1>
+            <h2>${escapeHtml(tournamentDetails.club)} - ${getTournamentTypeDisplayName(tournamentDetails.type)}</h2>
             <div class="date-info">Giornata del ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</div>
         </div>
 
@@ -3972,7 +4066,7 @@ export const printBlankScoreSheet = (
 
         <div class="footer">
             <div style="text-align: left; margin-bottom: 4px;">
-                Padel ELO Manager - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+                Padel ELO Manager - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
                 ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
@@ -4173,9 +4267,9 @@ export const printGironiTournament = (
         const teamsHtml = gironeTeams.map(({ pair }, idx) => `
             <div class="team-box">
                 <div class="team-number">Squadra ${idx + 1}</div>
-                <div style="color: #000;">${pair[0].name} ${pair[0].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[0].name)} ${escapeHtml(pair[0].surname)}</div>
                 <div style="color: #000; margin: 2px 0;">&</div>
-                <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[1].name)} ${escapeHtml(pair[1].surname)}</div>
             </div>
         `).join('');
 
@@ -4229,7 +4323,7 @@ export const printGironiTournament = (
         return `
                     <tr style="height: 20px; ${isQualified ? 'background: #d4edda;' : ''}">
                         <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${idx + 1}</td>
-                        <td style="font-size: 11px; padding: 3px 4px;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
+                        <td style="font-size: 11px; padding: 3px 4px;">${escapeHtml(entry.pair[0].name)} ${escapeHtml(entry.pair[0].surname)} & ${escapeHtml(entry.pair[1].name)} ${escapeHtml(entry.pair[1].surname)}</td>
                         <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.punti}</td>
                         <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.gamesWon}</td>
                         <td style="text-align: center; font-size: 11px; padding: 3px 4px;">${entry.gamesLost}</td>
@@ -4580,7 +4674,7 @@ export const printGironiTournament = (
             return `
                 <tr style="height: 20px;">
                     <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${index + 1}°</td>
-                    <td style="font-size: 11px; padding: 5px 6px; height: 24px;">${entry.pair[0].name} ${entry.pair[0].surname} & ${entry.pair[1].name} ${entry.pair[1].surname}</td>
+                    <td style="font-size: 11px; padding: 5px 6px; height: 24px;">${escapeHtml(entry.pair[0].name)} ${escapeHtml(entry.pair[0].surname)} & ${escapeHtml(entry.pair[1].name)} ${escapeHtml(entry.pair[1].surname)}</td>
                     <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.punti}</td>
                     <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
                     <td style="text-align: center; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
@@ -4732,11 +4826,11 @@ export const printGironiTournament = (
         ` : ''}
 
         <div class="footer" style="text-align: center;">
-            Padel ELO Manager - ${escapeHtml(tournament.type)} - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+            Padel ELO Manager - ${escapeHtml(tournament.type)} - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
         </div>
     `;
 
-    return openPrintWindow(`${safeDisplayName.replace(' - ', ', ')}, ${escapeHtml(tournament.type)}, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
+    return openPrintWindow(`${displayName.replace(' - ', ', ')}, ${tournament.type}, ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}`, content);
 };
 
 // Funzione per stampare il report del torneo TPRA (Eliminazione Diretta Singolo) con Tabellone ad Albero ed Albo d'Oro
@@ -4750,7 +4844,7 @@ export const printTpraTournamentReport = (
 
     const formatTeamName = (team?: [Player, Player]) => {
         if (!team || !team[0] || !team[1]) return 'TBD';
-        return `${team[0].surname || team[0].name} & ${team[1].surname || team[1].name}`;
+        return escapeHtml(`${team[0].surname || team[0].name} & ${team[1].surname || team[1].name}`);
     };
 
     const findMatchWinner = (team1: [Player, Player], team2: [Player, Player]) => {
@@ -4902,8 +4996,8 @@ export const printTpraTournamentReport = (
     if (finalNode && finalNode.winner) {
         const winnerTeam = finalNode.winner === 'team1' ? finalNode.team1 : finalNode.team2;
         const runnerTeam = finalNode.winner === 'team1' ? finalNode.team2 : finalNode.team1;
-        if (winnerTeam) winnersText = `${winnerTeam[0].name} ${winnerTeam[0].surname} & ${winnerTeam[1].name} ${winnerTeam[1].surname}`;
-        if (runnerTeam) runnersUpText = `${runnerTeam[0].name} ${runnerTeam[0].surname} & ${runnerTeam[1].name} ${runnerTeam[1].surname}`;
+        if (winnerTeam) winnersText = escapeHtml(`${winnerTeam[0].name} ${winnerTeam[0].surname} & ${winnerTeam[1].name} ${winnerTeam[1].surname}`);
+        if (runnerTeam) runnersUpText = escapeHtml(`${runnerTeam[0].name} ${runnerTeam[0].surname} & ${runnerTeam[1].name} ${runnerTeam[1].surname}`);
     }
 
     if (computedRounds.length >= 2) {
@@ -4912,7 +5006,7 @@ export const printTpraTournamentReport = (
         semis.forEach(sf => {
             if (sf.winner && sf.team1 && sf.team2) {
                 const loserTeam = sf.winner === 'team1' ? sf.team2 : sf.team1;
-                semiTeams.push(`${loserTeam[0].name} ${loserTeam[0].surname} & ${loserTeam[1].name} ${loserTeam[1].surname}`);
+                semiTeams.push(escapeHtml(`${loserTeam[0].name} ${loserTeam[0].surname} & ${loserTeam[1].name} ${loserTeam[1].surname}`));
             }
         });
         if (semiTeams.length > 0) semiFinalistsText = semiTeams.join(' | ');
@@ -4966,7 +5060,7 @@ export const printTpraTournamentReport = (
 
         <div style="text-align: center; margin-bottom: 12px;">
             <h1>${displayName}</h1>
-            <h2>${tournament.club} — Torneo TPRA ad Eliminazione Diretta (${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')})</h2>
+            <h2>${escapeHtml(tournament.club)} — Torneo TPRA ad Eliminazione Diretta (${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')})</h2>
         </div>
 
         <div style="border-bottom: 2px solid #0f172a; margin-bottom: 12px;"></div>
@@ -5905,7 +5999,7 @@ export const printBeatTheBoxBlank = (
 
         const playersHtml = box.players.map((player, idx) => `
             <div style="font-size: 10px; color: #475569; margin: 2px 0;">
-                <span style="font-weight: 600; color: #0f172a;">${idx + 1}.</span> ${player.name} ${player.surname} <span style="color: #94a3b8;">(ELO: ${player.currentElo ? player.currentElo.toFixed(2) : '1500.00'})</span>
+                <span style="font-weight: 600; color: #0f172a;">${idx + 1}.</span> ${escapeHtml(player.name)} ${escapeHtml(player.surname)} <span style="color: #94a3b8;">(ELO: ${player.currentElo ? player.currentElo.toFixed(2) : '1500.00'})</span>
             </div>
         `).join('');
 
@@ -6048,8 +6142,8 @@ export const printBeatTheBoxBlank = (
         </style>
 
         <div style="text-align: center; margin-bottom: 14px;">
-            <h1>${PDF_ICONS.box} ${tournamentDetails.name} - Scheda Punteggi</h1>
-            <h2>${tournamentDetails.club} • Beat the Box</h2>
+            <h1>${PDF_ICONS.box} ${escapeHtml(tournamentDetails.name)} - Scheda Punteggi</h1>
+            <h2>${escapeHtml(tournamentDetails.club)} • Beat the Box</h2>
             <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                 ${PDF_ICONS.calendar} ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -6129,7 +6223,7 @@ export const printBeatTheBoxComplete = (
         const standingsHtml = boxStanding ? boxStanding.standings.map((entry: any, idx: number) => `
             <tr style="height: 22px;">
                 <td style="text-align: center; width: 10%; font-size: 11px; font-weight: 700; padding: 5px 6px; height: 22px;">${idx + 1}°</td>
-                <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 22px;">${entry.player.name} ${entry.player.surname}</td>
+                <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 22px;">${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}</td>
                 <td style="text-align: center; width: 20%; font-size: 11px; padding: 5px 6px; height: 22px; white-space: nowrap;">${entry.points}</td>
                 <td style="text-align: center; width: 20%; font-size: 11px; padding: 5px 6px; height: 22px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
             </tr>
@@ -6290,7 +6384,7 @@ export const printBeatTheBoxComplete = (
             if (w1p1 && w1p2) {
                 teamStandings.push({
                     position: 1,
-                    team: `${w1p1.name} ${w1p1.surname} / ${w1p2.name} ${w1p2.surname}`,
+                    team: escapeHtml(`${w1p1.name} ${w1p1.surname} & ${w1p2.name} ${w1p2.surname}`),
                     badgeHtml: `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 9999px; background: #fef3c7; color: #b45309; font-weight: 800; font-size: 11px; border: 1.5px solid #fde68a;">1°</span>`,
                     bgColor: '#fffbeb'
                 });
@@ -6298,7 +6392,7 @@ export const printBeatTheBoxComplete = (
             if (l1p1 && l1p2) {
                 teamStandings.push({
                     position: 2,
-                    team: `${l1p1.name} ${l1p1.surname} / ${l1p2.name} ${l1p2.surname}`,
+                    team: escapeHtml(`${l1p1.name} ${l1p1.surname} & ${l1p2.name} ${l1p2.surname}`),
                     badgeHtml: `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 9999px; background: #f1f5f9; color: #475569; font-weight: 800; font-size: 11px; border: 1.5px solid #cbd5e1;">2°</span>`,
                     bgColor: '#f8fafc'
                 });
@@ -6320,7 +6414,7 @@ export const printBeatTheBoxComplete = (
                 if (w3p1 && w3p2) {
                     teamStandings.push({
                         position: 3,
-                        team: `${w3p1.name} ${w3p1.surname} / ${w3p2.name} ${w3p2.surname}`,
+                        team: escapeHtml(`${w3p1.name} ${w3p1.surname} & ${w3p2.name} ${w3p2.surname}`),
                         badgeHtml: `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 9999px; background: #ffedd5; color: #c2410c; font-weight: 800; font-size: 11px; border: 1.5px solid #fed7aa;">3°</span>`,
                         bgColor: '#fff7ed'
                     });
@@ -6328,7 +6422,7 @@ export const printBeatTheBoxComplete = (
                 if (l3p1 && l3p2) {
                     teamStandings.push({
                         position: 4,
-                        team: `${l3p1.name} ${l3p1.surname} / ${l3p2.name} ${l3p2.surname}`,
+                        team: escapeHtml(`${l3p1.name} ${l3p1.surname} & ${l3p2.name} ${l3p2.surname}`),
                         badgeHtml: `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 9999px; background: #f8fafc; color: #94a3b8; font-weight: 700; font-size: 11px; border: 1px solid #e2e8f0;">4°</span>`,
                         bgColor: '#ffffff'
                     });
@@ -6377,7 +6471,7 @@ export const printBeatTheBoxComplete = (
         return `
             <tr style="height: 22px;">
                 <td style="text-align: center; width: 10%; font-size: 11px; font-weight: 700; padding: 5px 6px; height: 22px;">${entry.rank}°</td>
-                <td style="width: 45%; font-size: 11px; padding: 5px 6px; height: 22px;">${entry.player.name} ${entry.player.surname}</td>
+                <td style="width: 45%; font-size: 11px; padding: 5px 6px; height: 22px;">${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}</td>
                 <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 22px; white-space: nowrap;">${entry.gamesWon}</td>
                 <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 22px; white-space: nowrap;">${entry.gamesLost}</td>
                 <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 22px;">${entry.winPercentage.toFixed(1)}%</td>
@@ -6455,7 +6549,7 @@ export const printBeatTheBoxComplete = (
 
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.box} ${displayName}</h1>
-            <h2>${tournament.club} • Beat the Box</h2>
+            <h2>${escapeHtml(tournament.club)} • Beat the Box</h2>
             <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                 ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -6576,7 +6670,7 @@ export const printCustomTournamentBlank = (
 
         const playersHtml = box.players.map((player, idx) => `
             <div style="font-size: 10px; color: #475569; margin: 2px 0;">
-                <span style="font-weight: 600; color: #0f172a;">${idx + 1}.</span> ${player.name} ${player.surname} <span style="color: #94a3b8;">(ELO: ${player.currentElo ? player.currentElo.toFixed(2) : '1500.00'})</span>
+                <span style="font-weight: 600; color: #0f172a;">${idx + 1}.</span> ${escapeHtml(player.name)} ${escapeHtml(player.surname)} <span style="color: #94a3b8;">(ELO: ${player.currentElo ? player.currentElo.toFixed(2) : '1500.00'})</span>
             </div>
         `).join('');
 
@@ -6883,7 +6977,7 @@ export const printCustomTournamentBlank = (
 
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.trophy} ${displayName} - Scheda Punteggi</h1>
-            <h2>${tournamentDetails.club} • ${formatLabels}</h2>
+            <h2>${escapeHtml(tournamentDetails.club)} • ${formatLabels}</h2>
             <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                 ${PDF_ICONS.calendar} ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -6973,7 +7067,7 @@ export const printCustomTournamentComplete = (
         const standingsHtml = boxStanding ? boxStanding.standings.map((entry: any, idx: number) => `
             <tr style="height: 24px;">
                 <td style="text-align: center; width: 10%; font-size: 11px; font-weight: 700; padding: 5px 6px; height: 24px;">${idx + 1}°</td>
-                <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: ${idx < 2 ? '600' : 'normal'};">${entry.player.name} ${entry.player.surname}</td>
+                <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: ${idx < 2 ? '600' : 'normal'};">${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}</td>
                 <td style="text-align: center; width: 20%; font-size: 11px; font-weight: 700; padding: 5px 6px; height: 24px; white-space: nowrap;">${entry.points}</td>
                 <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; color: ${entry.gameDifference >= 0 ? '#059669' : '#dc2626'}; font-weight: 600;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
             </tr>
@@ -7076,7 +7170,7 @@ export const printCustomTournamentComplete = (
     const individualStandingsHtml = cleanedIndividualStandings.map(entry => `
         <tr style="height: 20px;">
             <td style="text-align: center; width: 10%; font-size: 11px; font-weight: 700; padding: 5px 6px; height: 24px;">${entry.rank}°</td>
-            <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: ${entry.rank <= 3 ? '700' : 'normal'};">${entry.player.name} ${entry.player.surname}</td>
+            <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: ${entry.rank <= 3 ? '700' : 'normal'};">${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}</td>
             <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap; font-weight: 600;">${entry.gamesWon}</td>
             <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap; color: #64748b;">${entry.gamesLost}</td>
             <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 700; color: #059669;">${entry.winPercentage ? entry.winPercentage.toFixed(1) : '0.0'}%</td>
@@ -7099,7 +7193,7 @@ export const printCustomTournamentComplete = (
 
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.trophy} ${displayName}</h1>
-            <h2>${tournament.club} • ${formatLabels}</h2>
+            <h2>${escapeHtml(tournament.club)} • ${formatLabels}</h2>
             <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 3px;">
                 ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -7214,8 +7308,8 @@ export const printTorneoLiberoBlank = (
         </style>
 
         <div style="text-align: center; margin-bottom: 16px;">
-            <h1 style="font-size: 22px; margin: 8px 0;">${PDF_ICONS.box} ${tournamentDetails.name}</h1>
-            <h2 style="font-size: 14px; color: #666; font-weight: normal;">${tournamentDetails.club} - Torneo Libero</h2>
+            <h1 style="font-size: 22px; margin: 8px 0;">${PDF_ICONS.box} ${escapeHtml(tournamentDetails.name)}</h1>
+            <h2 style="font-size: 14px; color: #666; font-weight: normal;">${escapeHtml(tournamentDetails.club)} - Torneo Libero</h2>
             <div style="color: #0055D4; font-size: 12px; font-weight: bold; margin: 4px 0 0 0;">
                 ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -7227,7 +7321,7 @@ export const printTorneoLiberoBlank = (
 
         <div class="footer">
             <div style="text-align: left; margin-bottom: 4px;">
-                Padel ELO Manager - Torneo Libero - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+                Padel ELO Manager - Torneo Libero - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
                 ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
@@ -7257,9 +7351,9 @@ export const printTorneoLiberoComplete = (
         const teamsContent = pairs.map((pair, index) => `
             <div class="team-box">
                 <div class="team-number">Coppia ${index + 1}</div>
-                <div style="color: #000;">${pair[0].name} ${pair[0].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[0].name)} ${escapeHtml(pair[0].surname)}</div>
                 <div style="color: #000; margin: 2px 0;">&</div>
-                <div style="color: #000;">${pair[1].name} ${pair[1].surname}</div>
+                <div style="color: #000;">${escapeHtml(pair[1].name)} ${escapeHtml(pair[1].surname)}</div>
             </div>
         `).join('');
 
@@ -7285,10 +7379,10 @@ export const printTorneoLiberoComplete = (
 
         const team1Name = mode === 'fixed'
             ? `Coppia ${pairs.findIndex(p => p[0].id === p1a.id && p[1].id === p1b.id) + 1}`
-            : `${p1a.name} ${p1a.surname} / ${p1b.name} ${p1b.surname}`;
+            : escapeHtml(`${p1a.name} ${p1a.surname} & ${p1b.name} ${p1b.surname}`);
         const team2Name = mode === 'fixed'
             ? `Coppia ${pairs.findIndex(p => p[0].id === p2a.id && p[1].id === p2b.id) + 1}`
-            : `${p2a.name} ${p2a.surname} / ${p2b.name} ${p2b.surname}`;
+            : escapeHtml(`${p2a.name} ${p2a.surname} & ${p2b.name} ${p2b.surname}`);
 
         const scoreHtml = formatScoreBoxes(match.sets, false);
 
@@ -7396,7 +7490,7 @@ export const printTorneoLiberoComplete = (
             classificaContent += `
                 <tr style="height: 20px;">
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${idx + 1}</td>
-                    <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${p1.name} ${p1.surname} / ${p2.name} ${p2.surname}</td>
+                    <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${escapeHtml(p1.name)} ${escapeHtml(p1.surname)} &amp; ${escapeHtml(p2.name)} ${escapeHtml(p2.surname)}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: #111827; font-weight: bold;">${stats.wins}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: #d32f2f;">${stats.losses}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: ${diffColor};">${stats.gamesWon}-${stats.gamesLost} (${gameDiff > 0 ? '+' : ''}${gameDiff})</td>
@@ -7495,7 +7589,7 @@ export const printTorneoLiberoComplete = (
             classificaContent += `
                 <tr style="height: 20px;">
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${idx + 1}</td>
-                    <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${stats.player.name} ${stats.player.surname}</td>
+                    <td style="font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2;">${escapeHtml(stats.player.name)} ${escapeHtml(stats.player.surname)}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: #111827; font-weight: bold;">${stats.wins}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: #d32f2f;">${stats.losses}</td>
                     <td style="text-align: center; font-size: 11px; padding: 3px 4px; height: 20px; line-height: 1.2; color: ${diffColor};">${stats.gamesWon}-${stats.gamesLost} (${gameDiff > 0 ? '+' : ''}${gameDiff})</td>
@@ -7644,7 +7738,7 @@ export const printTorneoLiberoComplete = (
 
         <div style="text-align: center; margin-bottom: 3px;">
             <h1>${displayName}</h1>
-            <h2>${tournament.club} - Torneo Libero</h2>
+            <h2>${escapeHtml(tournament.club)} - Torneo Libero</h2>
             <div class="date-info">Giornata del ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</div>
         </div>
 
@@ -7673,7 +7767,7 @@ export const printTorneoLiberoComplete = (
 
         <div class="footer">
             <div style="text-align: left; margin-bottom: 4px;">
-                Padel ELO Manager - Torneo Libero - Versione ${APP_VERSION} @ Mattia Ianniello, ${APP_MONTH}
+                Padel ELO Manager - Torneo Libero - Versione ${APP_VERSION} © Mattia Ianniello, ${APP_MONTH}
             </div>
             <div style="text-align: right; font-size: 8px;">
                 ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
@@ -7994,7 +8088,6 @@ export const printPlayerProfiles = (
         ).join('');
 
     const pagesHtml = playerPages.map((data: any, index: number) => {
-        const isLast = index === playerPages.length - 1;
         const p = data.player;
         const deltaColor = data.lastDelta >= 0 ? '#059669' : '#dc2626';
         const deltaSign = data.lastDelta >= 0 ? '+' : '';
@@ -8002,7 +8095,7 @@ export const printPlayerProfiles = (
 
         const partnersRows = data.topPartners.map((tp: any) =>
             `<tr>
-                <td>${tp.player.name} ${tp.player.surname}</td>
+                <td>${escapeHtml(tp.player.name)} ${escapeHtml(tp.player.surname)}</td>
                 <td style="text-align:center;">${tp.total}</td>
                 <td style="text-align:center;">${tp.total > 0 ? ((tp.wins / tp.total) * 100).toFixed(0) : 0}%</td>
             </tr>`
@@ -8010,7 +8103,7 @@ export const printPlayerProfiles = (
 
         const opponentsRows = data.topOpponents.map((to: any) =>
             `<tr>
-                <td>${to.player.name} ${to.player.surname}</td>
+                <td>${escapeHtml(to.player.name)} ${escapeHtml(to.player.surname)}</td>
                 <td style="text-align:center;">${to.total}</td>
                 <td style="text-align:center;">${to.total > 0 ? ((to.wins / to.total) * 100).toFixed(0) : 0}%</td>
             </tr>`
@@ -8031,16 +8124,12 @@ export const printPlayerProfiles = (
 
         const eloSvg = generateEloSvg(data.chartPoints, 700, 140);
 
-        const pageBreakDivider = !isLast
-            ? `<div class="page-break" style="page-break-before: always; break-before: page; page-break-after: always; break-after: page; height: 0; line-height: 0; font-size: 0; margin: 0; padding: 0; clear: both; border: none; visibility: hidden;"></div>`
-            : '';
-
         return `
-            <div class="player-page" style="page-break-inside: avoid; break-inside: avoid; page-break-after: ${isLast ? 'auto' : 'always'}; break-after: ${isLast ? 'auto' : 'page'};">
+            <div class="player-page" style="page-break-inside: avoid; break-inside: avoid;">
                 <!-- Header -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div>
-                        <div style="font-size:22px;font-weight:bold;color:#1e3a5f;">${p.name} ${p.surname}</div>
+                        <div style="font-size:22px;font-weight:bold;color:#1e3a5f;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</div>
                         <div style="font-size:10px;color:#666;">${options?.tournamentFilter ? `<span style="color:#0055D4;font-weight:700;">TORNEO: ${escapeHtml(options.tournamentFilter.tournamentName)}</span> &middot; ` : ''}Posizione: ${p.position} &middot; Ranking: #${data.rank} &middot; Giornate giocate: ${data.tournamentsPlayed}</div>
                     </div>
                     <div style="text-align:right;">
@@ -8070,11 +8159,11 @@ export const printPlayerProfiles = (
                     </div>
                     <div class="stat-box">
                         <div class="stat-value">${data.gameWinRate.toFixed(1)}%</div>
-                        <div class="stat-label">Game Win Rate</div>
+                        <div class="stat-label">% Games Vinti</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-value" style="color:#ea580c;">${data.bestStreak}</div>
-                        <div class="stat-label">Best Streak</div>
+                        <div class="stat-label">Miglior Serie</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-value" style="color:#1e3a6e;">${data.peakElo.toFixed(2)}</div>
@@ -8082,7 +8171,7 @@ export const printPlayerProfiles = (
                     </div>
                     <div class="stat-box">
                         <div>${formDots(data.form)}</div>
-                        <div class="stat-label" style="margin-top:2px;">Form (ultime 5)</div>
+                        <div class="stat-label" style="margin-top:2px;">Forma (ultime 5)</div>
                     </div>
                 </div>
 
@@ -8100,14 +8189,14 @@ export const printPlayerProfiles = (
                     <div>
                         <div class="section-title">Compagni Frequenti</div>
                         <table class="mini-table">
-                            <thead><tr><th>Giocatore</th><th style="text-align:center;">Partite</th><th style="text-align:center;">Win%</th></tr></thead>
+                            <thead><tr><th>Giocatore</th><th style="text-align:center;">Partite</th><th style="text-align:center;">% Vitt.</th></tr></thead>
                             <tbody>${partnersRows || '<tr><td colspan="3" style="text-align:center;color:#999;">Nessun dato</td></tr>'}</tbody>
                         </table>
                     </div>
                     <div>
                         <div class="section-title">Avversari Frequenti</div>
                         <table class="mini-table">
-                            <thead><tr><th>Giocatore</th><th style="text-align:center;">Partite</th><th style="text-align:center;">Win%</th></tr></thead>
+                            <thead><tr><th>Giocatore</th><th style="text-align:center;">Partite</th><th style="text-align:center;">% Vitt.</th></tr></thead>
                             <tbody>${opponentsRows || '<tr><td colspan="3" style="text-align:center;color:#999;">Nessun dato</td></tr>'}</tbody>
                         </table>
                     </div>
@@ -8117,17 +8206,16 @@ export const printPlayerProfiles = (
                 <div style="margin-top:8px;">
                     <div class="section-title">Storico Giornate</div>
                     <table class="mini-table">
-                        <thead><tr><th>Data</th><th>Tipo</th><th style="text-align:center;">Partite</th><th style="text-align:center;">W/L</th><th style="text-align:center;">%</th><th style="text-align:center;">Var. ELO</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Tipo</th><th style="text-align:center;">Partite</th><th style="text-align:center;">V/S</th><th style="text-align:center;">%</th><th style="text-align:center;">Var. ELO</th></tr></thead>
                         <tbody>${tournamentRows || '<tr><td colspan="6" style="text-align:center;color:#999;">Nessuna giornata</td></tr>'}</tbody>
                     </table>
                 </div>
 
                 <!-- Footer -->
                 <div class="page-footer">
-                    Padel ELO Manager v${APP_VERSION} &middot; ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')} &middot; Profilo ${p.name} ${p.surname}${options?.tournamentFilter ? ` &middot; ${escapeHtml(options.tournamentFilter.tournamentName)}` : ''}
+                    Padel ELO Manager v${APP_VERSION} &middot; ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')} &middot; Profilo ${escapeHtml(p.name)} ${escapeHtml(p.surname)}${options?.tournamentFilter ? ` &middot; ${escapeHtml(options.tournamentFilter.tournamentName)}` : ''}
                 </div>
             </div>
-            ${pageBreakDivider}
         `;
     }).join('');
 
@@ -8152,33 +8240,14 @@ export const printPlayerProfiles = (
             clear: both !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            page-break-after: always !important;
-            break-after: page !important;
             padding: 0 !important;
             margin: 0 !important;
         }
+        /* Unico meccanismo di interruzione: una nuova pagina PRIMA di ogni scheda
+           successiva alla prima (niente divisori, niente break-after). */
         .player-page + .player-page {
             page-break-before: always !important;
             break-before: page !important;
-        }
-        .player-page:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-        }
-        .page-break {
-            display: block !important;
-            page-break-before: always !important;
-            break-before: page !important;
-            page-break-after: always !important;
-            break-after: page !important;
-            clear: both !important;
-            height: 0 !important;
-            line-height: 0 !important;
-            font-size: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-            visibility: hidden !important;
         }
         @media screen {
             .player-page {
@@ -8189,14 +8258,6 @@ export const printPlayerProfiles = (
                 border-radius: 8px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                 border: 1px solid #e2e8f0;
-            }
-            .page-break {
-                display: block !important;
-                height: 24px !important;
-                border-bottom: 2px dashed #cbd5e1 !important;
-                margin: 20px auto !important;
-                max-width: 820px !important;
-                visibility: visible !important;
             }
         }
         @media print {
@@ -8217,26 +8278,6 @@ export const printPlayerProfiles = (
                 padding: 0 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
-                page-break-after: always !important;
-                break-after: page !important;
-            }
-            .player-page:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-            .page-break {
-                display: block !important;
-                page-break-before: always !important;
-                break-before: page !important;
-                page-break-after: always !important;
-                break-after: page !important;
-                height: 0 !important;
-                line-height: 0 !important;
-                font-size: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: none !important;
-                visibility: hidden !important;
             }
         }
         .stats-grid {

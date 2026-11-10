@@ -98,7 +98,9 @@ export function calculateFinalStandingsForRoundRobinFinali(
     // Split matches into round robin and finals
     const finalsMatches = allMatches.slice(roundRobinMatchCount);
     
-    if (finalsMatches.length !== 2) {
+    const isDecided = (m: Match) => m.winner === 'team1' || m.winner === 'team2';
+    if (finalsMatches.length !== 2 || !finalsMatches.every(isDecided)) {
+        // Finali assenti o non ancora giocate: nessun podio inventato, si usa la classifica normale
         // Fallback to normal calculation if finals are not present
         return calculateTournamentStandings(allMatches, getPlayerById);
     }

@@ -20,6 +20,13 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin-secret-change-in-product
 const MAX_FAILED_ATTEMPTS = parseInt(process.env.MAX_FAILED_ATTEMPTS || '10');
 const LOCKOUT_DURATION_MINUTES = parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30');
 
+// Avviso di sicurezza: in produzione i segreti non devono usare i valori di ripiego.
+// (Solo warning: un blocco all'avvio potrebbe rompere un deploy esistente privo di queste variabili.)
+if (process.env.NODE_ENV === 'production') {
+    if (!process.env.JWT_SECRET) console.warn('[SECURITY] JWT_SECRET non impostato: in uso il segreto di default. Impostalo subito.');
+    if (!process.env.ADMIN_SECRET) console.warn('[SECURITY] ADMIN_SECRET non impostato: in uso il segreto di default. Impostalo subito.');
+}
+
 const INITIAL_ELO = 1500;
 
 // Catch unhandled errors to prevent silent crashes
@@ -932,14 +939,14 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
         for (const md of oldMatchdays) matchdayIdMap.set(String(md.id), randomUUID());
 
         // Start transaction
-        await sql`BEGIN`;
+        const txQueries = [];
 
         // Copy tournaments
         for (const t of tournamentsToCopy) {
             const newId = tournamentIdMap.get(String(t.id));
             const newTeamRootId = isTeamTournament ? newRootTournamentId : null;
 
-            await sql`
+            txQueries.push(sql`
                 INSERT INTO tournaments (
                     id, name, type, date, club, status,
                     americano_fields, americano_scoring_type, final_standings,
@@ -953,16 +960,16 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                     ${newTeamRootId},
                     ${destinationWorkspaceId}
                 )
-            `;
+            `);
         }
 
         // Copy players (classic tournaments)
         for (const p of oldPlayers) {
             const newId = playerIdMap.get(String(p.id));
-            await sql`
+            txQueries.push(sql`
                 INSERT INTO players (id, name, surname, position, initial_elo, current_elo, workspace_id)
                 VALUES (${newId}, ${p.name}, ${p.surname}, ${p.position}, ${p.initial_elo}, ${p.current_elo}, ${destinationWorkspaceId})
-            `;
+            `);
         }
 
         // Copy matches (classic tournaments)
@@ -970,7 +977,7 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
             const newId = matchIdMap.get(String(m.id));
             const newTournamentId = tournamentIdMap.get(String(m.tournament_id));
             const mapPid = (pid) => (pid ? playerIdMap.get(String(pid)) : null);
-            await sql`
+            txQueries.push(sql`
                 INSERT INTO matches (
                     id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id,
                     sets, winner, tournament_id, workspace_id, created_at
@@ -980,7 +987,7 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                     ${mapPid(m.team1_p1_id)}, ${mapPid(m.team1_p2_id)}, ${mapPid(m.team2_p1_id)}, ${mapPid(m.team2_p2_id)},
                     ${m.sets}, ${m.winner ?? null}, ${newTournamentId}, ${destinationWorkspaceId}, ${m.created_at ?? m.date}
                 )
-            `;
+            `);
         }
 
         // Copy elo history (classic tournaments)
@@ -989,10 +996,10 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
             const eventIdKey = String(h.event_id);
             const newEventId = tournamentIdMap.get(eventIdKey) || matchIdMap.get(eventIdKey);
             if (!newPlayerId || !newEventId) continue;
-            await sql`
+            txQueries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
                 VALUES (${newEventId}, ${newPlayerId}, ${h.elo_before}, ${h.elo_after}, ${h.delta}, ${h.date}, ${h.type}, ${destinationWorkspaceId}, ${h.source_label})
-            `;
+            `);
         }
 
         // Copy team tournament tables (team tournaments only)
@@ -1001,7 +1008,7 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
 
             if (oldTeamConfigRows.length > 0) {
                 const c = oldTeamConfigRows[0];
-                await sql`
+                txQueries.push(sql`
                     INSERT INTO team_tournament_configs (
                         tournament_id, initial_team_count, default_players_per_team, format, matches_per_day,
                         round_robin_final_phase, scoring_type, config_completed, schedule_json, created_at, updated_at
@@ -1012,11 +1019,11 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                         ${c.schedule_json ? JSON.stringify(c.schedule_json) : null}::jsonb,
                         NOW(), NOW()
                     )
-                `;
+                `);
             }
 
             for (const tt of oldTeamRows) {
-                await sql`
+                txQueries.push(sql`
                     INSERT INTO team_tournament_teams (
                         tournament_id, team_number, name, target_player_count, players, is_seeded, created_at, updated_at
                     )
@@ -1025,13 +1032,13 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                         ${JSON.stringify(Array.isArray(tt.players) ? tt.players : [])}::jsonb,
                         ${tt.is_seeded ?? false}, NOW(), NOW()
                     )
-                `;
+                `);
             }
 
             for (const md of oldMatchdays) {
                 const newMdId = matchdayIdMap.get(String(md.id));
                 const newTournamentDayId = tournamentIdMap.get(String(md.tournament_day_id));
-                await sql`
+                txQueries.push(sql`
                     INSERT INTO team_tournament_matchdays (
                         id, root_tournament_id, tournament_day_id, date,
                         team1_number, team2_number, round_number, phase, matches_per_day, status, summary_json,
@@ -1043,12 +1050,12 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                         ${md.matches_per_day}, ${md.status ?? 'scheduled'}, ${md.summary_json ? JSON.stringify(md.summary_json) : null}::jsonb,
                         NOW(), NOW()
                     )
-                `;
+                `);
             }
 
             for (const mm of oldMatchdayMatches) {
                 const newMatchdayId = matchdayIdMap.get(String(mm.matchday_id));
-                await sql`
+                txQueries.push(sql`
                     INSERT INTO team_tournament_matchday_matches (
                         matchday_id, match_index, team1_players, team2_players, sets, winner, cancelled, created_at, updated_at
                     )
@@ -1059,13 +1066,13 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                         ${mm.sets ? JSON.stringify(mm.sets) : null}::jsonb, ${mm.winner ?? null}, ${mm.cancelled ?? false},
                         NOW(), NOW()
                     )
-                `;
+                `);
             }
 
             for (const f of oldFixtures) {
                 const newTournamentDayId = f.tournament_day_id ? tournamentIdMap.get(String(f.tournament_day_id)) : null;
                 const newMatchdayId = f.matchday_id ? matchdayIdMap.get(String(f.matchday_id)) : null;
-                await sql`
+                txQueries.push(sql`
                     INSERT INTO team_tournament_fixtures (
                         root_tournament_id, phase, slot, team1_number, team2_number, winner_team_number, loser_team_number, is_bye,
                         depends_on, status, tournament_day_id, matchday_id, created_at, updated_at
@@ -1076,11 +1083,11 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                         ${f.depends_on ? JSON.stringify(f.depends_on) : null}::jsonb, ${f.status ?? 'planned'}, ${newTournamentDayId}, ${newMatchdayId},
                         NOW(), NOW()
                     )
-                `;
+                `);
             }
         }
 
-        await sql`
+        txQueries.push(sql`
             INSERT INTO audit_logs (workspace_id, action, ip_address, user_agent, details)
             VALUES (
                 ${destinationWorkspaceId},
@@ -1099,9 +1106,9 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
                     isTeamTournament
                 })}
             )
-        `;
+        `);
 
-        await sql`COMMIT`;
+        await sql.transaction(txQueries);
 
         res.json({
             message: 'Invio completato',
@@ -1123,7 +1130,7 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
             newRootTournamentId: isTeamTournament ? newRootTournamentId : tournamentIdMap.get(String(tournamentId)),
         });
     } catch (error) {
-        try { await sql`ROLLBACK`; } catch {}
+        // transazione atomica: nessun ROLLBACK manuale necessario
         logger.error('Failed to transfer tournament', { txId, error });
         res.status(500).json({ message: 'Errore durante invio dati torneo', error: error?.message || String(error) });
     }
@@ -2207,11 +2214,17 @@ app.delete('/api/players', async (req, res) => {
             return res.status(400).json({ message: 'Player ID is required' });
         }
         
+        // Il giocatore deve appartenere al workspace del chiamante
+        const ownedPlayer = await sql`SELECT id FROM players WHERE id = ${id} AND workspace_id = ${req.workspaceId} LIMIT 1`;
+        if (ownedPlayer.length === 0) {
+            return res.status(404).json({ message: 'Giocatore non trovato' });
+        }
+
         // Soft delete the player
         await sql`UPDATE players SET is_deleted = TRUE WHERE id = ${id} AND workspace_id = ${req.workspaceId};`;
         
         // Delete their ELO history
-        await sql`DELETE FROM elo_history WHERE player_id = ${id};`;
+        await sql`DELETE FROM elo_history WHERE player_id = ${id} AND workspace_id = ${req.workspaceId};`;
 
         // Remove the player from any team_tournament_teams JSONB arrays
         await sql`
@@ -2221,7 +2234,8 @@ app.delete('/api/players', async (req, res) => {
                 FROM jsonb_array_elements(players) elem
                 WHERE elem::text <> ${JSON.stringify(id)}::text
             )
-            WHERE players @> ${JSON.stringify([id])}::jsonb;
+            WHERE players @> ${JSON.stringify([id])}::jsonb
+              AND tournament_id IN (SELECT id FROM tournaments WHERE workspace_id = ${req.workspaceId});
         `;
 
         logger.info('Giocatore eliminato (soft) con successo', { id });
@@ -2264,6 +2278,23 @@ app.post('/api/matches', async (req, res) => {
             return sendOutcomeError(res, outcome.status);
         }
 
+        // Partite amichevoli (senza torneo): valida le squadre PRIMA di scrivere qualsiasi cosa,
+        // altrimenti un giocatore mancante produrrebbe ELO NaN e una partita orfana.
+        if (!tournamentId) {
+            const isValidTeam = (team) => Array.isArray(team) && team.length === 2 && team.every(id => typeof id === 'string' && id);
+            if (!isValidTeam(team1) || !isValidTeam(team2)) {
+                return res.status(400).json({ code: 'INVALID_TEAMS', message: 'Ogni squadra deve avere due giocatori' });
+            }
+            const distinctIds = new Set([...team1, ...team2]);
+            if (distinctIds.size !== 4) {
+                return res.status(400).json({ code: 'DUPLICATE_PLAYERS', message: 'Un giocatore non può comparire più volte nella stessa partita' });
+            }
+            const existingPlayers = await sql`SELECT id FROM players WHERE id = ANY(${[...distinctIds]}::uuid[]) AND workspace_id = ${req.workspaceId} AND COALESCE(is_deleted, FALSE) = FALSE`;
+            if (existingPlayers.length !== 4) {
+                return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non esistono nel workspace' });
+            }
+        }
+
         const result = await sql`
             INSERT INTO matches (date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, group_number, phase)
             VALUES (${date}, ${team1[0]}, ${team1[1]}, ${team2[0]}, ${team2[1]}, ${JSON.stringify(sets)}, ${outcome.winner}, ${tournamentId || null}, ${req.workspaceId}, ${roundNumber || null}, ${groupNumber || null}, ${phase})
@@ -2304,7 +2335,7 @@ app.post('/api/matches', async (req, res) => {
             const newElo = oldElo + delta1;
 
             logger.eloChange(playerId, oldElo, newElo, delta1, 'friendly match - team1');
-            eloQueries.push(sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+            eloQueries.push(sql`UPDATE players SET current_elo = current_elo + ${delta1} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
             eloQueries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
                 VALUES (${matchId}, ${playerId}, ${oldElo}, ${newElo}, ${delta1}, ${date}, 'match', ${req.workspaceId})
@@ -2316,7 +2347,7 @@ app.post('/api/matches', async (req, res) => {
             const newElo = oldElo + delta2;
 
             logger.eloChange(playerId, oldElo, newElo, delta2, 'friendly match - team2');
-            eloQueries.push(sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
+            eloQueries.push(sql`UPDATE players SET current_elo = current_elo + ${delta2} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`);
             eloQueries.push(sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
                 VALUES (${matchId}, ${playerId}, ${oldElo}, ${newElo}, ${delta2}, ${date}, 'match', ${req.workspaceId})
@@ -5872,7 +5903,10 @@ app.put('/api/tournaments/complete', async (req, res) => {
         const queries = [
             sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`,
         ];
-        for (const playerId of playerIds) {
+        // Include anche i giocatori che avevano un delta precedente ma non compaiono più
+        // nelle partite (es. dopo un bypass delle fasi finali): il loro ELO va ripristinato.
+        const affectedPlayerIds = [...new Set([...playerIds, ...oldDeltas.keys()])];
+        for (const playerId of affectedPlayerIds) {
             const oldDelta = oldDeltas.get(playerId) || 0;
             const change = playerEloChanges.get(playerId);
             const newDelta = change?.totalDelta || 0;
@@ -5916,6 +5950,8 @@ app.post('/api/tournaments/cascade-reset', async (req, res) => {
         }
 
         const wasCompleted = tournamentResult[0].status === 'completed';
+        const resetQueries = [];
+        let revertedPlayers = 0;
 
         if (wasCompleted) {
             // Revert ELO changes for this tournament
@@ -5923,28 +5959,28 @@ app.post('/api/tournaments/cascade-reset', async (req, res) => {
                 SELECT player_id, delta FROM elo_history
                 WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}
             `;
+            revertedPlayers = eloHistoryResult.length;
 
             for (const record of eloHistoryResult) {
-                await sql`
+                resetQueries.push(sql`
                     UPDATE players SET current_elo = current_elo - ${record.delta}
                     WHERE id = ${record.player_id} AND workspace_id = ${req.workspaceId}
-                `;
+                `);
             }
-
-            // Delete ELO history for this tournament
-            await sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`;
-
-            // Reset status to scheduled
-            await sql`UPDATE tournaments SET status = 'scheduled' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`;
-
-            logger.info('Tournament ELO reverted and status reset to scheduled', {
-                tournamentId, revertedPlayers: eloHistoryResult.length
-            });
+            resetQueries.push(sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`);
+            resetQueries.push(sql`UPDATE tournaments SET status = 'scheduled' WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
         }
 
-        // Delete phase matches
+        // Delete phase matches: solo quelle che appartengono davvero al torneo
         for (const matchId of phaseMatchIds) {
-            await sql`DELETE FROM matches WHERE id = ${matchId} AND workspace_id = ${req.workspaceId}`;
+            resetQueries.push(sql`DELETE FROM matches WHERE id = ${matchId} AND tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId}`);
+        }
+
+        // Esecuzione atomica: ELO, storico, stato e partite cambiano insieme o per niente
+        if (resetQueries.length > 0) await sql.transaction(resetQueries);
+
+        if (wasCompleted) {
+            logger.info('Tournament ELO reverted and status reset to scheduled', { tournamentId, revertedPlayers });
         }
 
         logger.info('Cascade reset completed', {
@@ -5963,22 +5999,17 @@ app.post('/api/tournaments/cascade-reset', async (req, res) => {
 });
 
 // ATOMIC RESET: Reset all ELO to 1500 and clear all history
-app.post('/api/reset-all-elo', async (req, res) => {
+app.post('/api/reset-all-elo', requireAdmin, async (req, res) => {
     try {
         logger.warn("ATOMIC RESET initiated: Setting all ELO to 1500 and clearing history", { workspace: req.workspaceId });
 
-        // Reset all players to 1500 ELO (only in this workspace)
-        await sql`UPDATE players SET current_elo = 1500 WHERE workspace_id = ${req.workspaceId}`;
+        await sql.transaction([
+            sql`UPDATE players SET current_elo = 1500 WHERE workspace_id = ${req.workspaceId}`,
+            sql`DELETE FROM elo_history WHERE workspace_id = ${req.workspaceId}`,
+            sql`DELETE FROM matches WHERE workspace_id = ${req.workspaceId}`,
+            sql`DELETE FROM tournaments WHERE workspace_id = ${req.workspaceId}`,
+        ]);
 
-        // Clear all ELO history
-        await sql`DELETE FROM elo_history WHERE workspace_id = ${req.workspaceId}`;
-
-        // Clear all matches
-        await sql`DELETE FROM matches WHERE workspace_id = ${req.workspaceId}`;
-
-        // Clear all tournaments
-        await sql`DELETE FROM tournaments WHERE workspace_id = ${req.workspaceId}`;
-        
         logger.warn('ATOMIC RESET: All ELO reset to 1500, all history cleared');
         res.json({ message: 'All ELO reset to 1500 and all history cleared successfully' });
     } catch (error) {

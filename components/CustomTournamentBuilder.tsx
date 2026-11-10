@@ -214,7 +214,7 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs text-sky-700 dark:text-sky-300 font-semibold self-center">
-                <span>ℹ️</span>
+                <MaterialIcon name="info" className="text-[16px]" />
                 <span>
                   Partecipanti già scelti: <strong>{effectivePartecipanti} {playerMode === 'singles' ? 'Giocatori' : 'Coppie'}</strong>
                 </span>

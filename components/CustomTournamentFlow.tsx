@@ -671,10 +671,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                 <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                                   Squadra A
                                 </div>
-                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>
+                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>
                                   {t1p1 ? `${t1p1.name} ${t1p1.surname}` : 'TBD'}
                                 </div>
-                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>
+                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t1p2 ? `${t1p2.name} ${t1p2.surname}` : ''}>
                                   {t1p2 ? `${t1p2.name} ${t1p2.surname}` : 'TBD'}
                                 </div>
                               </div>
@@ -693,10 +693,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                 <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                                   Squadra B
                                 </div>
-                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>
+                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>
                                   {t2p1 ? `${t2p1.name} ${t2p1.surname}` : 'TBD'}
                                 </div>
-                                <div className="text-xs sm:text-sm font-semibold truncate leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>
+                                <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t2p2 ? `${t2p2.name} ${t2p2.surname}` : ''}>
                                   {t2p2 ? `${t2p2.name} ${t2p2.surname}` : 'TBD'}
                                 </div>
                               </div>
@@ -752,7 +752,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                       {sIdx + 1}
                                     </span>
                                   </td>
-                                  <td className="py-1.5 truncate max-w-[140px]">
+                                  <td className="py-1.5 break-words">
                                     {st.displayName}
                                     {isSingles && (hasSemifinals || hasFinals) && (
                                       <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-black ${

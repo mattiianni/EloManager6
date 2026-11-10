@@ -115,8 +115,13 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const bulkSaveInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+    // Chiave di idempotenza stabile per firma: un retry dopo errore di rete riusa la stessa chiave
+    // e il server riconosce il torneo già salvato invece di duplicarlo.
+    const bulkSaveKeysRef = useRef<Map<string, string>>(new Map());
+    const fetchSeqRef = useRef(0);
 
     const fetchData = useCallback(async () => {
+        const fetchSeq = ++fetchSeqRef.current;
         setLoading(true);
         try {
             // Fetch all data from a single bootstrap endpoint
@@ -127,8 +132,12 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 tournaments: Tournament[];
                 eloHistory: EloHistoryEntry[];
             }>('/api/data');
+
+            // Risposta superata da una richiesta più recente: ignorala (evita stato vecchio sopra quello nuovo)
+            if (fetchSeq !== fetchSeqRef.current) return;
             
             setPlayers(data.players);
+            if (!data.ghostPlayers) setGhostPlayers([]);
             if (data.ghostPlayers) {
                 const normalizedGhosts: (Player & { isDeleted?: boolean })[] = data.ghostPlayers.map(gp => ({
                     id: gp.id,
@@ -149,7 +158,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             console.error("Failed to fetch initial data:", error);
             // Optionally set an error state to show in the UI
         } finally {
-            setLoading(false);
+            if (fetchSeq === fetchSeqRef.current) setLoading(false);
         }
     }, []);
 
@@ -206,7 +215,10 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const pending = bulkSaveInFlightRef.current.get(signature);
         if (pending) return pending;
 
-        const requestId = globalThis.crypto?.randomUUID?.() || `save-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const requestId = bulkSaveKeysRef.current.get(signature)
+            || globalThis.crypto?.randomUUID?.()
+            || `save-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        bulkSaveKeysRef.current.set(signature, requestId);
         const operation = (async () => {
             try {
                 await apiRequest('/api/tournaments/bulk-matches', {
@@ -214,6 +226,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     headers: { 'Idempotency-Key': requestId },
                     body: JSON.stringify({ matches: matchDataList, tournament: newTournamentData, requestId }),
                 });
+                bulkSaveKeysRef.current.delete(signature);
                 await fetchData();
             } catch (error) {
                 console.error('Failed to add multiple matches:', error);

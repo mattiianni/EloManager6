@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MaterialIcon } from './Icons.tsx';
 import { HIGAlert } from './HIGAlert.tsx';
 import { SFIcon } from './SFIcon.tsx';
 import Button from './Button.tsx';
@@ -64,7 +65,7 @@ export const PlayoffBypassHeader: React.FC<PlayoffBypassHeaderProps> = ({
             {isEditing && (
                 <div className="p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-300/60 dark:border-rose-900/40 space-y-3 animate-fadeIn">
                     <div className="flex items-start gap-2.5">
-                        <span className="text-rose-600 dark:text-rose-400 font-bold text-sm leading-none mt-0.5">⚠️</span>
+                        <MaterialIcon name="warning" className="text-[18px] text-rose-600 dark:text-rose-400 mt-0.5" />
                         <div className="text-xs text-rose-900 dark:text-rose-200">
                             <p className="font-bold">Modalità Modifica Attiva</p>
                             <p className="mt-0.5 text-rose-700 dark:text-rose-300">
