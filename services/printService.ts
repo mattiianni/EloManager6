@@ -8123,7 +8123,7 @@ export const printPlayerProfiles = (
         const eloSvg = generateEloSvg(data.chartPoints, 700, 140);
 
         return `
-            <div class="player-page" style="page-break-inside: avoid; break-inside: avoid;">
+            <div class="player-page">
                 <!-- Header -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div>
@@ -8236,12 +8236,12 @@ export const printPlayerProfiles = (
             box-sizing: border-box !important;
             width: 100% !important;
             clear: both !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
             padding: 0 !important;
             margin: 0 !important;
         }
-        /* Unico meccanismo di interruzione: una nuova pagina PRIMA di ogni scheda
+        /* Niente "break-inside: avoid" sulle schede: una scheda più alta di una pagina in iOS blocca
+           la generazione dell'anteprima di stampa (AirPrint non si apre). Si spezza dove serve.
+           Unico meccanismo di interruzione: una nuova pagina PRIMA di ogni scheda
            successiva alla prima (niente divisori, niente break-after). */
         .player-page + .player-page {
             page-break-before: always !important;
@@ -8274,8 +8274,6 @@ export const printPlayerProfiles = (
                 max-width: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
             }
         }
         .stats-grid {
