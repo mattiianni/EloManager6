@@ -2,6 +2,7 @@ import React from 'react';
 import { SetScore } from '../../types.ts';
 import Button from './Button.tsx';
 import { MaterialIcon } from './Icons.tsx';
+import { normalizeScoreInput, scoreDisplayValue } from '../../utils/scoreInput.ts';
 
 interface MatchScoreInputProps {
     sets: SetScore[];
@@ -16,12 +17,17 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
     
     const handleScoreChange = (setIndex: number, team: 'team1' | 'team2', value: string) => {
         const newSets = [...displaySets];
-        const score = parseInt(value, 10);
         newSets[setIndex] = {
             ...newSets[setIndex],
-            [team]: isNaN(score) ? 0 : score,
+            [team]: normalizeScoreInput(value),
         };
         onSetsChange?.(newSets);
+    };
+
+    // Alla selezione del campo il contenuto viene selezionato: il nuovo numero lo sostituisce (niente "02")
+    const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        const el = e.currentTarget;
+        setTimeout(() => { try { el.select(); } catch { /* noop */ } }, 0);
     };
 
     const addSet = () => {
@@ -47,11 +53,13 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
                 {displaySets.map((set, index) => (
                 <div key={index} className="group relative flex items-center gap-1.5 rounded-xl border border-slate-200/70 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-md shadow-sm">
                     <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="off"
                         aria-label={`Games squadra 1, set ${index + 1}`}
-                        min="0"
-                        value={(set.team1 || set.team2) ? set.team1 : ''}
+                        value={scoreDisplayValue(set.team1, set.team2)}
+                        onFocus={selectAllOnFocus}
                         onChange={(e) => handleScoreChange(index, 'team1', e.target.value)}
                         className="h-11 w-12 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all"
                         placeholder="0"
@@ -59,11 +67,13 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
                     />
                     <span className="text-xs font-black text-slate-500 dark:text-slate-400">-</span>
                     <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="off"
                         aria-label={`Games squadra 2, set ${index + 1}`}
-                        min="0"
-                        value={(set.team1 || set.team2) ? set.team2 : ''}
+                        value={scoreDisplayValue(set.team2, set.team1)}
+                        onFocus={selectAllOnFocus}
                         onChange={(e) => handleScoreChange(index, 'team2', e.target.value)}
                         className="h-11 w-12 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all"
                         placeholder="0"

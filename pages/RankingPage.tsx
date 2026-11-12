@@ -548,16 +548,16 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                     
                                     <div className="py-3 px-1">
                                         <div className="flex justify-between items-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 p-1 rounded-xl transition-colors" onClick={() => handleToggleExpand(player.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleToggleExpand(player.id); } }} role="button" tabIndex={0} aria-expanded={expandedPlayerId === player.id}>
-                                            <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex flex-1 items-center gap-3 min-w-0">
                                                 <div className="w-7 h-7 flex items-center justify-center shrink-0">
                                                     {getMedalIcon(idx)}
                                                 </div>
-                                                <span className="font-semibold text-slate-900 dark:text-white text-[15px] truncate">{player.name} {player.surname}</span>
+                                                <span className="font-semibold text-slate-900 dark:text-white text-[15px] leading-tight break-words [overflow-wrap:anywhere]">{player.name} {player.surname}</span>
                                             </div>
-                                            <div className="flex items-center gap-2.5 shrink-0">
-                                                <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2.5 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
                                                 {getTrendIcon(player.lastDelta)}
-                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 inline-flex h-11 w-11 items-center justify-center hover:bg-sky-500/10 rounded-full transition-colors" aria-label={`Profilo di ${player.name} ${player.surname}`}>
+                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 inline-flex h-11 w-9 items-center justify-center hover:bg-sky-500/10 rounded-full transition-colors" aria-label={`Profilo di ${player.name} ${player.surname}`}>
                                                     <SFIcon name="info.circle" size={16} />
                                                 </button>
                                                 <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={12} color="var(--ios-label-tertiary)" />

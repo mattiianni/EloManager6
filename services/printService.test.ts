@@ -10,6 +10,7 @@ import {
     waitForPrintFontsScript,
     isIOS,
     printInWindow,
+    openPrintDocumentIOS,
 } from './printService.ts';
 
 const match = (id: string, phase?: string): Match => ({
@@ -205,6 +206,30 @@ describe('printService document helpers', () => {
         } finally {
             delete (globalThis as any).window;
             delete (globalThis as any).document;
+        }
+    });
+
+    it('openPrintDocumentIOS apre il documento in una pagina a parte (blob) con la barra Stampa, in modo sincrono', async () => {
+        const opened: string[] = [];
+        let blobText = '';
+        const OrigBlob = globalThis.Blob;
+        const OrigURL = globalThis.URL;
+        (globalThis as any).Blob = class { constructor(parts: any[]) { blobText = parts.join(''); } };
+        (globalThis as any).URL = { createObjectURL: () => 'blob:test', revokeObjectURL: vi.fn() };
+        (globalThis as any).window = { open: vi.fn((url: string) => { opened.push(url); return {}; }) };
+        (globalThis as any).document = {};
+        try {
+            const ok = openPrintDocumentIOS('Titolo <b>', '<div>Contenuto</div>', '@page { size: A4; }');
+            expect(ok).toBe(true);
+            expect(opened).toEqual(['blob:test']);
+            expect(blobText).toContain('Stampa / Salva PDF');
+            expect(blobText).toContain('Contenuto');
+            expect(blobText).toContain('Titolo &lt;b&gt;');
+        } finally {
+            (globalThis as any).Blob = OrigBlob;
+            delete (globalThis as any).window;
+            delete (globalThis as any).document;
+            (globalThis as any).URL = OrigURL;
         }
     });
 

@@ -597,10 +597,71 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
     }
 };
 
+/**
+ * iOS / iPadOS: `window.print()` dentro l'app (soprattutto installata) non è affidabile.
+ * Il documento viene quindi aperto in una pagina a parte (Blob URL, aperta in modo sincrono nel
+ * gesto dell'utente) con la barra "Stampa / Salva PDF": la stampa parte da un tap dentro quella
+ * pagina, senza toccare l'interfaccia dell'app. Se il popup è bloccato si ripiega su `printInWindow`.
+ */
+export const openPrintDocumentIOS = (title: string, content: string, pageStyles = ''): boolean => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    try {
+        // Accetta sia frammenti HTML sia documenti completi: estrae stili e body
+        let extractedStyles = '';
+        const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+        let m: RegExpExecArray | null;
+        while ((m = styleRegex.exec(content)) !== null) extractedStyles += '\n' + m[1];
+        const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        let body = bodyMatch ? bodyMatch[1] : content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+        // Via gli script di auto-stampa/chiusura; restano quelli di correzione grafica (es. SVG del grafico ELO)
+        body = body.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, (block) =>
+            /window\.print|window\.close/.test(block) ? '' : block);
+
+        const toolbarHtml = `
+            <div class="print-toolbar no-print">
+                <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
+                <div class="print-toolbar-actions">
+                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa / Salva PDF</button>
+                    <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
+                </div>
+            </div>
+        `;
+        const fullHtml = `<!DOCTYPE html>
+            <html lang="it">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=820">
+                <title>${escapeHtml(title)}</title>
+                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
+                ${getPrintStyles(true)}
+            </head>
+            <body>
+                ${toolbarHtml}
+                ${body}
+            </body>
+            </html>`;
+
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        // Deve essere chiamata in modo sincrono dentro il click dell'utente
+        const win = window.open(url, '_blank');
+        if (!win) {
+            URL.revokeObjectURL(url);
+            return printInWindow(title, content, pageStyles);
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+        return true;
+    } catch (error) {
+        console.error('openPrintDocumentIOS error:', error);
+        showHIGAlert('Errore durante l\'apertura del documento di stampa.');
+        return false;
+    }
+};
+
 // Fallback printing for iframes/blobs: on iOS, delegates to printInWindow directly
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     if (isIOS()) {
-        return printInWindow(title, htmlContent);
+        return openPrintDocumentIOS(title, htmlContent);
     }
     try {
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -634,7 +695,7 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                     // ignore
                 }
             }
-            return printInWindow(title, content, pageStyles);
+            return openPrintDocumentIOS(title, content, pageStyles);
         }
 
         const toolbarHtml = `

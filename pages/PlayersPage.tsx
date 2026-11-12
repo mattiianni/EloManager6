@@ -257,20 +257,21 @@ const PlayersPage: React.FC = () => {
                     ) : (
                         sortedPlayers.map((player) => (
                             <div key={player.id} className="flex justify-between items-center py-2.5 first:pt-0 last:pb-0">
-                                <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex flex-1 items-center gap-3 min-w-0 pr-1">
                                     <PlayerAvatar name={player.name} surname={player.surname} id={player.id} elo={player.currentElo} size="md" />
                                     <div className="min-w-0">
-                                        <div className="font-semibold text-ios-label text-[15px] truncate">
-                                            {sortIndex === 1 ? `${player.surname} ${player.name}` : `${player.name} ${player.surname}`}
+                                        <div className="font-semibold text-ios-label text-[15px] leading-tight break-words [overflow-wrap:anywhere]">
+                                            <span className="block">{sortIndex === 1 ? player.surname : player.name}</span>
+                                            <span className="block">{sortIndex === 1 ? player.name : player.surname}</span>
                                         </div>
                                         <div className="text-[12px] text-ios-label-secondary mt-0.5">{player.position}</div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                    <span className="mr-1.5 font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Profilo di ${player.name} ${player.surname}`}><SFIcon name="info.circle" size={16}/></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Modifica ${player.name} ${player.surname}`}><SFIcon name="pencil" size={16}/></button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Elimina ${player.name} ${player.surname}`}><SFIcon name="trash" size={16}/></button>
+                                <div className="flex items-center shrink-0">
+                                    <span className="mr-1 font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green inline-flex h-11 w-9 items-center justify-center rounded-full" aria-label={`Profilo di ${player.name} ${player.surname}`}><SFIcon name="info.circle" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue inline-flex h-11 w-9 items-center justify-center rounded-full" aria-label={`Modifica ${player.name} ${player.surname}`}><SFIcon name="pencil" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red inline-flex h-11 w-9 items-center justify-center rounded-full" aria-label={`Elimina ${player.name} ${player.surname}`}><SFIcon name="trash" size={16}/></button>
                                 </div>
                             </div>
                         ))

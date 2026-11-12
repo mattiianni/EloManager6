@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.12.5`
+- Versione attuale: `6.12.6`
 - Mese attuale: `Nov 2026`
 
 ## Regole generali

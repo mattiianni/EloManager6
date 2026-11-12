@@ -1,3 +1,8 @@
+## v6.12.6 — 2026-11-12
+- **Stampa su iOS / iPadOS**: il documento si apre in una pagina a parte (Blob URL aperto in modo sincrono nel tap) con la barra "Stampa / Salva PDF"; la stampa parte da un tap dentro quella pagina, senza toccare l'app (niente "stampa della schermata", niente UI bloccata). Fallback automatico alla stampa in-window se il popup è bloccato. Nuovo test dedicato.
+- **Campi punteggio**: niente più "0" da cancellare né il doppio "02": campo testuale numerico, contenuto selezionato al tocco (la cifra digitata lo sostituisce), zeri iniziali eliminati; 0-0 resta vuoto, 6-0 mostra lo 0. Helper `utils/scoreInput.ts` con test.
+- **Elenco Giocatori e Classifiche**: nomi su due righe invece di troncati ("Alberto Ruot…"); azioni info/modifica/elimina a 44px di altezza e 36px di larghezza (regressione della 6.12.4).
+
 ## v6.12.5 — 2026-11-12
 - **Messicano "In Programma"**: dopo la creazione e dopo ogni Procedi la lista Tornei si aggiorna subito, quindi il torneo compare con la pill "In Corso - Inserisci Risultati".
 - **Navigazione**: dopo "Salva Torneo in corso" (e dopo la chiusura del Messicano ripreso da Risultati) e dopo il completamento di un torneo normale da Risultati l'app torna sempre a *Tornei*.
