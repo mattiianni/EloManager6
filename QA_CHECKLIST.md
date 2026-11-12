@@ -67,3 +67,9 @@ Eseguire ogni formato in stato `scheduled` e `completed`:
 3. Grafico: Start = 1500, poi E1, E2... con l'ELO di torneo dopo ogni giornata. "ELO Massimo" è il massimo di quel grafico. "Ranking #" è la posizione tra i giocatori del torneo.
 4. Tabella giornate: "Var. ELO" è il delta di torneo di ogni giornata.
 5. Senza filtro ("Tutti" o "Scegli Giocatori") non cambia nulla: ELO generale.
+
+## Torneo Libero: nome dato dall'utente al posto di "Torneo Libero" (da provare dall'utente)
+Regola: ogni formato mostra la sua etichetta standard (Americano, Beat the Box, TorneOtto...); **solo** il Torneo Libero mostra il nome scelto dall'utente.
+1. Tornei: un Torneo Libero singolo (senza serie) mostra nella riga della giornata il suo nome, non "Torneo Libero"; gli altri formati mostrano l'etichetta standard.
+2. Classifiche → storico ELO (vista generale e filtrata), profilo giocatore e stampa classifica: nome utente per il Torneo Libero.
+3. Stampa profili filtrata: colonna "Tipo" con il nome per il Torneo Libero.

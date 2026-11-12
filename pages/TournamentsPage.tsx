@@ -1539,7 +1539,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                 onClick={() => toggleExpandedMatchday(day.id)}
                                                             >
                                                                 <h3 className="font-semibold text-lg text-gray-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                                                                    {day.giornataName ? tournamentDayDisplayName : day.type}
+                                                                    {(day.giornataName || day.type === TournamentType.TorneoLibero) ? tournamentDayDisplayName : day.type}
                                                                 </h3>
                                                                 <ChevronDownIcon className={`h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-transform ${expandedMatchdays.has(day.id) ? 'rotate-180' : ''}`} />
                                                             </div>
