@@ -206,3 +206,49 @@ describe('eloEventsService Tests', () => {
         expect(sumPlayerEventEloDelta(playerId, 't-day-1', eloHistory, ['match-1', 'match-2'])).toBe(14);
     });
 });
+
+describe('Etichette storico ELO: Torneo Libero con nome assegnato dall\'utente', () => {
+    const entry = (eventId: string): EloHistoryEntry => ({
+        id: 'h-' + eventId, playerId: 'p1', eventId, eloBefore: 1500, eloAfter: 1510, delta: 10,
+        date: '2026-11-12T18:00:00Z', type: 'tournament', sourceLabel: 'x',
+    } as EloHistoryEntry);
+    const libero = (over: Partial<Tournament>): Tournament => ({
+        id: 'tl', name: 'Sfida Serale', type: TournamentType.TorneoLibero, date: '2026-11-12T18:00:00Z',
+        club: 'Circolo', matchIds: [], status: 'completed', ...over,
+    } as Tournament);
+
+    it('Torneo Libero singolo: mostra il nome dato dall\'utente, non "Torneo Libero" (nessun "Nome · Nome")', () => {
+        const ctx = resolveEventContext(entry('tl'), [], [libero({ giornataName: null })]);
+        expect(ctx.dayLabel).toBe('Sfida Serale');
+        expect(formatLabel({ ...ctx, delta: 10 } as any, true)).toBe('Sfida Serale');
+        expect(formatLabel({ ...ctx, delta: 10 } as any, false)).toBe('Sfida Serale');
+    });
+
+    it('Torneo Libero dentro una serie: vista generale "Serie · Nome", vista filtrata solo il nome', () => {
+        const ctx = resolveEventContext(entry('tl'), [], [libero({ giornataName: 'Serie X' })]);
+        expect(ctx.parentTournamentName).toBe('Serie X');
+        expect(ctx.dayLabel).toBe('Sfida Serale');
+        expect(formatLabel({ ...ctx, delta: 10 } as any, true)).toBe('Serie X · Sfida Serale');
+        expect(formatLabel({ ...ctx, delta: 10 } as any, false)).toBe('Sfida Serale');
+    });
+
+    it('altri formati: logica storica invariata (il tipo distingue le giornate della serie)', () => {
+        const americano = { id: 'ta', name: 'Serie X', giornataName: 'Serie X', type: TournamentType.Americano, date: '2026-11-12T18:00:00Z', club: 'C', matchIds: [], status: 'completed' } as Tournament;
+        const ctx = resolveEventContext(entry('ta'), [], [americano]);
+        expect(ctx.dayLabel).toBe(TournamentType.Americano);
+    });
+});
+
+describe('Torneo Libero: nome utente e scope per serie', () => {
+    it('selezionare la serie "Sfida" non include un Torneo Libero di un\'altra serie che si chiama "Sfida"', () => {
+        const serieA: Tournament = { id: 'tl1', name: 'Sfida', giornataName: 'Serie A', type: TournamentType.TorneoLibero, date: '2026-11-12T18:00:00Z', club: 'C', matchIds: [], status: 'completed' } as Tournament;
+        const sfida: Tournament = { id: 'tl2', name: 'Sfida', giornataName: null, type: TournamentType.TorneoLibero, date: '2026-11-13T18:00:00Z', club: 'C', matchIds: [], status: 'completed' } as Tournament;
+        const history = [
+            { id: 'h1', playerId: 'p1', eventId: 'tl1', eloBefore: 1500, eloAfter: 1510, delta: 10, date: '2026-11-12T18:00:00Z', type: 'tournament', sourceLabel: 'x' },
+            { id: 'h2', playerId: 'p1', eventId: 'tl2', eloBefore: 1510, eloAfter: 1520, delta: 10, date: '2026-11-13T18:00:00Z', type: 'tournament', sourceLabel: 'x' },
+        ] as unknown as EloHistoryEntry[];
+        const timeline = buildPlayerEloTimeline('p1', history, [], [serieA, sfida], [], { parentTournamentName: 'Sfida' });
+        expect(timeline.length).toBe(1); // solo il torneo standalone "Sfida", non la giornata di "Serie A"
+        expect(timeline[0].parentTournamentName).toBe('Sfida');
+    });
+});

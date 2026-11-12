@@ -1,4 +1,4 @@
-import { EloHistoryEntry, Match, Tournament, TeamTournamentMatchday } from '../types.ts';
+import { EloHistoryEntry, Match, Tournament, TeamTournamentMatchday, TournamentType } from '../types.ts';
 
 export interface EloVariationEvent {
     key: string; // Unique grouping key
@@ -36,6 +36,22 @@ export function formatDateIt(dateStr: string): string {
 }
 
 /**
+ * Etichetta della giornata nello storico ELO. Il Torneo Libero porta sempre il NOME assegnato dall'utente
+ * (non il tipo "Torneo Libero"); per gli altri formati resta la logica storica (nome giornata o tipo).
+ */
+function computeDayLabel(tournament: Tournament, isSingleOrCoppie: boolean): string {
+    if (tournament.type === TournamentType.TorneoLibero && String(tournament.name || '').trim()) {
+        return String(tournament.name).trim();
+    }
+    // Se giornataName coincide con il parentTournamentName o con il name del torneo, usiamo type come nome giornata
+    let computedDay = tournament.giornataName || tournament.type;
+    if (isSingleOrCoppie && tournament.giornataName && (tournament.giornataName === tournament.parentTournamentName || tournament.giornataName === tournament.name)) {
+        computedDay = tournament.type;
+    }
+    return computedDay;
+}
+
+/**
  * Resolves the parent tournament name and day label for an ELO history entry.
  */
 export function resolveEventContext(
@@ -43,11 +59,13 @@ export function resolveEventContext(
     matches: Match[],
     tournaments: Tournament[],
     teamMatchdays: TeamTournamentMatchday[] = []
-): { parentTournamentName: string | null; dayLabel: string; dateOfDay: string; isTeamTournament: boolean } {
+): { parentTournamentName: string | null; dayLabel: string; dateOfDay: string; isTeamTournament: boolean; dayLabelIsUserName: boolean } {
     let parentTournamentName: string | null = null;
     let dayLabel = '';
     let dateOfDay = entry.date;
     let isTeamTournament = false;
+    // true se dayLabel è il nome assegnato dall'utente (Torneo Libero) e non il nome di una serie/tipo
+    let dayLabelIsUserName = false;
 
     if (entry.type === 'manual') {
         dayLabel = 'Aggiornamento Manuale';
@@ -79,12 +97,8 @@ export function resolveEventContext(
             const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
             parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
             
-            // Se giornataName coincide con il parentTournamentName o con il name del torneo, usiamo type come nome giornata
-            let computedDay = tournament.giornataName || tournament.type;
-            if (isSingleOrCoppie && tournament.giornataName && (tournament.giornataName === tournament.parentTournamentName || tournament.giornataName === tournament.name)) {
-                computedDay = tournament.type;
-            }
-            dayLabel = computedDay;
+            dayLabel = computeDayLabel(tournament, isSingleOrCoppie);
+            dayLabelIsUserName = tournament.type === TournamentType.TorneoLibero;
             dateOfDay = tournament.date;
         } else {
             // La data non è un'identità: due tornei possono svolgersi nello stesso giorno.
@@ -100,11 +114,8 @@ export function resolveEventContext(
                 const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
                 parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
                 
-                let computedDay = tournament.giornataName || tournament.type;
-                if (isSingleOrCoppie && tournament.giornataName && (tournament.giornataName === tournament.parentTournamentName || tournament.giornataName === tournament.name)) {
-                    computedDay = tournament.type;
-                }
-                dayLabel = computedDay;
+                dayLabel = computeDayLabel(tournament, isSingleOrCoppie);
+                dayLabelIsUserName = tournament.type === TournamentType.TorneoLibero;
                 dateOfDay = tournament.date;
             } else {
                 dayLabel = 'Giornata Torneo';
@@ -120,7 +131,8 @@ export function resolveEventContext(
         parentTournamentName,
         dayLabel,
         dateOfDay,
-        isTeamTournament
+        isTeamTournament,
+        dayLabelIsUserName
     };
 }
 
@@ -143,7 +155,7 @@ export function buildPlayerEloTimeline(
 
     playerEntries.forEach(entry => {
         // 2. Resolve event context
-        const { parentTournamentName, dayLabel, dateOfDay, isTeamTournament } = resolveEventContext(
+        const { parentTournamentName, dayLabel, dateOfDay, isTeamTournament, dayLabelIsUserName } = resolveEventContext(
             entry,
             matches,
             tournaments,
@@ -174,7 +186,8 @@ export function buildPlayerEloTimeline(
             const normScope = scope.parentTournamentName.trim().toLowerCase();
             const matchesScope = 
                 (parentTournamentName && parentTournamentName.trim().toLowerCase() === normScope) ||
-                (dayLabel && dayLabel.trim().toLowerCase() === normScope);
+                // Il nome utente di un Torneo Libero non è una chiave di serie: non va confuso con la serie omonima
+                (!dayLabelIsUserName && dayLabel && dayLabel.trim().toLowerCase() === normScope);
             if (!matchesScope) {
                 return;
             }
@@ -234,9 +247,13 @@ export function formatLabel(event: EloVariationEvent, isGeneralView: boolean): s
         return `Giornata ${event.parentTournamentName || 'Torneo a Squadre'} del ${formatDateIt(event.date)}`;
     }
     if (event.parentTournamentName) {
-        return isGeneralView
-            ? `${event.parentTournamentName} · ${event.dayLabel}`
-            : event.dayLabel;
+        if (isGeneralView) {
+            // Torneo singolo con nome assegnato dall'utente: niente "Nome · Nome"
+            return event.dayLabel === event.parentTournamentName
+                ? event.dayLabel
+                : `${event.parentTournamentName} · ${event.dayLabel}`;
+        }
+        return event.dayLabel;
     }
     if (event.dayLabel === 'Aggiornamento Manuale') {
         return 'Aggiornamento Manuale';

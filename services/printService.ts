@@ -8053,7 +8053,7 @@ export const printPlayerProfiles = (
             const tDraws = tMatches.length - tWins - tLosses;
             return {
                 date: new Date(t.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }),
-                type: getTournamentTypeDisplayName(t.type),
+                type: t.type === TournamentType.TorneoLibero && t.name ? t.name : getTournamentTypeDisplayName(t.type),
                 matches: tMatches.length,
                 wins: tWins,
                 draws: tDraws,
@@ -8150,7 +8150,7 @@ export const printPlayerProfiles = (
             const deltaSign2 = t.delta >= 0 ? '+' : '';
             return `<tr>
                 <td style="font-family:'Manrope',sans-serif;font-variant-numeric:tabular-nums;font-size:8px;">${t.date}</td>
-                <td>${t.type}</td>
+                <td>${escapeHtml(t.type)}</td>
                 <td style="text-align:center;">${t.matches}</td>
                 <td style="text-align:center;"><span style="color:#16a34a;">${t.wins}V</span>${t.draws > 0 ? ` / <span style="color:#f59e0b;">${t.draws}P</span>` : ''} / <span style="color:#dc2626;">${t.losses}S</span></td>
                 <td style="text-align:center;">${t.pct}%</td>
