@@ -203,7 +203,7 @@ bullet('Playtomic', 'Il livello Playtomic equivalente si ricava automaticamente 
 sectionHeader('10. Stampa e PDF');
 paragraph('Ogni formato ha il proprio PDF, in due versioni: in bianco (da stampare prima del torneo e far compilare a mano) e completo (con risultati e classifiche). Tutti i PDF hanno lo stesso stile e lo stesso piè di pagina.');
 bullet('Computer e Android', 'L\'app apre il documento in una nuova scheda. In alto trovi la barra con "Stampa / Salva PDF" e "Chiudi"; la barra non compare nella stampa.');
-bullet('iPhone e iPad (Safari o app installata)', 'Il documento si apre in una pagina dedicata con la barra Stampa / Salva PDF in alto: tocca il pulsante per aprire il menu di stampa di iOS (AirPrint) e stampare o salvare un PDF; poi tocca Chiudi per tornare all\'app.');
+bullet('iPhone e iPad (Safari o app installata)', 'Il documento si apre in un\'anteprima a schermo intero, dentro l\'app, con la barra Stampa / Salva PDF in alto: tocca il pulsante per aprire il menu di stampa di iOS (AirPrint) e stampare o salvare un PDF; poi tocca Chiudi per tornare all\'app.');
 bullet('Profili giocatore', 'Una pagina per ogni giocatore.');
 paragraph('Se il documento non si apre, controlla che il browser non blocchi i popup per questo sito.');
 

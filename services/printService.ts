@@ -598,14 +598,20 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
 };
 
 /**
- * iOS / iPadOS: `window.print()` dentro l'app (soprattutto installata) non è affidabile.
- * Il documento viene quindi aperto in una pagina a parte (Blob URL, aperta in modo sincrono nel
- * gesto dell'utente) con la barra "Stampa / Salva PDF": la stampa parte da un tap dentro quella
- * pagina, senza toccare l'interfaccia dell'app. Se il popup è bloccato si ripiega su `printInWindow`.
+ * iOS / iPadOS (anche app installata): niente nuove finestre e niente `window.print()` differito.
+ * Il documento viene mostrato come anteprima a pieno schermo DENTRO l'app, con la barra
+ * "Stampa / Salva PDF" · "Chiudi". `window.print()` parte in modo sincrono dal tap sul pulsante
+ * (gesto utente valido) e gli stili di stampa restano nel DOM finché l'anteprima è aperta:
+ * nessuna corsa con la pulizia, nessuna stampa della schermata dell'app.
  */
-export const openPrintDocumentIOS = (title: string, content: string, pageStyles = ''): boolean => {
+export const openPrintPreviewIOS = (title: string, content: string, pageStyles = ''): boolean => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
+        const old = document.getElementById('padel-print-preview');
+        if (old) old.remove();
+        const oldStyle = document.getElementById('padel-print-preview-style');
+        if (oldStyle) oldStyle.remove();
+
         // Accetta sia frammenti HTML sia documenti completi: estrae stili e body
         let extractedStyles = '';
         const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
@@ -617,43 +623,99 @@ export const openPrintDocumentIOS = (title: string, content: string, pageStyles 
         body = body.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, (block) =>
             /window\.print|window\.close/.test(block) ? '' : block);
 
-        const toolbarHtml = `
-            <div class="print-toolbar no-print">
-                <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
-                <div class="print-toolbar-actions">
-                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa / Salva PDF</button>
-                    <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
-                </div>
-            </div>
-        `;
-        const fullHtml = `<!DOCTYPE html>
-            <html lang="it">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=820">
-                <title>${escapeHtml(title)}</title>
-                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
-                ${getPrintStyles(true)}
-            </head>
-            <body>
-                ${toolbarHtml}
-                ${body}
-            </body>
-            </html>`;
+        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
+        const hoistedPage = hoistTopLevelPageRules(pageStyles);
+        const hoistedExtracted = hoistTopLevelPageRules(extractedStyles);
 
-        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        // Deve essere chiamata in modo sincrono dentro il click dell'utente
-        const win = window.open(url, '_blank');
-        if (!win) {
-            URL.revokeObjectURL(url);
-            return printInWindow(title, content, pageStyles);
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+        const styleEl = document.createElement('style');
+        styleEl.id = 'padel-print-preview-style';
+        styleEl.textContent = `
+            @page { size: A4; margin: 12mm 10mm; }
+            ${hoistedPage.pageRules}
+            ${hoistedExtracted.pageRules}
+            #padel-print-preview {
+                position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 2147483000;
+                background: #ffffff; color: #000000; overflow: auto; -webkit-overflow-scrolling: touch;
+                font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+            }
+            #padel-print-preview .ppv-bar {
+                position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px; background: #f8f8f6; border-bottom: 1px solid #d1d5db;
+            }
+            #padel-print-preview .ppv-title { font-size: 13px; font-weight: 700; color: #0f172a; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #padel-print-preview .ppv-actions { display: flex; gap: 8px; flex-shrink: 0; }
+            #padel-print-preview .ppv-btn {
+                min-height: 44px; padding: 0 14px; border-radius: 9999px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a;
+                font: 600 14px 'Manrope', -apple-system, sans-serif; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+            }
+            #padel-print-preview .ppv-primary { background: #0055D4; border-color: #0055D4; color: #ffffff; }
+            #padel-print-preview .ppv-doc { padding: 12px; overflow-x: auto; }
+            ${hoistedExtracted.rest}
+            ${basePrintCss}
+            ${hoistedPage.rest}
+            @media print {
+                html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; }
+                #root { display: none !important; }
+                body > *:not(#padel-print-preview) { display: none !important; }
+                #padel-print-preview { position: static !important; overflow: visible !important; height: auto !important; }
+                #padel-print-preview .ppv-bar { display: none !important; }
+                #padel-print-preview .ppv-doc { padding: 0 !important; overflow: visible !important; }
+            }
+        `;
+
+        const root = document.createElement('div');
+        root.id = 'padel-print-preview';
+        const bar = document.createElement('div');
+        bar.className = 'ppv-bar';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'ppv-title';
+        titleEl.textContent = title;
+        const actions = document.createElement('div');
+        actions.className = 'ppv-actions';
+
+        const closePreview = () => {
+            const r = document.getElementById('padel-print-preview');
+            if (r) r.remove();
+            const st = document.getElementById('padel-print-preview-style');
+            if (st) st.remove();
+            try { if (typeof window.scrollTo === 'function') window.scrollTo(0, 0); } catch { /* noop */ }
+        };
+
+        const printBtn = document.createElement('button');
+        printBtn.setAttribute('type', 'button');
+        printBtn.className = 'ppv-btn ppv-primary';
+        printBtn.innerHTML = `${PDF_ICONS.printer} Stampa / Salva PDF`;
+        // print() sincrono dentro il tap: gesto utente valido su iOS
+        printBtn.addEventListener('click', () => {
+            try {
+                window.print();
+            } catch (err) {
+                console.error('window.print error:', err);
+                showHIGAlert('Impossibile avviare la stampa. Riprova.');
+            }
+        });
+        const closeBtn = document.createElement('button');
+        closeBtn.setAttribute('type', 'button');
+        closeBtn.className = 'ppv-btn';
+        closeBtn.textContent = 'Chiudi';
+        closeBtn.addEventListener('click', closePreview);
+        actions.appendChild(printBtn);
+        actions.appendChild(closeBtn);
+        bar.appendChild(titleEl);
+        bar.appendChild(actions);
+
+        const doc = document.createElement('div');
+        doc.className = 'ppv-doc';
+        doc.innerHTML = body;
+
+        root.appendChild(bar);
+        root.appendChild(doc);
+        document.head.appendChild(styleEl);
+        document.body.appendChild(root);
         return true;
     } catch (error) {
-        console.error('openPrintDocumentIOS error:', error);
-        showHIGAlert('Errore durante l\'apertura del documento di stampa.');
+        console.error('openPrintPreviewIOS error:', error);
+        showHIGAlert('Errore durante la preparazione della stampa.');
         return false;
     }
 };
@@ -661,7 +723,7 @@ export const openPrintDocumentIOS = (title: string, content: string, pageStyles 
 // Fallback printing for iframes/blobs: on iOS, delegates to printInWindow directly
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     if (isIOS()) {
-        return openPrintDocumentIOS(title, htmlContent);
+        return openPrintPreviewIOS(title, htmlContent);
     }
     try {
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -695,7 +757,7 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                     // ignore
                 }
             }
-            return openPrintDocumentIOS(title, content, pageStyles);
+            return openPrintPreviewIOS(title, content, pageStyles);
         }
 
         const toolbarHtml = `

@@ -262,17 +262,16 @@ const App: React.FC = () => {
                         theme={theme}
                         toggleTheme={toggleTheme}
                     />
-                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-3.5 pb-[calc(49px+env(safe-area-inset-bottom,0px)+16px)] md:px-8 md:pt-6 md:pb-8 lg:px-12 lg:pt-8 lg:pb-10 xl:px-16">
+                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-3.5 pb-[66px] md:px-8 md:pt-6 md:pb-8 lg:px-12 lg:pt-8 lg:pb-10 xl:px-16">
                         <div className="fade-in mx-auto w-full max-w-[1400px]">
                             {renderPage()}
                         </div>
                     </main>
                     <nav 
                         aria-label="Navigazione principale"
-                        className="fixed inset-x-0 bottom-0 z-20 mx-auto flex items-center justify-around select-none md:hidden"
+                        className="fixed inset-x-0 bottom-0 z-20 mx-auto flex h-[58px] items-center justify-around select-none md:hidden"
                         style={{
-                            height: 'calc(49px + env(safe-area-inset-bottom, 0px))',
-                            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                            paddingBottom: 'min(env(safe-area-inset-bottom, 0px), 8px)',
                             background: 'var(--ios-secondarySystemGroupedBackground)',
                             borderTop: '0.5px solid var(--ios-separator)',
                         }}
@@ -297,7 +296,7 @@ const App: React.FC = () => {
                                             color={active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)'} 
                                         />
                                     </div>
-                                    <span className="text-[11px] tracking-tight leading-none mt-0.5">{item.label}</span>
+                                    <span className="text-[10px] tracking-tight leading-none mt-0.5">{item.label}</span>
                                 </button>
                             );
                         })}

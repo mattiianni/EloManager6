@@ -2479,6 +2479,42 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }, [matches, tournaments]);
 
 
+ // Torneo Messicano in corso: il flusso sostituisce il contenuto della pagina (header e tab bar restano)
+ if (mexicanResume) {
+     const resumeMatches = matches
+         .filter(m => m.tournamentId === mexicanResume.id)
+         .sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1) || (a.groupNumber || 0) - (b.groupNumber || 0));
+     const resumePlayerIds = Array.from(new Set(resumeMatches.flatMap(m => [...m.team1, ...m.team2])));
+     const resumePlayers = resumePlayerIds.map(id => getPlayerById(id)).filter((p): p is Player => !!p);
+     const closeResume = () => {
+         setMexicanResume(null);
+         fetchData();
+         // Dopo il salvataggio o la chiusura si torna sempre a Tornei
+         if (typeof setActivePage === 'function') setActivePage('Tournaments');
+     };
+     return (
+         <div className="space-y-3" aria-label="Torneo Messicano in corso">
+             <div className="mx-auto max-w-3xl">
+                 <Button variant="secondary" onClick={closeResume}>Chiudi</Button>
+             </div>
+             <MexicanTournamentFlow
+                 players={resumePlayers}
+                 onFinish={closeResume}
+                 tournamentDate={mexicanResume.date}
+                 clubName={mexicanResume.club}
+                 tournamentName={mexicanResume.name}
+                 giornataName={mexicanResume.giornataName || undefined}
+                 fieldsCount={mexicanResume.mexicanFields || Math.max(2, Math.floor(resumePlayers.length / 4))}
+                 roundsCount={mexicanResume.mexicanRounds || Math.max(...resumeMatches.map(m => m.roundNumber || 1), 2)}
+                 scoringType={mexicanResume.mexicanScoringType || 'games-diff'}
+                 drawMode="Normal"
+                 initialMatches={resumeMatches}
+                 tournamentId={mexicanResume.id}
+             />
+         </div>
+     );
+}
+
  return (
  <div className="space-y-6">
  <Card title={
@@ -2686,40 +2722,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  )}
  </div>
 
- {mexicanResume && (() => {
-     const resumeMatches = matches
-         .filter(m => m.tournamentId === mexicanResume.id)
-         .sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1) || (a.groupNumber || 0) - (b.groupNumber || 0));
-     const resumePlayerIds = Array.from(new Set(resumeMatches.flatMap(m => [...m.team1, ...m.team2])));
-     const resumePlayers = resumePlayerIds.map(id => getPlayerById(id)).filter((p): p is Player => !!p);
-     const closeResume = () => {
-         setMexicanResume(null);
-         fetchData();
-         // Dopo il salvataggio o la chiusura si torna sempre a Tornei
-         if (typeof setActivePage === 'function') setActivePage('Tournaments');
-     };
-     return (
-         <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--app-bg)] p-4 pb-24" role="dialog" aria-modal="true" aria-label="Torneo Messicano in corso">
-             <div className="mx-auto max-w-3xl mb-3">
-                 <Button variant="secondary" onClick={closeResume}>Chiudi</Button>
-             </div>
-             <MexicanTournamentFlow
-                 players={resumePlayers}
-                 onFinish={closeResume}
-                 tournamentDate={mexicanResume.date}
-                 clubName={mexicanResume.club}
-                 tournamentName={mexicanResume.name}
-                 giornataName={mexicanResume.giornataName || undefined}
-                 fieldsCount={mexicanResume.mexicanFields || Math.max(2, Math.floor(resumePlayers.length / 4))}
-                 roundsCount={mexicanResume.mexicanRounds || Math.max(...resumeMatches.map(m => m.roundNumber || 1), 2)}
-                 scoringType={mexicanResume.mexicanScoringType || 'games-diff'}
-                 drawMode="Normal"
-                 initialMatches={resumeMatches}
-                 tournamentId={mexicanResume.id}
-             />
-         </div>
-     );
- })()}
+
 
  <HIGSheet
  isOpen={!!editingTournament && !isInFinalsPhase && !showFinalsStandingsModal && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase}

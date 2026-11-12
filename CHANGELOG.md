@@ -1,3 +1,8 @@
+## v6.12.7 — 2026-11-12
+- **Stampa su iOS / iPadOS (app installata)**: il documento si mostra come anteprima a schermo intero dentro l'app, con la barra "Stampa / Salva PDF" e "Chiudi". `window.print()` parte in modo sincrono dal tap sul pulsante (gesto valido) e gli stili di stampa restano nel DOM finché l'anteprima è aperta. Sostituisce la pagina in una nuova finestra (6.12.6), che nell'app installata non si apriva.
+- **Messicano su iPhone**: intestazione su due righe, "Stampa Vuoto" e "Stampa" non vanno più a capo. Nella ripresa da *Risultati* il flusso sostituisce il contenuto della pagina (header e barra inferiore restano) e il pulsante "Chiudi" è sempre raggiungibile.
+- **Barra inferiore**: ripristinata esattamente com'era prima della 6.12.4 (altezza 58px, margine di sicurezza ridotto, etichette a 10px).
+
 ## v6.12.6 — 2026-11-12
 - **Stampa su iOS / iPadOS**: il documento si apre in una pagina a parte (Blob URL aperto in modo sincrono nel tap) con la barra "Stampa / Salva PDF"; la stampa parte da un tap dentro quella pagina, senza toccare l'app (niente "stampa della schermata", niente UI bloccata). Fallback automatico alla stampa in-window se il popup è bloccato. Nuovo test dedicato.
 - **Campi punteggio**: niente più "0" da cancellare né il doppio "02": campo testuale numerico, contenuto selezionato al tocco (la cifra digitata lo sostituisce), zeri iniziali eliminati; 0-0 resta vuoto, 6-0 mostra lo 0. Helper `utils/scoreInput.ts` con test.

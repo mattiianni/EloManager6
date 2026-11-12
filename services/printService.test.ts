@@ -10,7 +10,7 @@ import {
     waitForPrintFontsScript,
     isIOS,
     printInWindow,
-    openPrintDocumentIOS,
+    openPrintPreviewIOS,
 } from './printService.ts';
 
 const match = (id: string, phase?: string): Match => ({
@@ -209,27 +209,49 @@ describe('printService document helpers', () => {
         }
     });
 
-    it('openPrintDocumentIOS apre il documento in una pagina a parte (blob) con la barra Stampa, in modo sincrono', async () => {
-        const opened: string[] = [];
-        let blobText = '';
-        const OrigBlob = globalThis.Blob;
-        const OrigURL = globalThis.URL;
-        (globalThis as any).Blob = class { constructor(parts: any[]) { blobText = parts.join(''); } };
-        (globalThis as any).URL = { createObjectURL: () => 'blob:test', revokeObjectURL: vi.fn() };
-        (globalThis as any).window = { open: vi.fn((url: string) => { opened.push(url); return {}; }) };
-        (globalThis as any).document = {};
+    it('openPrintPreviewIOS mostra l\'anteprima in-app, stampa dal tap in modo sincrono e si chiude', () => {
+        const elements: Record<string, any> = {};
+        const makeEl = (tag: string) => {
+            const el: any = {
+                tagName: tag, id: '', className: '', innerHTML: '', textContent: '', children: [] as any[], listeners: {} as Record<string, () => void>,
+                setAttribute: vi.fn(),
+                appendChild: vi.fn((c: any) => { el.children.push(c); if (c.id) elements[c.id] = c; return c; }),
+                addEventListener: vi.fn((ev: string, cb: () => void) => { el.listeners[ev] = cb; }),
+                remove: vi.fn(() => { if (el.id) delete elements[el.id]; }),
+            };
+            return el;
+        };
+        const doc: any = {
+            head: { appendChild: vi.fn((el: any) => { elements[el.id] = el; }) },
+            body: { appendChild: vi.fn((el: any) => { elements[el.id] = el; }) },
+            getElementById: vi.fn((id: string) => elements[id] || null),
+            createElement: vi.fn((tag: string) => makeEl(tag)),
+        };
+        const print = vi.fn();
+        (globalThis as any).window = { print, scrollTo: vi.fn() };
+        (globalThis as any).document = doc;
         try {
-            const ok = openPrintDocumentIOS('Titolo <b>', '<div>Contenuto</div>', '@page { size: A4; }');
+            const ok = openPrintPreviewIOS('Titolo', '<div>Contenuto</div>', '@page { size: A4; }');
             expect(ok).toBe(true);
-            expect(opened).toEqual(['blob:test']);
-            expect(blobText).toContain('Stampa / Salva PDF');
-            expect(blobText).toContain('Contenuto');
-            expect(blobText).toContain('Titolo &lt;b&gt;');
+            const root = elements['padel-print-preview'];
+            expect(root).toBeDefined();
+            const bar = root.children[0];
+            const doc2 = root.children[1];
+            expect(doc2.innerHTML).toContain('Contenuto');
+            const [printBtn, closeBtn] = bar.children[1].children;
+            expect(printBtn.innerHTML).toContain('Stampa / Salva PDF');
+            expect(print).not.toHaveBeenCalled(); // nessuna stampa automatica: parte dal tap
+            printBtn.listeners.click();
+            expect(print).toHaveBeenCalledTimes(1);
+            const style = elements['padel-print-preview-style'];
+            expect(style.textContent).toContain('@media print');
+            expect(style.textContent).toContain('#root { display: none !important; }');
+            closeBtn.listeners.click();
+            expect(elements['padel-print-preview']).toBeUndefined();
+            expect(elements['padel-print-preview-style']).toBeUndefined();
         } finally {
-            (globalThis as any).Blob = OrigBlob;
             delete (globalThis as any).window;
             delete (globalThis as any).document;
-            (globalThis as any).URL = OrigURL;
         }
     });
 

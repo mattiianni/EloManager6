@@ -453,7 +453,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
     return (
         <div className="mx-auto max-w-3xl space-y-5">
             <Card title={
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <span className="font-bold">Torneo Messicano (JIT)</span>
                         <div className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
@@ -461,11 +461,11 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <Button onClick={handlePrintBlank} variant="ghost" size="sm">
-                            <span className="flex items-center gap-1"><PrintIcon /> Stampa Vuoto</span>
+                        <Button onClick={handlePrintBlank} variant="ghost" size="sm" className="whitespace-nowrap">
+                            <span className="flex items-center gap-1 whitespace-nowrap"><PrintIcon /> Stampa Vuoto</span>
                         </Button>
-                        <Button onClick={handlePrintComplete} variant="ghost" size="sm">
-                            <span className="flex items-center gap-1"><PrintIcon /> Stampa</span>
+                        <Button onClick={handlePrintComplete} variant="ghost" size="sm" className="whitespace-nowrap">
+                            <span className="flex items-center gap-1 whitespace-nowrap"><PrintIcon /> Stampa</span>
                         </Button>
                     </div>
                 </div>
