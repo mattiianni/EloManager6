@@ -13,7 +13,7 @@ import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
 import CustomTournamentFlow from './CustomTournamentFlow.tsx';
 import MexicanTournamentFlow from './MexicanTournamentFlow.tsx';
-import { getTorneoLiberoMissingField } from '../utils/torneoLibero.ts';
+import { getTorneoLiberoMissingField, findIncompleteLiberoMatch, getLiberoWinner, isLiberoMatchComplete } from '../utils/torneoLibero.ts';
 import { MexicanDrawMode } from '../formats/messicano/types.ts';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
@@ -995,6 +995,18 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  showHIGAlert(liberoMissing);
  return;
  }
+ // Una partita compilata a metà (giocatori o punteggio) va segnalata, non scartata in silenzio
+ const incompleteLibero = findIncompleteLiberoMatch(torneoLiberoMatches, torneoLiberoMode);
+ if (incompleteLibero !== null) {
+ showHIGAlert(`La partita ${incompleteLibero} è incompleta: scegli tutti i giocatori (o le due squadre) oppure svuotala.`);
+ return;
+ }
+ // Tutte le partite del tabellone devono essere compilate (come prima, ma ora con un messaggio chiaro)
+ const emptyLibero = torneoLiberoMatches.findIndex(m => !isLiberoMatchComplete(m, torneoLiberoMode));
+ if (emptyLibero !== -1) {
+ showHIGAlert(`La partita ${emptyLibero + 1} non è compilata: scegli i giocatori (o le due squadre) di tutte le partite del tabellone.`);
+ return;
+ }
 
  setIsSubmitting(true);
 
@@ -1065,6 +1077,18 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  showHIGAlert(liberoMissing);
  return;
  }
+ // Una partita compilata a metà (giocatori o punteggio) va segnalata, non scartata in silenzio
+ const incompleteLibero = findIncompleteLiberoMatch(torneoLiberoMatches, torneoLiberoMode);
+ if (incompleteLibero !== null) {
+ showHIGAlert(`La partita ${incompleteLibero} è incompleta: scegli tutti i giocatori (o le due squadre) oppure svuotala.`);
+ return;
+ }
+ // Tutte le partite del tabellone devono essere compilate (come prima, ma ora con un messaggio chiaro)
+ const emptyLibero = torneoLiberoMatches.findIndex(m => !isLiberoMatchComplete(m, torneoLiberoMode));
+ if (emptyLibero !== -1) {
+ showHIGAlert(`La partita ${emptyLibero + 1} non è compilata: scegli i giocatori (o le due squadre) di tutte le partite del tabellone.`);
+ return;
+ }
  // Conferma con 0-0: il server rifiuta; messaggio chiaro invece dell'errore generico
  const liberoUnscored = torneoLiberoMatches.some(match => {
  const complete = torneoLiberoMode === 'fixed'
@@ -1103,10 +1127,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  team2Ids = [match.team2Player1!, match.team2Player2!];
  }
 
- // Calculate winner from sets
- const team1Wins = match.scores.filter(set => set.team1 > set.team2).length;
- const team2Wins = match.scores.filter(set => set.team2 > set.team1).length;
- const winner = team1Wins > team2Wins ? 'team1' as const : 'team2' as const;
+ // Esito dalla somma dei game (pareggio = nessuna vittoria), come fa il server
+ const winner = getLiberoWinner(match.scores);
 
  return {
  team1: team1Ids,
@@ -3414,28 +3436,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onClick={handleTorneoLiberoSaveScheduled}
  variant="success"
  className="flex-1"
- disabled={!torneoLiberoMatches.every(match => {
- if (torneoLiberoMode === 'fixed') {
- return match.team1 && match.team2;
- } else {
- return match.team1Player1 && match.team1Player2 &&
- match.team2Player1 && match.team2Player2;
- }
- }) || isSubmitting}
+ disabled={isSubmitting}
  >
  {isSubmitting ? 'Salvataggio...' : 'Salva Tabellone'}
  </Button>
  <Button
  onClick={handleTorneoLiberoConfirm}
  className="flex-1"
- disabled={!torneoLiberoMatches.every(match => {
- if (torneoLiberoMode === 'fixed') {
- return match.team1 && match.team2;
- } else {
- return match.team1Player1 && match.team1Player2 &&
- match.team2Player1 && match.team2Player2;
- }
- }) || isSubmitting}
+ disabled={isSubmitting}
  >
  {isSubmitting ? 'Salvataggio...' : 'Conferma Risultati'}
  </Button>

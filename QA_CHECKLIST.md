@@ -58,3 +58,5 @@ Eseguire ogni formato in stato `scheduled` e `completed`:
    - "Indietro" dal setup non deve aprire una schermata di nome torneo diversa.
    - "Conferma Risultati" con punteggio 0-0 deve mostrare un messaggio chiaro.
 6. "Conferma Risultati" → classifica e ELO aggiornati.
+7. Partita **incompleta** (punteggio inserito ma giocatori mancanti, o solo alcuni giocatori scelti): "Salva Tabellone" e "Conferma Risultati" mostrano "La partita N è incompleta..." e non salvano nulla; una partita rimasta vuota mostra "La partita N non è compilata..." (tutte le partite del tabellone vanno compilate). I pulsanti restano premibili proprio per mostrare questi messaggi.
+8. Partita con games pari (es. 6-6): nessuna vittoria assegnata, risultato = pareggio (ELO a 0,5).
