@@ -1837,6 +1837,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  await fetchData(); // Single refresh at the end
  setEditingTournament(null);
  setIsInFinalsPhase(false);
+ if (typeof setActivePage === 'function') setActivePage('Tournaments'); // dopo salvataggio/completamento si torna sempre a Tornei
  } catch (error) {
  console.error("Failed to update scores:", error);
  showHIGAlert('Errore nell\'aggiornamento dei risultati. Riprova.');
@@ -2691,7 +2692,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
          .sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1) || (a.groupNumber || 0) - (b.groupNumber || 0));
      const resumePlayerIds = Array.from(new Set(resumeMatches.flatMap(m => [...m.team1, ...m.team2])));
      const resumePlayers = resumePlayerIds.map(id => getPlayerById(id)).filter((p): p is Player => !!p);
-     const closeResume = () => { setMexicanResume(null); fetchData(); };
+     const closeResume = () => {
+         setMexicanResume(null);
+         fetchData();
+         // Dopo il salvataggio o la chiusura si torna sempre a Tornei
+         if (typeof setActivePage === 'function') setActivePage('Tournaments');
+     };
      return (
          <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--app-bg)] p-4 pb-24" role="dialog" aria-modal="true" aria-label="Torneo Messicano in corso">
              <div className="mx-auto max-w-3xl mb-3">

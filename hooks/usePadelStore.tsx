@@ -421,6 +421,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             body: JSON.stringify({ matches: matchDataList, tournament: tournamentData, requestId }),
         });
         mexicanCreateKeyRef.current = null;
+        await fetchData(); // il torneo "In Programma" compare subito nella lista Tornei
         return { tournamentId: data.tournamentId, matches: data.matches || [] };
     };
 
@@ -429,6 +430,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             method: 'PUT',
             body: JSON.stringify({ tournamentId, updates, newMatches }),
         });
+        await fetchData();
         return data.created || [];
     };
 

@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.4)
+# Istruzioni d'uso (v6.12.5)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.4`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.5`, `Nov 2026`).
 
 ## Indice
 
@@ -133,7 +133,7 @@ Il Messicano è un torneo a coppie mobili, per 8, 12, 16, 20 o 24 giocatori:
 - **Giornata singola o tappa**: può essere un evento a sé oppure una tappa di una serie.
 - **ELO**: aggiornamento standard con K = 16 a somma zero; sono supportati anche i pareggi.
 
-Puoi chiudere l'app in qualsiasi momento: il torneo resta `In Programma` e lo riprendi da `Risultati`, dal turno in cui eri arrivato.
+Puoi chiudere l'app in qualsiasi momento: il torneo resta `In Programma`: lo trovi in `Tornei` con l'etichetta `In Corso - Inserisci Risultati` e lo riprendi dal turno in cui eri arrivato. Dopo ogni salvataggio l'app torna sempre a `Tornei`.
 
 ## Torneo a Squadre (Round Robin)
 

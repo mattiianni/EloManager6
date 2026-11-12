@@ -1,3 +1,7 @@
+## v6.12.5 — 2026-11-12
+- **Messicano "In Programma"**: dopo la creazione e dopo ogni Procedi la lista Tornei si aggiorna subito, quindi il torneo compare con la pill "In Corso - Inserisci Risultati".
+- **Navigazione**: dopo "Salva Torneo in corso" (e dopo la chiusura del Messicano ripreso da Risultati) e dopo il completamento di un torneo normale da Risultati l'app torna sempre a *Tornei*.
+
 ## v6.12.4 — 2026-11-12
 - **Torneo Messicano (turno per turno)**:
   - Pulsante **Procedi** in ogni turno tranne l'ultimo: calcola il turno successivo (JIT) e lo **salva in automatico** sul database (primo salvataggio = creazione del torneo "In Programma", poi aggiornamenti senza duplicati). Nell'ultimo turno il pulsante diventa **Concludi Torneo** (classifica finale + ELO).

@@ -246,7 +246,8 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
         try {
             const saved = await persistProgress(allMatches);
             mergeSavedMatches(saved);
-            showHIGAlert('Torneo salvato come "In Programma". Potrai riprenderlo in qualsiasi momento da Risultati.');
+            showHIGAlert('Torneo salvato come "In Programma". Lo trovi in Tornei con l\'etichetta "In Corso - Inserisci Risultati".');
+            onFinish();
         } catch (e: any) {
             console.error('Errore durante il salvataggio in programma:', e);
             showHIGAlert('Errore durante il salvataggio del torneo.');
