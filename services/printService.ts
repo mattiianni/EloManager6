@@ -373,6 +373,15 @@ export const isIOS = (): boolean => {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+/** iPhone / iPod (non iPad): qui la stampa passa da una pagina Blob con anteprima, come nella 6.10.x. */
+export const isIPhone = (): boolean => {
+    if (typeof navigator === 'undefined') return false;
+    return /iPhone|iPod/.test(navigator.userAgent);
+};
+
+/** iPadOS (e altri iOS non iPhone): la stampa avviene dentro l'app (`printInWindow`), che qui funziona. */
+export const usesInAppPrint = (): boolean => isIOS() && !isIPhone();
+
 /**
  * Estrae le regole `@page` di primo livello da un blocco CSS (ignora quelle annidate in @media).
  * Servono perché il CSS di stampa viene racchiuso in `@media print`: WebKit non garantisce
@@ -545,7 +554,20 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
 
 // Fallback printing for iframes/blobs: on iOS, delegates to printInWindow directly
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
-    if (isIOS()) {
+    if (usesInAppPrint()) {
+        return printInWindow(title, htmlContent);
+    }
+    if (isIPhone()) {
+        // iOS: come nella 6.10.x, pagina da Blob URL aperta in modo sincrono (senza chiusura automatica
+        // della scheda: su iOS la stampa è asincrona). Se il popup è bloccato si ripiega sulla stampa in-window.
+        const iosHtml = htmlContent.replace(/window\.close\(\)/g, 'void 0');
+        const iosBlobUrl = URL.createObjectURL(new Blob([iosHtml], { type: 'text/html;charset=utf-8' }));
+        const iosWindow = window.open(iosBlobUrl, '_blank');
+        if (iosWindow) {
+            setTimeout(() => URL.revokeObjectURL(iosBlobUrl), 120000);
+            return true;
+        }
+        URL.revokeObjectURL(iosBlobUrl);
         return printInWindow(title, htmlContent);
     }
     try {
@@ -570,18 +592,13 @@ const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
 
 export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
-        const iOS = isIOS();
-
-        if (iOS) {
+        if (usesInAppPrint()) {
             if (existingWindow) {
-                try {
-                    existingWindow.close();
-                } catch (e) {
-                    // ignore
-                }
+                try { existingWindow.close(); } catch (e) { /* ignore */ }
             }
             return printInWindow(title, content, pageStyles);
         }
+        const iOS = isIPhone();
 
         const toolbarHtml = `
             <div class="print-toolbar no-print">
@@ -611,18 +628,39 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                             setTimeout(function() {
                                 try {
                                     window.print();
-                                    setTimeout(function() { window.close(); }, 100);
+                                    ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
                                 } catch(e) {
                                     console.error('Print error:', e);
-                                    window.close();
+                                    ${iOS ? '' : 'window.close();'}
                                 }
-                            }, 150);
+                            }, ${iOS ? 300 : 150});
                         });
                     });
                 <\/script>
             </body>
             </html>
         `;
+
+        if (iOS) {
+            // iOS (come nella 6.10.x): pagina da Blob URL, aperta in modo sincrono dal tap. Su iOS il
+            // document.write su about:blank rompe l'anteprima nativa; con il Blob la stampa parte da sola
+            // e restano visibili il pulsante "Stampa / Salva PDF" e la chiusura standard di Safari.
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            if (existingWindow) {
+                existingWindow.location.replace(url);
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+                return true;
+            }
+            const iosWindow = window.open(url, '_blank');
+            if (iosWindow) {
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+                return true;
+            }
+            URL.revokeObjectURL(url);
+            // Popup bloccato: ultima risorsa, stampa dentro l'app
+            return printInWindow(title, content, pageStyles);
+        }
 
         if (existingWindow) {
             existingWindow.document.open();

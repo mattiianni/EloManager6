@@ -1,3 +1,8 @@
+## v6.12.9 — 2026-11-12
+- **Stampa su iPhone**: ripristinato il metodo della 6.10.x, che funzionava: il documento si apre in una pagina Blob aperta in modo sincrono dal tap, con stampa automatica e pulsante "Stampa / Salva PDF"; se il popup è bloccato si ripiega sulla stampa dentro l'app. I report dei tornei a squadre pre-aprono la finestra al tap anche su iPhone. **iPad** (stampa dentro l'app), desktop e Android non cambiano.
+- **Torneo Libero con Giocatori Singoli**: ora selezionabile tra i formati dei singoli (anche da "+ Inserisci giornata"); si scelgono i quattro giocatori di ogni partita in modalità "Coppie a Girare" (la scelta Coppie Fisse è nascosta per i singoli).
+- **Torneo Libero, menu giocatori**: ogni giocatore compare una sola volta (prima i singoli comparivano raddoppiati, per via della coppia fittizia).
+
 ## v6.12.8 — 2026-11-12
 - **Stampa su iOS / iPadOS (app installata)**: ripristinato il meccanismo della 6.12.2, che funzionava: la stampa parte 150 ms dopo il tap e la pulizia del documento avviene solo su `afterprint` (timeout di sicurezza 120 s). Eliminate le attese su font e frame e la pulizia anticipata tramite `matchMedia`, introdotte nella 6.12.3, che facevano sparire il documento mentre iOS preparava l'anteprima. Rimosse l'anteprima a schermo intero e il tentativo di apertura in nuova finestra delle versioni 6.12.6 e 6.12.7.
 - **Giocatori e Classifiche**: nome e cognome a 16px (la riga della posizione resta invariata), pill ELO e icone più grandi (22px).

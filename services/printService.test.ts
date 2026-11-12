@@ -10,6 +10,7 @@ import {
     waitForPrintFontsScript,
     isIOS,
     printInWindow,
+    openPrintWindow,
 } from './printService.ts';
 
 const match = (id: string, phase?: string): Match => ({
@@ -200,6 +201,36 @@ describe('printService document helpers', () => {
         } finally {
             delete (globalThis as any).window;
             delete (globalThis as any).document;
+        }
+    });
+
+    it('openPrintWindow su iPhone apre una pagina Blob in modo sincrono con stampa automatica; su iPad stampa in-app', () => {
+        const OrigBlob = globalThis.Blob;
+        const OrigURL = globalThis.URL;
+        const origUA = navigator.userAgent;
+        const origPlatform = navigator.platform;
+        let blobText = '';
+        const open = vi.fn((_url?: string) => ({}));
+        (globalThis as any).Blob = class { constructor(parts: any[]) { blobText = parts.join(''); } };
+        (globalThis as any).URL = { createObjectURL: () => 'blob:test', revokeObjectURL: vi.fn() };
+        (globalThis as any).window = { open, print: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        (globalThis as any).document = {};
+        try {
+            Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', configurable: true });
+            Object.defineProperty(navigator, 'platform', { value: 'iPhone', configurable: true });
+            expect(openPrintWindow('Titolo', '<div>Contenuto</div>')).toBe(true);
+            expect(open).toHaveBeenCalledTimes(1);
+            expect(open.mock.calls[0][0]).toBe('blob:test');
+            expect(blobText).toContain('window.print()');
+            expect(blobText).toContain('Contenuto');
+            expect(blobText).not.toContain('window.close();'); // su iOS la scheda non si chiude da sola
+        } finally {
+            (globalThis as any).Blob = OrigBlob;
+            (globalThis as any).URL = OrigURL;
+            delete (globalThis as any).window;
+            delete (globalThis as any).document;
+            Object.defineProperty(navigator, 'userAgent', { value: origUA, configurable: true });
+            Object.defineProperty(navigator, 'platform', { value: origPlatform, configurable: true });
         }
     });
 

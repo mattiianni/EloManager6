@@ -434,7 +434,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  // Torneo Libero specific states
  const [numeroPartite, setNumeroPartite] = useState<number>(1);
  const [nomeTorneoLibero, setNomeTorneoLibero] = useState<string>('');
- const [torneoLiberoMode, setTorneoLiberoMode] = useState<'fixed' | 'rotating'>('fixed');
+ const [torneoLiberoMode, setTorneoLiberoMode] = useState<'fixed' | 'rotating'>(() =>
+   pairs.length > 0 && pairs.every(p => p[0]?.id && p[0].id === p[1]?.id) ? 'rotating' : 'fixed');
+ const isSinglesPairs = pairs.length > 0 && pairs.every(p => p[0]?.id && p[0].id === p[1]?.id);
  const [torneoLiberoMatches, setTorneoLiberoMatches] = useState<Array<{
  team1: string | null;
  team2: string | null;
@@ -3020,6 +3022,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  />
  </div>
 
+ {!isSinglesPairs && (
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Modalità Coppie
@@ -3049,6 +3052,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  </label>
  </div>
  </div>
+ )}
 
  <div className="flex gap-3 mt-6">
  <Button
@@ -3176,6 +3180,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  }
 
  if (step === 'torneo-libero-scoring') {
+ // Giocatori unici (nei singoli ogni giocatore compare come coppia [p, p]: niente duplicati nei menu)
+ const liberoPlayers: Player[] = Array.from(new Map<string, Player>(pairs.flat().filter(Boolean).map(pl => [pl.id, pl] as [string, Player])).values());
  // Create pairs list for dropdown
  const pairsList = pairs.map((pair, index) => ({
  id: `pair-${index}`,
@@ -3264,7 +3270,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3"
  >
  <option value="">Giocatore 1</option>
- {pairs.flat()
+ {liberoPlayers
  .filter(p => p.id !== match.team1Player2 &&
  p.id !== match.team2Player1 &&
  p.id !== match.team2Player2)
@@ -3281,7 +3287,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3"
  >
  <option value="">Giocatore 2</option>
- {pairs.flat()
+ {liberoPlayers
  .filter(p => p.id !== match.team1Player1 &&
  p.id !== match.team2Player1 &&
  p.id !== match.team2Player2)
@@ -3313,7 +3319,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3"
  >
  <option value="">Giocatore 1</option>
- {pairs.flat()
+ {liberoPlayers
  .filter(p => p.id !== match.team1Player1 &&
  p.id !== match.team1Player2 &&
  p.id !== match.team2Player2)
@@ -3330,7 +3336,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3"
  >
  <option value="">Giocatore 2</option>
- {pairs.flat()
+ {liberoPlayers
  .filter(p => p.id !== match.team1Player1 &&
  p.id !== match.team1Player2 &&
  p.id !== match.team2Player1)

@@ -1127,6 +1127,19 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             return;
                         }
 
+                        if (format === 'torneo-libero') {
+                            setSelectedFormatForNewFlow('torneo-libero');
+                            if (participantPlayers.length >= 4) {
+                                // Singoli: ogni giocatore compare una sola volta (coppia fittizia [p, p])
+                                const pairs: [Player, Player][] = participantPlayers.map(p => [p, p]);
+                                setDrawnPairs(pairs);
+                                setShowTournamentFlow(true);
+                            } else {
+                                setActiveFlow('pairs');
+                            }
+                            return;
+                        }
+
                         if (format === 'beat-the-box') {
                             setSelectedFormatForNewFlow('beat-the-box');
                             if (participantPlayers.length >= 4) {

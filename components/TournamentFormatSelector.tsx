@@ -56,6 +56,7 @@ const SINGLES_FORMATS: SingleTournamentFormat[] = [
     'americano',
     'mexicano',
     'beat-the-box',
+    'torneo-libero',
     'torneo-personale'
 ];
 
@@ -73,6 +74,7 @@ const TournamentFormatSelector: React.FC<TournamentFormatSelectorProps> = ({ onS
         if (format === 'americano') return 'Tutti contro tutti, rotazione individuale continua su tutti i campi.';
         if (format === 'beat-the-box') return 'Gironi da 4 o 5 singoli con rotazione interna e qualificazione alla fase finale.';
         if (format === 'torneo-personale') return 'Torneo personalizzabile in tutte le sue fasi per singoli.';
+        if (format === 'torneo-libero') return 'Partite a piacimento: scegli tu i quattro giocatori di ogni partita.';
         return FORMAT_DESCRIPTIONS[format];
     };
 

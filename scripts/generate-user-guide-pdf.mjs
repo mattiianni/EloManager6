@@ -142,7 +142,7 @@ bullet('Crea Torneo Personale', 'Componi il torneo con il drag and drop sceglien
 paragraph('In qualsiasi momento puoi premere "← Torna indietro" per tornare alla schermata iniziale. Su smartphone il pulsante per proseguire è fissato in basso.');
 paragraph('In alto puoi scegliere tra Coppie Fisse e Giocatori Singoli:');
 bullet('Coppie Fisse', 'Selezioni i partecipanti, scegli come formare le coppie e confermi.');
-bullet('Giocatori Singoli', 'Il Messicano richiede un multiplo di 4 (8, 12, 16, 20 o 24 giocatori); gli altri formati accettano 4, 5, 6, 7, 8 o più giocatori. L\'app propone solo i formati adatti: Messicano, Americano, Box (Beat the Box singoli, con teste di serie secondo l\'ELO) e Crea Torneo Personale.');
+bullet('Giocatori Singoli', 'Il Messicano richiede un multiplo di 4 (8, 12, 16, 20 o 24 giocatori); gli altri formati accettano 4, 5, 6, 7, 8 o più giocatori. L\'app propone solo i formati adatti: Messicano, Americano, Box (Beat the Box singoli, con teste di serie secondo l\'ELO), Torneo Libero (scegli tu i quattro giocatori di ogni partita) e Crea Torneo Personale.');
 paragraph('Modalità di formazione delle coppie:');
 bullet('Casuale', 'Abbinamenti decisi dal sorteggio.');
 bullet('Bilanciato', 'Accoppia un giocatore forte con uno meno forte (metodo a serpentina sull\'ELO).');
@@ -203,7 +203,7 @@ bullet('Playtomic', 'Il livello Playtomic equivalente si ricava automaticamente 
 sectionHeader('10. Stampa e PDF');
 paragraph('Ogni formato ha il proprio PDF, in due versioni: in bianco (da stampare prima del torneo e far compilare a mano) e completo (con risultati e classifiche). Tutti i PDF hanno lo stesso stile e lo stesso piè di pagina.');
 bullet('Computer e Android', 'L\'app apre il documento in una nuova scheda. In alto trovi la barra con "Stampa / Salva PDF" e "Chiudi"; la barra non compare nella stampa.');
-bullet('iPhone e iPad (Safari o app installata)', 'La stampa parte direttamente sopra l\'app e si apre il menu di stampa di iOS (AirPrint). Da lì puoi stampare oppure salvare un PDF dal menu di condivisione.');
+bullet('iPhone e iPad (Safari o app installata)', 'Su iPhone il documento si apre in una nuova pagina e parte il menu di stampa di iOS (AirPrint); se non parte da solo, usa il pulsante Stampa / Salva PDF in alto, poi chiudi la pagina. Su iPad la stampa parte direttamente sopra l\'app. Da lì puoi stampare oppure salvare un PDF dal menu di condivisione.');
 bullet('Profili giocatore', 'Una pagina per ogni giocatore.');
 paragraph('Se il documento non si apre, controlla che il browser non blocchi i popup per questo sito.');
 

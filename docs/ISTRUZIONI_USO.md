@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.8)
+# Istruzioni d'uso (v6.12.9)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.8`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.9`, `Nov 2026`).
 
 ## Indice
 
@@ -85,6 +85,7 @@ In alto puoi passare da una modalità all'altra:
 - **Giocatori Singoli**: scegli quanti partecipanti ci sono e chi sono. Il Messicano richiede un multiplo di 4 (8, 12, 16, 20 o 24); gli altri formati accettano 4, 5, 6, 7, 8 o più giocatori. L'app propone solo i formati adatti ai singoli:
   - **Messicano**: coppie che cambiano a ogni turno (vedi sotto)
   - **Americano**: rotazione continua su tutti i campi
+  - **Torneo Libero**: partite a piacimento, scegli tu i quattro giocatori di ogni partita (ogni giocatore compare una sola volta nei menu)
   - **Box (Beat the Box singoli)**: i giocatori sono distribuiti a teste di serie secondo l'ELO, in modo che le prime due teste di serie non finiscano nello stesso box
   - **Crea Torneo Personale**
 
@@ -243,7 +244,7 @@ Ogni formato ha il proprio PDF, in due versioni: **in bianco** (da stampare prim
 Come si stampa a seconda del dispositivo:
 
 - **Computer e Android**: l'app apre il documento in una nuova scheda. In alto trovi la barra con **Stampa / Salva PDF** e **Chiudi**; la barra non compare nella stampa.
-- **iPhone e iPad (Safari o app installata)**: la stampa parte direttamente sopra l'app e si apre il menu di stampa di iOS (AirPrint). Da lì puoi stampare oppure salvare un PDF dal menu di condivisione.
+- **iPhone e iPad (Safari o app installata)**: su iPhone il documento si apre in una nuova pagina e parte il menu di stampa di iOS (AirPrint); se non parte da solo, usa il pulsante **Stampa / Salva PDF** in alto, poi chiudi la pagina. Su iPad la stampa parte direttamente sopra l'app. Da lì puoi stampare oppure salvare un PDF dal menu di condivisione.
 - **Profili giocatore**: una pagina per ogni giocatore.
 
 Se il documento non si apre, controlla che il browser non blocchi i popup per questo sito.
