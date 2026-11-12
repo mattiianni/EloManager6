@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.12)
+# Istruzioni d'uso (v6.12.13)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.12`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.13`, `Nov 2026`).
 
 ## Indice
 
@@ -60,7 +60,7 @@ Quando aggiungi un giocatore con un nome simile a uno già presente, l'app mostr
 Il pulsante di stampa offre tre opzioni:
 
 1. **Tutti i Giocatori**: stampa l'intero archivio.
-2. **Giocatori Singolo Torneo**: scegli un torneo dal menu a tendina. L'app stampa soltanto i giocatori che hanno disputato almeno una partita con punteggio registrato in quel torneo. Statistiche e grafico ELO (`Start`, `E1`, `E2`...) sono riferiti solo a quel torneo.
+2. **Giocatori Singolo Torneo**: scegli un torneo dal menu a tendina. L'app stampa soltanto i giocatori che hanno disputato almeno una partita con punteggio registrato in quel torneo. Statistiche e grafico ELO (`Start`, `E1`, `E2`...) sono riferiti solo a quel torneo. L'ELO mostrato è l'**ELO del torneo** (1500 più il delta ottenuto nel torneo, come in Classifiche), non l'ELO generale.
 3. **Scegli Giocatori**: selezioni a mano i giocatori da stampare.
 
 Ogni giocatore occupa una pagina del PDF.

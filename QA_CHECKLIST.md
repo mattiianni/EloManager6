@@ -60,3 +60,10 @@ Eseguire ogni formato in stato `scheduled` e `completed`:
 6. "Conferma Risultati" → classifica e ELO aggiornati.
 7. Partita **incompleta** (punteggio inserito ma giocatori mancanti, o solo alcuni giocatori scelti): "Salva Tabellone" e "Conferma Risultati" mostrano "La partita N è incompleta..." e non salvano nulla; una partita rimasta vuota mostra "La partita N non è compilata..." (tutte le partite del tabellone vanno compilate). I pulsanti restano premibili proprio per mostrare questi messaggi.
 8. Partita con games pari (es. 6-6): nessuna vittoria assegnata, risultato = pareggio (ELO a 0,5).
+
+## Stampa profili giocatori filtrata per torneo: ELO di torneo (da provare dall'utente, v6.12.13)
+1. Giocatori → Stampa → "Giocatori Singolo Torneo" → scegli un torneo → stampa.
+2. Il numero grande in alto a destra è l'**ELO del torneo** (1500 + delta ottenuto nel torneo, con l'etichetta "ELO del torneo"), **uguale a quello della pagina Classifiche filtrata per lo stesso torneo** (anche per le serie con più giornate: tutte le giornate formano un'unica catena che parte da 1500); non l'ELO generale del giocatore.
+3. Grafico: Start = 1500, poi E1, E2... con l'ELO di torneo dopo ogni giornata. "ELO Massimo" è il massimo di quel grafico. "Ranking #" è la posizione tra i giocatori del torneo.
+4. Tabella giornate: "Var. ELO" è il delta di torneo di ogni giornata.
+5. Senza filtro ("Tutti" o "Scegli Giocatori") non cambia nulla: ELO generale.

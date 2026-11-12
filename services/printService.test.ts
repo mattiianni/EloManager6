@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Match } from '../types.ts';
+import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 import {
     MANROPE_PRINT_STYLESHEET,
     escapeHtml,
@@ -362,6 +363,12 @@ describe('printService document helpers', () => {
             expect(capturedHtml).not.toMatch(/\.player-page[^{}]*\{[^{}]*(page-)?break-inside\s*:\s*avoid/);
             expect(capturedHtml).not.toMatch(/class="player-page"[^>]*break-inside/);
             expect(capturedHtml).toContain('nel torneo');
+
+            // ELO DI TORNEO (non generale): 1500 + delta locale delle partite del torneo, come in Classifiche
+            const expectedLocal = 1500 + (calculateTournamentLocalElo(mockMatches.filter(m => m.tournamentId === 't-mex-1')).totalDeltas.get('p1') || 0);
+            expect(capturedHtml).toContain(`font-weight:bold;color:#1e3a6e;">${expectedLocal.toFixed(2)}</div>`);
+            expect(capturedHtml).not.toContain('font-weight:bold;color:#1e3a6e;">1510.00</div>'); // ELO generale del giocatore
+            expect(capturedHtml).toContain('ELO del torneo');
 
             // Partite filtrate: solo le 2 partite del torneo Sociale Messicano (non m99 dell'altro torneo)
             // p1 ha vinto entrambe le partite (m1 e m2) in Sociale Messicano -> 2 vinte, 0 perse (100%)

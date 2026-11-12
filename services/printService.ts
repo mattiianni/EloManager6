@@ -8,6 +8,7 @@ import { BracketNode, generateTpraBracket } from './tpraService.ts';
 import { normalizeTournamentRounds } from '../utils/tournamentRounds.ts';
 import { showHIGAlert } from '../utils/higDialogService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
+import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
 import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
 import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 
@@ -7799,6 +7800,51 @@ export const printPlayerProfiles = (
         ? new Set(options.tournamentFilter.tournamentIds || [options.tournamentFilter.tournamentId])
         : null;
 
+    // Con filtro per torneo l'ELO mostrato è l'ELO DI TORNEO, calcolato esattamente come in Classifiche
+    // (pages/RankingPage.tsx): tutte le giornate della serie formano UN'unica catena che parte da 1500
+    // (ogni partita viene rimappata su un solo `tournamentId` di serie). Il valore è 1500 + delta totale.
+    const LOCAL_ELO_START = 1500;
+    const orderedFilterTournamentIds: string[] = [];
+    let seriesLocalElo: ReturnType<typeof calculateTournamentLocalElo> | null = null;
+    if (filterIds) {
+        allTournaments
+            .filter(t => filterIds.has(t.id))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .forEach(t => orderedFilterTournamentIds.push(t.id));
+        const seriesKey = `series:${options?.tournamentFilter?.tournamentId || ''}`;
+        seriesLocalElo = calculateTournamentLocalElo(
+            allMatches
+                .filter(m => m.tournamentId && filterIds.has(m.tournamentId))
+                .map(m => ({ ...m, tournamentId: seriesKey }))
+        );
+    }
+    // Delta di torneo del giocatore in ogni giornata (somma dei delta delle sue partite in quella giornata)
+    const localDeltaCache = new Map<string, Array<{ tid: string; delta: number }>>();
+    const localDeltasForPlayer = (id: string): Array<{ tid: string; delta: number }> => {
+        if (!seriesLocalElo) return [];
+        const cached = localDeltaCache.get(id);
+        if (cached) return cached;
+        const result: Array<{ tid: string; delta: number }> = [];
+        orderedFilterTournamentIds.forEach(tid => {
+            let delta = 0;
+            let played = false;
+            allMatches.forEach(m => {
+                if (m.tournamentId !== tid) return;
+                const snap = seriesLocalElo!.matchSnapshots.get(m.id);
+                if (!snap) return;
+                if (m.team1.includes(id)) { delta += snap.team1Delta; played = true; }
+                else if (m.team2.includes(id)) { delta += snap.team2Delta; played = true; }
+            });
+            if (played) result.push({ tid, delta });
+        });
+        localDeltaCache.set(id, result);
+        return result;
+    };
+    const localEloOfPlayer = (id: string): number =>
+        LOCAL_ELO_START + (seriesLocalElo?.totalDeltas.get(id) || 0);
+    const localDeltaForTournament = (id: string, tid: string): number =>
+        localDeltasForPlayer(id).find(e => e.tid === tid)?.delta ?? 0;
+
     // Helper: generate SVG line chart
     const generateEloSvg = (chartPoints: { elo: number; label: string }[], width: number, height: number): string => {
         if (chartPoints.length < 2) return '';
@@ -7942,30 +7988,17 @@ export const printPlayerProfiles = (
         let peakElo = player.initialElo || 1500;
 
         if (filterIds) {
-            const playerTournamentEntries = allEloHistory
-                .filter(e => e.playerId === playerId && filterIds.has(e.eventId))
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-            const totalTournamentDelta = chronologicalTimeline.reduce((sum, ev) => sum + ev.delta, 0);
-            const startElo = (playerTournamentEntries.length > 0 && playerTournamentEntries[0].eloBefore != null)
-                ? playerTournamentEntries[0].eloBefore
-                : (player.currentElo - totalTournamentDelta);
-
-            let runningElo = startElo;
-            peakElo = startElo;
-            chartPoints.push({ elo: startElo, label: 'Start' });
-
-            chronologicalTimeline.forEach((event, idx) => {
-                runningElo += event.delta;
+            // ELO di torneo: parte da 1500 e somma i delta locali giornata per giornata
+            const localDeltas = localDeltasForPlayer(playerId);
+            let runningElo = LOCAL_ELO_START;
+            peakElo = LOCAL_ELO_START;
+            chartPoints.push({ elo: runningElo, label: 'Start' });
+            localDeltas.forEach((entry, idx) => {
+                runningElo += entry.delta;
                 peakElo = Math.max(peakElo, runningElo);
-                const label = chronologicalTimeline.length === 1 ? 'E1' : `E${idx + 1}`;
-                chartPoints.push({
-                    elo: runningElo,
-                    label
-                });
+                chartPoints.push({ elo: runningElo, label: `E${idx + 1}` });
             });
-
-            lastDelta = totalTournamentDelta;
+            lastDelta = localDeltas.reduce((sum, e) => sum + e.delta, 0);
         } else {
             let currentElo = player.initialElo || 1500;
             peakElo = currentElo;
@@ -8014,7 +8047,9 @@ export const printPlayerProfiles = (
                     || event.dayLabel === t.type
                     || (!!t.giornataName && event.dayLabel === t.giornataName))
                 .reduce((sum, event) => sum + event.delta, 0);
-            const delta = linkedDelta !== 0 ? linkedDelta : contextualDelta;
+            const delta = filterIds
+                ? localDeltaForTournament(playerId, t.id)
+                : (linkedDelta !== 0 ? linkedDelta : contextualDelta);
             const tDraws = tMatches.length - tWins - tLosses;
             return {
                 date: new Date(t.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }),
@@ -8067,13 +8102,16 @@ export const printPlayerProfiles = (
             .slice(0, 5);
 
         // Ranking position
-        const sortedByElo = [...allPlayers].sort((a, b) => b.currentElo - a.currentElo);
+        const sortedByElo = filterIds
+            ? allPlayers.filter(pl => localDeltasForPlayer(pl.id).length > 0).sort((a, b) => localEloOfPlayer(b.id) - localEloOfPlayer(a.id))
+            : [...allPlayers].sort((a, b) => b.currentElo - a.currentElo);
         const rank = sortedByElo.findIndex(p => p.id === playerId) + 1;
+        const displayElo = filterIds ? localEloOfPlayer(playerId) : player.currentElo;
         const tournamentsPlayed = new Set(playerMatches.filter(m => m.tournamentId).map(m => m.tournamentId!)).size;
 
         return {
             player, total, wins, losses, gamesWon, gamesLost, bestStreak,
-            form, gameWinRate, tournamentsPlayed, lastDelta, peakElo,
+            form, gameWinRate, tournamentsPlayed, lastDelta, peakElo, displayElo,
             topPartners, topOpponents, tournamentBreakdown, chartPoints, rank
         };
     }).filter(Boolean);
@@ -8128,10 +8166,10 @@ export const printPlayerProfiles = (
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div>
                         <div style="font-size:22px;font-weight:bold;color:#1e3a5f;">${escapeHtml(p.name)} ${escapeHtml(p.surname)}</div>
-                        <div style="font-size:10px;color:#666;">${options?.tournamentFilter ? `<span style="color:#0055D4;font-weight:700;">TORNEO: ${escapeHtml(options.tournamentFilter.tournamentName)}</span> &middot; ` : ''}Posizione: ${p.position} &middot; Ranking: #${data.rank} &middot; Giornate giocate: ${data.tournamentsPlayed}</div>
+                        <div style="font-size:10px;color:#666;">${options?.tournamentFilter ? `<span style="color:#0055D4;font-weight:700;">TORNEO: ${escapeHtml(options.tournamentFilter.tournamentName)}</span> &middot; ` : ''}Posizione: ${p.position} &middot; Ranking: ${data.rank > 0 ? '#' + data.rank : '–'} &middot; Giornate giocate: ${data.tournamentsPlayed}</div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:28px;font-weight:bold;color:#1e3a6e;">${p.currentElo.toFixed(2)}</div>
+                        <div style="font-size:28px;font-weight:bold;color:#1e3a6e;">${data.displayElo.toFixed(2)}</div>${options?.tournamentFilter ? '<div style="font-size:9px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">ELO del torneo</div>' : ''}
                         <div style="font-size:11px;font-weight:bold;color:${deltaColor};">${deltaSign}${data.lastDelta.toFixed(1)} ${options?.tournamentFilter ? 'nel torneo' : 'ultimo evento'}</div>
                     </div>
                 </div>

@@ -1274,7 +1274,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 </div>
 
                 {/* Fixed Floating Bottom Action Bar */}
-                <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-6 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xl z-30 flex items-stretch gap-2.5">
+                <div className="fixed bottom-[calc(4.3125rem+env(safe-area-inset-bottom))] sm:bottom-6 left-4 right-4 sm:left-auto sm:right-auto sm:w-[736px] bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200/80 dark:border-white/10 shadow-xl z-30 flex items-stretch gap-2.5">
                     <Button 
                         variant="secondary" 
                         onClick={() => setDrawnPairs(null)}
@@ -2541,7 +2541,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                     
                     {!isTeamTournamentFlow && !isNavigationOverlayOpen && (
-                        <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] left-3.5 right-3.5 sm:static sm:inset-auto sm:max-w-3xl sm:mx-auto z-30 rounded-2xl bg-white/95 p-2 sm:p-3 shadow-2xl backdrop-blur-xl dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80">
+                        <div className="fixed bottom-[calc(4.0625rem+env(safe-area-inset-bottom))] left-3.5 right-3.5 sm:static sm:inset-auto sm:max-w-3xl sm:mx-auto z-30 rounded-2xl bg-white/95 p-2 sm:p-3 shadow-2xl backdrop-blur-xl dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80">
                             <Button
                                 onClick={handleDraw}
                                 className="w-full py-3.5 sm:py-4 text-base sm:text-lg font-bold"

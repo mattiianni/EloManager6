@@ -127,7 +127,7 @@ bullet('Giocatore Esistente Trovato', 'Se aggiungi un giocatore con un nome simi
 bullet('Profilo giocatore', 'Mostra il grafico dell\'andamento ELO, i compagni e gli avversari più frequenti e lo storico delle giornate.');
 paragraph('Il pulsante di stampa dei profili offre tre opzioni:');
 bullet('Tutti i Giocatori', 'Stampa l\'intero archivio.');
-bullet('Giocatori Singolo Torneo', 'Scegli un torneo dal menu a tendina: vengono stampati solo i giocatori con almeno una partita con punteggio registrato in quel torneo. Statistiche e grafico ELO (Start, E1, E2...) sono riferiti solo a quel torneo.');
+bullet('Giocatori Singolo Torneo', 'Scegli un torneo dal menu a tendina: vengono stampati solo i giocatori con almeno una partita con punteggio registrato in quel torneo. Statistiche e grafico ELO (Start, E1, E2...) sono riferiti solo a quel torneo. L\'ELO mostrato è l\'ELO del torneo (1500 più il delta ottenuto nel torneo, come in Classifiche), non l\'ELO generale.');
 bullet('Scegli Giocatori', 'Selezioni a mano i giocatori da stampare.');
 paragraph('Ogni giocatore occupa una pagina del PDF.');
 
