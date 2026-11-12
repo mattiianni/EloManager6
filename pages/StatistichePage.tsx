@@ -9,6 +9,7 @@ import { Player, Tournament, Match, TournamentType, TeamTournamentMatchday, Team
 import { printTeamTournamentReport, printTeamTournamentStatistics, printTournamentStatistics } from '../services/printService.ts';
 import { formatPlayerShortName } from '../utils/format.ts';
 import { calculateTournamentLocalElo } from '../utils/tournamentElo.ts';
+import { getTournamentSeriesKey } from '../utils/tournamentLabels.ts';
 
 export interface TournamentStats {
     tournament: Tournament;
@@ -1818,7 +1819,8 @@ const StatistichePage: React.FC = () => {
                             >
                                 <div className="flex-1">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                        {stats.tournament.name}
+                                        {/* Nome del torneo madre (serie), non il nome dell'ultima giornata */}
+                                        {getTournamentSeriesKey(stats.tournament)}
                                     </h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                         {stats.numeroGiornate} giornat{stats.numeroGiornate === 1 ? 'a' : 'e'} • {stats.totalePartite} partite • {stats.giocatoriPartecipanti} giocatori

@@ -1,7 +1,7 @@
 import { RankingEntry, Tournament, TournamentStandingEntry, Match, Player, TournamentType, EloHistoryEntry, TeamTournamentConfig, TeamTournamentTeam, TeamTournamentSchedule, TeamTournamentMatchday, TeamTournamentPlayerEntry, TeamTournamentFixture } from '../types.ts';
 import { CustomTournamentFlowConfig, PhaseBlockId, ALL_PHASE_BLOCKS } from '../types/customTournament.ts';
 import { calculateTeamTournamentStandings, TeamTournamentStandingRow } from './teamTournamentService.ts';
-import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
+import { getTournamentDisplayName, getTournamentSeriesKey } from '../utils/tournamentLabels.ts';
 import { APP_MONTH, APP_VERSION } from '../constants.ts';
 import { buildPlayerEloTimeline, formatLabel, sumPlayerEventEloDelta } from './eloEventsService.ts';
 import { BracketNode, generateTpraBracket } from './tpraService.ts';
@@ -5433,7 +5433,7 @@ export const printTournamentStatistics = (stats: any) => {
 
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.chart} Statistiche Torneo</h1>
-            <h2>${escapeHtml(stats.tournament.name)} • ${escapeHtml(stats.tournament.club)}</h2>
+            <h2>${escapeHtml(getTournamentSeriesKey(stats.tournament))} • ${escapeHtml(stats.tournament.club)}</h2>
             <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                 ${PDF_ICONS.calendar} ${stats.periodo.inizio} — ${stats.periodo.fine}
             </div>
@@ -5594,7 +5594,7 @@ export const printTournamentStatistics = (stats: any) => {
         </div>
     `;
 
-    return openPrintWindow(`Statistiche - ${stats.tournament.name}`, content);
+    return openPrintWindow(`Statistiche - ${getTournamentSeriesKey(stats.tournament)}`, content);
 };
 
 /**

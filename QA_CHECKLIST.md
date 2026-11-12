@@ -73,3 +73,8 @@ Regola: ogni formato mostra la sua etichetta standard (Americano, Beat the Box, 
 1. Tornei: un Torneo Libero singolo (senza serie) mostra nella riga della giornata il suo nome, non "Torneo Libero"; gli altri formati mostrano l'etichetta standard.
 2. Classifiche → storico ELO (vista generale e filtrata), profilo giocatore e stampa classifica: nome utente per il Torneo Libero.
 3. Stampa profili filtrata: colonna "Tipo" con il nome per il Torneo Libero.
+
+## Statistiche: titolo = nome del torneo madre (da provare dall'utente)
+1. Statistiche → Filtra per Torneo → scegli una serie (es. "TorneOtto 2026/2027") con giornate di tipo diverso: il titolo della scheda è sempre il nome del torneo madre, mai il nome dell'ultima giornata (es. "Beat the Box (No Finali)").
+2. "Stampa Riepilogo": intestazione e titolo del documento col nome del torneo madre.
+3. Torneo singolo (senza serie): il titolo è il nome del torneo.
