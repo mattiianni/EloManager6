@@ -552,13 +552,13 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                                 <div className="w-7 h-7 flex items-center justify-center shrink-0">
                                                     {getMedalIcon(idx)}
                                                 </div>
-                                                <span className="font-semibold text-slate-900 dark:text-white text-[15px] leading-tight break-words [overflow-wrap:anywhere]">{player.name} {player.surname}</span>
+                                                <span className="font-semibold text-slate-900 dark:text-white text-[16px] leading-tight break-words [overflow-wrap:anywhere]">{player.name} {player.surname}</span>
                                             </div>
                                             <div className="flex items-center gap-1.5 shrink-0">
-                                                <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
+                                                <span className="font-bold text-sky-600 dark:text-sky-400 text-[14px] px-2.5 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
                                                 {getTrendIcon(player.lastDelta)}
                                                 <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 inline-flex h-11 w-9 items-center justify-center hover:bg-sky-500/10 rounded-full transition-colors" aria-label={`Profilo di ${player.name} ${player.surname}`}>
-                                                    <SFIcon name="info.circle" size={16} />
+                                                    <SFIcon name="info.circle" size={22} />
                                                 </button>
                                                 <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={12} color="var(--ios-label-tertiary)" />
                                             </div>

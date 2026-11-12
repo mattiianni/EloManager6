@@ -503,23 +503,10 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
             document.title = title;
         }
 
-        // Dopo la stampa iOS/iPadOS può lasciare viewport e scroll in uno stato "da stampa":
-        // riportiamo l'app alle condizioni normali (scroll, reflow, resize) senza toccare gli stili.
-        const restoreAppLayout = () => {
-            try {
-                if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
-                const rootEl = document.getElementById('root');
-                if (rootEl) { void rootEl.offsetHeight; }
-                if (typeof window.dispatchEvent === 'function' && typeof Event === 'function') {
-                    window.dispatchEvent(new Event('resize'));
-                }
-            } catch { /* noop */ }
-        };
-
+        // Stesso meccanismo della 6.12.2, che su iOS/iPadOS (anche app installata) funzionava:
+        // pulizia solo su `afterprint` (più un timeout di sicurezza) e stampa dopo un breve ritardo
+        // dal tap. Attese più lunghe (font, frame) o pulizie anticipate facevano perdere la stampa.
         let cleanedUp = false;
-        // `afterprint` su iOS può arrivare mentre l'anteprima è ancora in composizione:
-        // la pulizia è sempre ritardata, così il documento di stampa non sparisce prima del tempo.
-        const onAfterPrint = () => { setTimeout(() => fullCleanup(), 2000); };
         const cleanup = () => {
             if (cleanedUp) return;
             cleanedUp = true;
@@ -527,67 +514,26 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
                 document.title = originalTitle;
                 const r = document.getElementById('padel-print-root');
                 if (r) r.remove();
-                const s = document.getElementById('padel-print-style');
-                if (s) s.remove();
-                window.removeEventListener('afterprint', onAfterPrint);
+                const st = document.getElementById('padel-print-style');
+                if (st) st.remove();
+                window.removeEventListener('afterprint', cleanup);
             } catch (e) {
                 console.error('Print cleanup error:', e);
             }
-            restoreAppLayout();
         };
 
-        // iOS (specie PWA standalone) non emette sempre `afterprint`: ascoltiamo
-        // anche il cambio di media query `print` come fallback. Gli stili sono
-        // limitati a @media print, quindi un cleanup ritardato non altera l'app.
-        let mql: MediaQueryList | null = null;
-        let sawPrintMedia = false;
-        const onMediaChange = (ev: MediaQueryListEvent) => {
-            if (ev.matches) { sawPrintMedia = true; return; }
-            // Ritardo: su iOS la media query `print` può commutare mentre l'anteprima viene generata,
-            // prima che l'utente tocchi "Stampa" nel foglio di sistema.
-            if (sawPrintMedia) setTimeout(() => cleanup(), 1500);
-        };
-        try {
-            mql = window.matchMedia ? window.matchMedia('print') : null;
-            if (mql) {
-                if (mql.addEventListener) mql.addEventListener('change', onMediaChange);
-                else if ((mql as any).addListener) (mql as any).addListener(onMediaChange);
-            }
-        } catch { /* matchMedia non disponibile */ }
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(cleanup, 120000);
 
-        const baseCleanup = cleanup;
-        const fullCleanup = () => {
-            baseCleanup();
-            try {
-                window.removeEventListener('afterprint', onAfterPrint);
-                if (mql) {
-                    if (mql.removeEventListener) mql.removeEventListener('change', onMediaChange);
-                    else if ((mql as any).removeListener) (mql as any).removeListener(onMediaChange);
-                }
-            } catch { /* noop */ }
-        };
-        window.addEventListener('afterprint', onAfterPrint);
-        setTimeout(fullCleanup, 10 * 60 * 1000);
-
-        const startPrint = () => {
+        setTimeout(() => {
             try {
                 window.print();
             } catch (err) {
                 console.error('window.print error:', err);
-                fullCleanup();
+                cleanup();
                 showHIGAlert('Impossibile avviare la stampa su iOS.');
             }
-        };
-        const fontsReady: Promise<unknown> = (typeof document !== 'undefined' && (document as any).fonts && (document as any).fonts.ready)
-            ? Promise.race([(document as any).fonts.ready, new Promise(resolve => setTimeout(resolve, 600))])
-            : Promise.resolve();
-        fontsReady.then(() => {
-            if (typeof requestAnimationFrame === 'function') {
-                requestAnimationFrame(startPrint);
-            } else {
-                setTimeout(startPrint, 50);
-            }
-        });
+        }, 150);
 
         return true;
     } catch (error) {
@@ -597,133 +543,10 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
     }
 };
 
-/**
- * iOS / iPadOS (anche app installata): niente nuove finestre e niente `window.print()` differito.
- * Il documento viene mostrato come anteprima a pieno schermo DENTRO l'app, con la barra
- * "Stampa / Salva PDF" · "Chiudi". `window.print()` parte in modo sincrono dal tap sul pulsante
- * (gesto utente valido) e gli stili di stampa restano nel DOM finché l'anteprima è aperta:
- * nessuna corsa con la pulizia, nessuna stampa della schermata dell'app.
- */
-export const openPrintPreviewIOS = (title: string, content: string, pageStyles = ''): boolean => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-    try {
-        const old = document.getElementById('padel-print-preview');
-        if (old) old.remove();
-        const oldStyle = document.getElementById('padel-print-preview-style');
-        if (oldStyle) oldStyle.remove();
-
-        // Accetta sia frammenti HTML sia documenti completi: estrae stili e body
-        let extractedStyles = '';
-        const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
-        let m: RegExpExecArray | null;
-        while ((m = styleRegex.exec(content)) !== null) extractedStyles += '\n' + m[1];
-        const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        let body = bodyMatch ? bodyMatch[1] : content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-        // Via gli script di auto-stampa/chiusura; restano quelli di correzione grafica (es. SVG del grafico ELO)
-        body = body.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, (block) =>
-            /window\.print|window\.close/.test(block) ? '' : block);
-
-        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
-        const hoistedPage = hoistTopLevelPageRules(pageStyles);
-        const hoistedExtracted = hoistTopLevelPageRules(extractedStyles);
-
-        const styleEl = document.createElement('style');
-        styleEl.id = 'padel-print-preview-style';
-        styleEl.textContent = `
-            @page { size: A4; margin: 12mm 10mm; }
-            ${hoistedPage.pageRules}
-            ${hoistedExtracted.pageRules}
-            #padel-print-preview {
-                position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 2147483000;
-                background: #ffffff; color: #000000; overflow: auto; -webkit-overflow-scrolling: touch;
-                font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
-            }
-            #padel-print-preview .ppv-bar {
-                position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-                padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px; background: #f8f8f6; border-bottom: 1px solid #d1d5db;
-            }
-            #padel-print-preview .ppv-title { font-size: 13px; font-weight: 700; color: #0f172a; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            #padel-print-preview .ppv-actions { display: flex; gap: 8px; flex-shrink: 0; }
-            #padel-print-preview .ppv-btn {
-                min-height: 44px; padding: 0 14px; border-radius: 9999px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a;
-                font: 600 14px 'Manrope', -apple-system, sans-serif; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-            }
-            #padel-print-preview .ppv-primary { background: #0055D4; border-color: #0055D4; color: #ffffff; }
-            #padel-print-preview .ppv-doc { padding: 12px; overflow-x: auto; }
-            ${hoistedExtracted.rest}
-            ${basePrintCss}
-            ${hoistedPage.rest}
-            @media print {
-                html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; }
-                #root { display: none !important; }
-                body > *:not(#padel-print-preview) { display: none !important; }
-                #padel-print-preview { position: static !important; overflow: visible !important; height: auto !important; }
-                #padel-print-preview .ppv-bar { display: none !important; }
-                #padel-print-preview .ppv-doc { padding: 0 !important; overflow: visible !important; }
-            }
-        `;
-
-        const root = document.createElement('div');
-        root.id = 'padel-print-preview';
-        const bar = document.createElement('div');
-        bar.className = 'ppv-bar';
-        const titleEl = document.createElement('div');
-        titleEl.className = 'ppv-title';
-        titleEl.textContent = title;
-        const actions = document.createElement('div');
-        actions.className = 'ppv-actions';
-
-        const closePreview = () => {
-            const r = document.getElementById('padel-print-preview');
-            if (r) r.remove();
-            const st = document.getElementById('padel-print-preview-style');
-            if (st) st.remove();
-            try { if (typeof window.scrollTo === 'function') window.scrollTo(0, 0); } catch { /* noop */ }
-        };
-
-        const printBtn = document.createElement('button');
-        printBtn.setAttribute('type', 'button');
-        printBtn.className = 'ppv-btn ppv-primary';
-        printBtn.innerHTML = `${PDF_ICONS.printer} Stampa / Salva PDF`;
-        // print() sincrono dentro il tap: gesto utente valido su iOS
-        printBtn.addEventListener('click', () => {
-            try {
-                window.print();
-            } catch (err) {
-                console.error('window.print error:', err);
-                showHIGAlert('Impossibile avviare la stampa. Riprova.');
-            }
-        });
-        const closeBtn = document.createElement('button');
-        closeBtn.setAttribute('type', 'button');
-        closeBtn.className = 'ppv-btn';
-        closeBtn.textContent = 'Chiudi';
-        closeBtn.addEventListener('click', closePreview);
-        actions.appendChild(printBtn);
-        actions.appendChild(closeBtn);
-        bar.appendChild(titleEl);
-        bar.appendChild(actions);
-
-        const doc = document.createElement('div');
-        doc.className = 'ppv-doc';
-        doc.innerHTML = body;
-
-        root.appendChild(bar);
-        root.appendChild(doc);
-        document.head.appendChild(styleEl);
-        document.body.appendChild(root);
-        return true;
-    } catch (error) {
-        console.error('openPrintPreviewIOS error:', error);
-        showHIGAlert('Errore durante la preparazione della stampa.');
-        return false;
-    }
-};
-
 // Fallback printing for iframes/blobs: on iOS, delegates to printInWindow directly
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     if (isIOS()) {
-        return openPrintPreviewIOS(title, htmlContent);
+        return printInWindow(title, htmlContent);
     }
     try {
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -757,7 +580,7 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                     // ignore
                 }
             }
-            return openPrintPreviewIOS(title, content, pageStyles);
+            return printInWindow(title, content, pageStyles);
         }
 
         const toolbarHtml = `

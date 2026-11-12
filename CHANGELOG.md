@@ -1,3 +1,7 @@
+## v6.12.8 — 2026-11-12
+- **Stampa su iOS / iPadOS (app installata)**: ripristinato il meccanismo della 6.12.2, che funzionava: la stampa parte 150 ms dopo il tap e la pulizia del documento avviene solo su `afterprint` (timeout di sicurezza 120 s). Eliminate le attese su font e frame e la pulizia anticipata tramite `matchMedia`, introdotte nella 6.12.3, che facevano sparire il documento mentre iOS preparava l'anteprima. Rimosse l'anteprima a schermo intero e il tentativo di apertura in nuova finestra delle versioni 6.12.6 e 6.12.7.
+- **Giocatori e Classifiche**: nome e cognome a 16px (la riga della posizione resta invariata), pill ELO e icone più grandi (22px).
+
 ## v6.12.7 — 2026-11-12
 - **Stampa su iOS / iPadOS (app installata)**: il documento si mostra come anteprima a schermo intero dentro l'app, con la barra "Stampa / Salva PDF" e "Chiudi". `window.print()` parte in modo sincrono dal tap sul pulsante (gesto valido) e gli stili di stampa restano nel DOM finché l'anteprima è aperta. Sostituisce la pagina in una nuova finestra (6.12.6), che nell'app installata non si apriva.
 - **Messicano su iPhone**: intestazione su due righe, "Stampa Vuoto" e "Stampa" non vanno più a capo. Nella ripresa da *Risultati* il flusso sostituisce il contenuto della pagina (header e barra inferiore restano) e il pulsante "Chiudi" è sempre raggiungibile.
