@@ -266,11 +266,11 @@ const PlayersPage: React.FC = () => {
                                         <div className="text-[12px] text-ios-label-secondary mt-0.5">{player.position}</div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2.5 shrink-0">
-                                    <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green p-1" aria-label="Profilo"><SFIcon name="info.circle" size={16}/></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue p-1" aria-label="Modifica"><SFIcon name="pencil" size={16}/></button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red p-1" aria-label="Elimina"><SFIcon name="trash" size={16}/></button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    <span className="mr-1.5 font-bold text-sky-600 dark:text-sky-400 text-xs px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Profilo di ${player.name} ${player.surname}`}><SFIcon name="info.circle" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Modifica ${player.name} ${player.surname}`}><SFIcon name="pencil" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red inline-flex h-11 w-11 items-center justify-center rounded-full" aria-label={`Elimina ${player.name} ${player.surname}`}><SFIcon name="trash" size={16}/></button>
                                 </div>
                             </div>
                         ))
@@ -362,7 +362,7 @@ const PlayersPage: React.FC = () => {
                             <label className="sm:w-1/3 text-sm font-medium text-ios-label-secondary mb-1 sm:mb-0">
                                 Cognome
                                 {playerHasMatches && (
-                                    <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold text-ios-orange bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded px-1.5 py-0.5" title="Modifiche al cognome sono limitate al 20% per proteggere lo storico ELO">
+                                    <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-ios-orange bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded px-1.5 py-0.5" title="Modifiche al cognome sono limitate al 20% per proteggere lo storico ELO">
                                         <SFIcon name="lock.fill" size={10} />
                                         <span>protetto</span>
                                     </span>

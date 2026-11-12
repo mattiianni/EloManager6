@@ -1857,6 +1857,10 @@ app.get('/api/data', async (req, res) => {
             roundRobinFields: t.round_robin_fields || undefined,
             roundRobinHomeAway: !!t.round_robin_home_away,
             customFlowConfig: t.custom_flow_config || null,
+            mexicanRounds: t.custom_flow_config?.mexican?.rounds || undefined,
+            mexicanFields: t.custom_flow_config?.mexican?.fields || undefined,
+            mexicanScoringType: t.custom_flow_config?.mexican?.scoringType || undefined,
+            mexicanDrawMode: t.custom_flow_config?.mexican?.drawMode || undefined,
             playerMode: t.player_mode || null,
             numCampi: t.num_campi || null,
             playoffsCustomized: !!t.playoffs_customized,
@@ -5713,7 +5717,13 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
             LIMIT 1
         `;
         if (existing.length > 0) {
-            return res.json({ message: 'Torneo già salvato', tournamentId: existing[0].id, idempotent: true });
+            const savedMatches = await sql`SELECT id, round_number, group_number FROM matches WHERE tournament_id = ${existing[0].id} AND workspace_id = ${req.workspaceId}`;
+            return res.json({
+                message: 'Torneo già salvato',
+                tournamentId: existing[0].id,
+                matches: savedMatches.map(m => ({ id: m.id, roundNumber: m.round_number, groupNumber: m.group_number })),
+                idempotent: true,
+            });
         }
 
         const tournamentId = randomUUID();
@@ -5812,16 +5822,120 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
         } catch (error) {
             if (error?.code === '23505') {
                 const duplicate = await sql`SELECT id FROM tournaments WHERE workspace_id = ${req.workspaceId} AND idempotency_key = ${idempotencyKey} LIMIT 1`;
-                if (duplicate.length > 0) return res.json({ message: 'Torneo già salvato', tournamentId: duplicate[0].id, idempotent: true });
+                if (duplicate.length > 0) {
+                    const savedMatches = await sql`SELECT id, round_number, group_number FROM matches WHERE tournament_id = ${duplicate[0].id} AND workspace_id = ${req.workspaceId}`;
+                    return res.json({ message: 'Torneo già salvato', tournamentId: duplicate[0].id, matches: savedMatches.map(m => ({ id: m.id, roundNumber: m.round_number, groupNumber: m.group_number })), idempotent: true });
+                }
             }
             throw error;
         }
 
         logger.info('Torneo salvato atomicamente', { tournamentId, matches: normalizedMatches.length });
-        res.json({ message: 'Torneo e partite aggiunti con successo', tournamentId, idempotent: false });
+        res.json({ message: 'Torneo e partite aggiunti con successo', tournamentId, matchIds: normalizedMatches.map(match => match.id), matches: normalizedMatches.map(match => ({ id: match.id, roundNumber: match.roundNumber, groupNumber: match.groupNumber })), idempotent: false });
     } catch (error) {
         logger.error("Failed to bulk add matches", error);
         res.status(500).json({ message: 'Failed to bulk add matches', error: error.message });
+    }
+});
+
+// PUT /api/tournaments/mexican-progress - Salvataggio incrementale del Torneo Messicano (JIT):
+// aggiorna i punteggi dei turni giocati e aggiunge le partite del turno successivo in una sola transazione.
+app.put('/api/tournaments/mexican-progress', async (req, res) => {
+    try {
+        const { tournamentId, updates = [], newMatches = [] } = req.body || {};
+        if (!tournamentId) {
+            return res.status(400).json({ code: 'TOURNAMENT_ID_REQUIRED', message: 'Tournament ID is required' });
+        }
+        if (!Array.isArray(updates) || !Array.isArray(newMatches)) {
+            return res.status(400).json({ code: 'INVALID_PAYLOAD', message: 'Payload non valido' });
+        }
+
+        const tournamentRows = await sql`
+            SELECT id, type, date, status FROM tournaments
+            WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId} LIMIT 1
+        `;
+        if (tournamentRows.length === 0) return res.status(404).json({ code: 'TOURNAMENT_NOT_FOUND', message: 'Torneo non trovato' });
+        const tournament = tournamentRows[0];
+        if (tournament.type !== 'Mexicano') {
+            return res.status(400).json({ code: 'NOT_MEXICAN', message: 'Il torneo non è un Messicano' });
+        }
+        if (tournament.status === 'completed') {
+            return res.status(409).json({ code: 'TOURNAMENT_COMPLETED', message: 'Il torneo è già concluso' });
+        }
+
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (updates.some(u => !u || typeof u.matchId !== 'string' || !UUID_RE.test(u.matchId)) || newMatches.some(m => !m || typeof m !== 'object')) {
+            return res.status(400).json({ code: 'INVALID_PAYLOAD', message: 'Payload non valido' });
+        }
+        const queries = [];
+        const updateIds = updates.map(u => u?.matchId);
+        if (updateIds.some(id => !id) || new Set(updateIds).size !== updateIds.length) {
+            return res.status(400).json({ code: 'INVALID_UPDATE', message: 'Aggiornamenti non validi' });
+        }
+        if (updateIds.length > 0) {
+            const stored = await sql`SELECT id FROM matches WHERE id = ANY(${updateIds}::uuid[]) AND tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId}`;
+            if (stored.length !== updateIds.length) {
+                return res.status(404).json({ code: 'MATCH_NOT_FOUND', message: 'Partita non trovata nel torneo' });
+            }
+        }
+        for (const update of updates) {
+            if (!Array.isArray(update.sets)) return res.status(400).json({ code: 'INVALID_UPDATE', matchId: update.matchId, message: 'Punteggio mancante' });
+            const outcome = validateMatchOutcome({ sets: update.sets, tournamentType: tournament.type, phase: 'group' });
+            if ([MATCH_OUTCOME.FORBIDDEN_DRAW, MATCH_OUTCOME.INVALID_SCORE].includes(outcome.status)) {
+                return sendOutcomeError(res, outcome.status, update.matchId);
+            }
+            queries.push(sql`
+                UPDATE matches SET sets = ${JSON.stringify(update.sets)}::jsonb, winner = ${outcome.winner}
+                WHERE id = ${update.matchId} AND tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId}
+            `);
+        }
+
+        const playerIds = [...new Set(newMatches.flatMap(m => [...(m.team1 || []), ...(m.team2 || [])]))];
+        for (const m of newMatches) {
+            if (!Array.isArray(m.team1) || m.team1.length !== 2 || !Array.isArray(m.team2) || m.team2.length !== 2
+                || new Set([...m.team1, ...m.team2]).size !== 4) {
+                return res.status(400).json({ code: 'INVALID_TEAMS', message: 'Ogni partita deve avere quattro giocatori distinti' });
+            }
+            if (!(Number(m.roundNumber) > 0)) {
+                return res.status(400).json({ code: 'INVALID_ROUND', message: 'Numero turno mancante' });
+            }
+            if (m.sets !== undefined && !Array.isArray(m.sets)) {
+                return res.status(400).json({ code: 'INVALID_SETS', message: 'Punteggio non valido' });
+            }
+        }
+        if (playerIds.length > 0) {
+            const playerRows = await sql`SELECT id FROM players WHERE id = ANY(${playerIds}::uuid[]) AND workspace_id = ${req.workspaceId} AND COALESCE(is_deleted, FALSE) = FALSE`;
+            if (playerRows.length !== playerIds.length) {
+                return res.status(400).json({ code: 'PLAYER_NOT_FOUND', message: 'Uno o più giocatori non sono disponibili' });
+            }
+        }
+        const newIds = [];
+        // Idempotenza per turno: se il turno esiste già (retry dopo risposta persa, secondo dispositivo)
+        // non lo reinseriamo e restituiamo gli id esistenti, mappati per (turno, campo).
+        const incomingRounds = [...new Set(newMatches.map(m => Number(m.roundNumber)))];
+        const existingRoundRows = incomingRounds.length > 0
+            ? await sql`SELECT id, round_number, group_number FROM matches WHERE tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId} AND round_number = ANY(${incomingRounds}::int[])`
+            : [];
+        const existingRounds = new Set(existingRoundRows.map(r => Number(r.round_number)));
+        for (const m of newMatches) {
+            if (existingRounds.has(Number(m.roundNumber))) {
+                const found = existingRoundRows.find(r => Number(r.round_number) === Number(m.roundNumber) && Number(r.group_number || 0) === Number(m.groupNumber || 0));
+                if (found) newIds.push({ clientId: m.id || null, id: found.id });
+                continue;
+            }
+            const id = randomUUID();
+            newIds.push({ clientId: m.id || null, id });
+            queries.push(sql`
+                INSERT INTO matches (id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id, workspace_id, round_number, group_number, phase)
+                VALUES (${id}, ${m.date || tournament.date}, ${m.team1[0]}, ${m.team1[1]}, ${m.team2[0]}, ${m.team2[1]}, ${JSON.stringify(m.sets || [{ team1: 0, team2: 0 }])}::jsonb, ${null}, ${tournamentId}, ${req.workspaceId}, ${Number(m.roundNumber)}, ${Number(m.groupNumber) > 0 ? Number(m.groupNumber) : null}, 'group')
+            `);
+        }
+        if (queries.length > 0) await sql.transaction(queries);
+
+        res.json({ message: 'Avanzamento salvato', updated: updates.length, created: newIds });
+    } catch (error) {
+        logger.error('Failed to save mexican progress', error);
+        res.status(500).json({ message: 'Failed to save mexican progress', error: error.message });
     }
 });
 
@@ -5834,7 +5948,7 @@ app.put('/api/tournaments/complete', async (req, res) => {
         }
 
         const tournamentRows = await sql`
-            SELECT id, name, type, date, status, round_robin_playoff_type, parent_tournament_name, giornata_name
+            SELECT id, name, type, date, status, round_robin_playoff_type, parent_tournament_name, giornata_name, custom_flow_config
             FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}
             LIMIT 1
         `;
@@ -5847,6 +5961,15 @@ app.put('/api/tournaments/complete', async (req, res) => {
             ORDER BY round_number ASC NULLS LAST, created_at ASC, id ASC
         `;
         if (matchesResult.length === 0) return res.status(400).json({ code: 'NO_MATCHES', message: 'Il torneo non contiene partite' });
+
+        if (tournament.type === 'Mexicano') {
+            const expectedRounds = Number(tournament.custom_flow_config?.mexican?.rounds) || 0;
+            const roundsPresent = new Set(matchesResult.map(m => Number(m.round_number) || 1));
+            const hasUnplayed = matchesResult.some(m => !m.winner);
+            if ((expectedRounds > 0 && roundsPresent.size < expectedRounds) || hasUnplayed) {
+                return res.status(400).json({ code: 'MEXICAN_INCOMPLETE', message: 'Completa tutti i turni e inserisci tutti i risultati prima di concludere il torneo' });
+            }
+        }
 
         const normalizedMatches = [];
         for (let index = 0; index < matchesResult.length; index++) {

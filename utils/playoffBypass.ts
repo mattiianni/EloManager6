@@ -89,3 +89,15 @@ export function updateMatchPlayer<T extends Pick<Match, 'team1' | 'team2'>>(
         [teamKey]: currentTeam,
     };
 }
+
+/**
+ * Variante comoda per le UI: restituisce il messaggio d'errore oppure `null` se la fase è valida.
+ * (Evita l'errore di trattare l'oggetto `{ isValid }` come se fosse un messaggio truthy.)
+ */
+export function getPlayoffPhaseTeamsError(
+    matches: Array<Pick<Match, 'team1' | 'team2'>>,
+    isSingles = false
+): string | null {
+    const result = validatePlayoffPhaseTeams(matches, isSingles);
+    return result.isValid ? null : (result.error || 'Coppie non valide');
+}

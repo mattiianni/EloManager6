@@ -35,7 +35,7 @@ export const generateMexicanPdfHtml = (
     const safeDisplayName = escapeHtml(displayName);
     const safeClubName = escapeHtml(tournament.club || 'Circolo Padel');
 
-    const fieldsCount = tournament.mexicanFields || tournament.americanoFields || (matches.length > 0 ? Math.max(...matches.map(m => m.courtNumber || 1)) : 2);
+    const fieldsCount = tournament.mexicanFields || tournament.americanoFields || (matches.length > 0 ? Math.max(...matches.map(m => m.courtNumber || m.groupNumber || 1)) : 2);
     const scoringType = tournament.mexicanScoringType || tournament.americanoScoringType || 'games-diff';
 
     // Raccoglie tutti i giocatori unici
@@ -66,17 +66,36 @@ export const generateMexicanPdfHtml = (
         roundsMap.get(r)!.push(m);
     });
 
+    // Tabellone in bianco: tutti i turni previsti, con segnaposto per quelli non ancora generati
+    if (isBlank) {
+        const plannedRounds = tournament.mexicanRounds || 0;
+        const courts = Math.max(1, Math.floor(allPlayers.length / 4) || fieldsCount);
+        for (let r = 1; r <= plannedRounds; r++) {
+            if (roundsMap.has(r)) continue;
+            roundsMap.set(r, Array.from({ length: courts }, (_, i) => ({
+                id: `blank-r${r}-c${i + 1}`,
+                date: tournament.date,
+                team1: [] as unknown as [string, string],
+                team2: [] as unknown as [string, string],
+                sets: [],
+                winner: null,
+                roundNumber: r,
+                courtNumber: i + 1,
+            } as Match)));
+        }
+    }
     const sortedRounds = Array.from(roundsMap.keys()).sort((a, b) => a - b);
 
     const generateMatchRow = (match: Match) => {
-        const courtLabel = match.courtNumber ? `Campo ${match.courtNumber}` : '-';
+        const court = match.courtNumber ?? match.groupNumber;
+        const courtLabel = court ? `Campo ${court}` : '-';
         const hasScore = match.sets && match.sets.length > 0 && match.sets.some(s => (s.team1 || 0) > 0 || (s.team2 || 0) > 0);
 
         let team1Name: string;
         let team2Name: string;
 
-        if (isBlank || (!match.team1[0] && !match.team2[0])) {
-            const cNum = match.courtNumber || 1;
+        if (!match.team1?.[0] && !match.team2?.[0]) {
+            const cNum = court || 1;
             const topP1 = (cNum - 1) * 4 + 1;
             const topP2 = (cNum - 1) * 4 + 2;
             const topP3 = (cNum - 1) * 4 + 3;

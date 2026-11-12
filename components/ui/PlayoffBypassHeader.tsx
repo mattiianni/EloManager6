@@ -36,7 +36,7 @@ export const PlayoffBypassHeader: React.FC<PlayoffBypassHeaderProps> = ({
                             {title}
                         </h3>
                         {isCustomized && (
-                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
+                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
                                 Personalizzato
                             </span>
                         )}

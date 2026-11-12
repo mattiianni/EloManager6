@@ -25,7 +25,7 @@ import { getCanonicalTeamKey } from '../utils/matchIdentity.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
 import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
 import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
-import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
+import { getAssignedPlayerIdsInPhase, getPlayoffPhaseTeamsError } from '../utils/playoffBypass.ts';
 
 interface TournamentFlowProps {
  pairs: [Player, Player][];
@@ -2077,23 +2077,12 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Numero di campi disponibili
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Campi
             </label>
-            <div className="flex items-center flex-wrap gap-2">
-              {[2, 3, 4, 5, 6].map(num => (
-                <Button
-                  key={num}
-                  type="button"
-                  variant={mexicanFields === num ? "primary" : "secondary"}
-                  size="sm"
-                  onClick={() => setMexicanFields(num)}
-                  className="!px-4"
-                >
-                  {num}
-                </Button>
-              ))}
-            </div>
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              {Math.max(1, Math.floor(totalUniquePlayers / 4))} campi (4 giocatori per campo, assegnati automaticamente in base ai partecipanti).
+            </p>
           </div>
 
           <div>
@@ -2150,7 +2139,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
               Modalità sorteggio Turno 1
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(['Normal', 'Seeded', 'Balanced', 'Manual'] as MexicanDrawMode[]).map(m => (
+              {(['Normal', 'Seeded', 'Balanced'] as MexicanDrawMode[]).map(m => (
                 <Button
                   key={m}
                   type="button"
@@ -2731,7 +2720,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       };
 
       const handleConfirmNewPairs = () => {
-        const err = validatePlayoffPhaseTeams(draftGironiQuarters);
+        const err = getPlayoffPhaseTeamsError(draftGironiQuarters);
         if (err) {
           showHIGAlert(err);
           return;
@@ -2813,7 +2802,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       };
 
       const handleConfirmNewPairs = () => {
-        const err = validatePlayoffPhaseTeams(draftGironiSemis);
+        const err = getPlayoffPhaseTeamsError(draftGironiSemis);
         if (err) {
           showHIGAlert(err);
           return;
@@ -2910,7 +2899,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
       };
 
       const handleConfirmNewPairs = () => {
-        const err = validatePlayoffPhaseTeams(draftGironiFinals);
+        const err = getPlayoffPhaseTeamsError(draftGironiFinals);
         if (err) {
           showHIGAlert(err);
           return;
@@ -3554,13 +3543,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
                               <div key={originalIndex} className="py-2.5 px-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5 space-y-2">
                                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                   <div className="min-w-0 text-left">
-                                    <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
+                                    <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">Squadra A</div>
                                     <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[0])}</p>
                                     <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[1])}</p>
                                   </div>
-                                  <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
+                                  <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] font-black text-slate-500 dark:text-slate-400">VS</div>
                                   <div className="min-w-0 text-right">
-                                    <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
+                                    <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">Squadra B</div>
                                     <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[0])}</p>
                                     <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[1])}</p>
                                   </div>
@@ -3603,13 +3592,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm space-y-2">
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra A</div>
+        <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">Squadra A</div>
         <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[0])}</p>
         <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team1[1])}</p>
       </div>
-      <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-400">VS</div>
+      <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] font-black text-slate-500 dark:text-slate-400">VS</div>
       <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-slate-400">Squadra B</div>
+        <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">Squadra B</div>
         <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[0])}</p>
         <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]">{formatPlayerShortName(team2[1])}</p>
       </div>
@@ -3737,7 +3726,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
   };
 
   const handleConfirmNewPairs = () => {
-   const err = validatePlayoffPhaseTeams(activeFinalsAsMatches);
+   const err = getPlayoffPhaseTeamsError(activeFinalsAsMatches);
    if (err) {
     showHIGAlert(err);
     return;

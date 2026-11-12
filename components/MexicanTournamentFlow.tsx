@@ -27,6 +27,9 @@ interface MexicanTournamentFlowProps {
     roundsCount: number;
     scoringType: 'games-diff' | 'points';
     drawMode: MexicanDrawMode;
+    /** Ripresa di un torneo "in corso": partite già salvate e id del torneo. */
+    initialMatches?: Match[];
+    tournamentId?: string;
 }
 
 export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
@@ -40,8 +43,10 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
     roundsCount,
     scoringType,
     drawMode,
+    initialMatches,
+    tournamentId,
 }) => {
-    const { addMultipleMatches, getPlayerById } = usePadelStore();
+    const { getPlayerById, createMexicanTournament, saveMexicanProgress, completeTournament, fetchData } = usePadelStore();
 
     // Deduplica e valida i giocatori
     const uniquePlayers = useMemo(() => {
@@ -55,19 +60,28 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
     }, [players]);
 
     const totalRounds = Math.max(2, Math.min(roundsCount, uniquePlayers.length - 1));
-    const effectiveFields = Math.max(2, Math.min(fieldsCount, Math.floor(uniquePlayers.length / 4)));
+    // I campi sono sempre n/4 (4 giocatori per campo): il motore JIT li determina dal numero di partecipanti.
+    const effectiveFields = Math.max(1, Math.floor(uniquePlayers.length / 4));
 
     // Inizializza i match del Round 1
     const [allMatches, setAllMatches] = useState<Match[]>(() => {
+        if (initialMatches && initialMatches.length > 0) {
+            return initialMatches.map(m => ({ ...m, courtNumber: m.courtNumber ?? m.groupNumber ?? 1 }));
+        }
         return generateFirstRoundMexicanMatches(uniquePlayers, drawMode, tournamentDate);
     });
 
-    const [currentRound, setCurrentRound] = useState<number>(1);
-    const [selectedTabRound, setSelectedTabRound] = useState<number>(1);
+    // In ripresa il turno corrente è l'ultimo già generato (i successivi si calcolano con "Procedi").
+    const resumedRound = initialMatches && initialMatches.length > 0
+        ? Math.max(1, ...initialMatches.map(m => m.roundNumber || 1))
+        : 1;
+    const [currentRound, setCurrentRound] = useState<number>(resumedRound);
+    const [selectedTabRound, setSelectedTabRound] = useState<number>(resumedRound);
     const [step, setStep] = useState<'rounds' | 'results'>('rounds');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [isSavingCalendar, setIsSavingCalendar] = useState<boolean>(false);
-    const [savedTournamentId, setSavedTournamentId] = useState<string | null>(null);
+    const [savedTournamentId, setSavedTournamentId] = useState<string | null>(tournamentId || null);
+    const savingRef = React.useRef(false);
 
     // Partite raggruppate per turno
     const matchesByRound = useMemo(() => {
@@ -119,121 +133,156 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
         }));
     };
 
-    // Avanzamento al turno successivo JIT
-    const handleAdvanceRound = () => {
-        if (!isCurrentRoundComplete) {
-            showHIGAlert(`Completa tutte le partite del Turno ${currentRound} prima di generare il Turno ${currentRound + 1}.`);
-            return;
-        }
+    const tournamentPayload = (status: 'scheduled' | 'completed'): Omit<Tournament, 'id'> => ({
+        name: tournamentName,
+        type: TournamentType.Mexican,
+        date: new Date(tournamentDate).toISOString(),
+        club: clubName,
+        matchIds: [],
+        status,
+        giornataName: giornataName || undefined,
+        mexicanFields: effectiveFields,
+        mexicanRounds: totalRounds,
+        mexicanScoringType: scoringType,
+        playerMode: 'singles',
+        numCampi: effectiveFields,
+        // Metadati persistiti lato server (custom_flow_config) per ripresa e stampa
+        customFlowConfig: { mexican: { rounds: totalRounds, fields: effectiveFields, scoringType, drawMode } } as any,
+    });
 
-        const nextRoundNumber = currentRound + 1;
-        if (nextRoundNumber > totalRounds) {
-            showHIGAlert('Tutti i turni sono stati completati!');
-            return;
-        }
+    const toPayloadMatch = (m: Match) => ({
+        id: m.id,
+        date: new Date(tournamentDate).toISOString(),
+        team1: m.team1,
+        team2: m.team2,
+        sets: m.sets && m.sets.length > 0 ? m.sets : [{ team1: 0, team2: 0 }],
+        winner: m.winner,
+        phase: m.phase || 'group',
+        roundNumber: m.roundNumber,
+        groupNumber: m.courtNumber ?? m.groupNumber,
+    });
 
-        // Se il turno successivo non è ancora stato generato, crealo JIT
-        const existingNextRound = matchesByRound.get(nextRoundNumber) || [];
-        if (existingNextRound.length === 0) {
-            const nextRoundMatches = generateNextMexicanRoundMatches(
-                allMatches,
-                uniquePlayers,
-                nextRoundNumber,
-                tournamentDate,
-                scoringType
+    /**
+     * Salva su DB lo stato corrente del torneo (senza duplicati):
+     * - primo salvataggio: crea il torneo "In Programma" con tutte le partite generate;
+     * - salvataggi successivi: aggiorna i punteggi del turno e aggiunge le partite del turno nuovo.
+     * Ritorna l'elenco partite aggiornato con gli id reali del server.
+     */
+    const persistProgress = async (matches: Match[], newRoundMatches: Match[] = []): Promise<Match[]> => {
+        const all = [...matches, ...newRoundMatches];
+        if (!savedTournamentId) {
+            const { tournamentId: newId, matches: savedRows } = await createMexicanTournament(
+                all.map(toPayloadMatch) as any,
+                tournamentPayload('scheduled')
             );
-            setAllMatches(prev => [...prev, ...nextRoundMatches]);
+            setSavedTournamentId(newId);
+            // Mappatura per (turno, campo): funziona anche se il server risponde in modo idempotente
+            const byKey = new Map(savedRows.map(r => [`${r.roundNumber}-${r.groupNumber}`, r.id]));
+            return all.map(m => ({ ...m, id: byKey.get(`${m.roundNumber || 1}-${m.courtNumber ?? m.groupNumber}`) || m.id, tournamentId: newId }));
         }
-
-        setCurrentRound(nextRoundNumber);
-        setSelectedTabRound(nextRoundNumber);
+        const isServerId = (id: string) => !id.startsWith('mexican-');
+        const updates = matches.filter(m => isServerId(m.id)).map(m => ({ matchId: m.id, sets: m.sets && m.sets.length > 0 ? m.sets : [{ team1: 0, team2: 0 }] }));
+        const created = await saveMexicanProgress(
+            savedTournamentId,
+            updates,
+            newRoundMatches.map(m => ({ ...toPayloadMatch(m), tournamentId: undefined }))
+        );
+        const idMap = new Map(created.map(c => [c.clientId, c.id]));
+        return [...matches, ...newRoundMatches.map(m => ({ ...m, id: idMap.get(m.id) || m.id, tournamentId: savedTournamentId }))];
     };
 
-    // Salvataggio Torneo in Corso (status: 'scheduled')
-    const handleSaveScheduled = async () => {
-        if (isSavingCalendar) return;
+    // Aggiorna solo id e tournamentId (senza sovrascrivere punteggi digitati nel frattempo);
+    // le partite nuove (turno successivo) vengono aggiunte.
+    const mergeSavedMatches = (saved: Match[]) => {
+        setAllMatches(prev => {
+            const byKey = new Map(saved.map(m => [`${m.roundNumber || 1}-${m.courtNumber ?? m.groupNumber}`, m]));
+            const known = new Set<string>();
+            const merged = prev.map(m => {
+                const key = `${m.roundNumber || 1}-${m.courtNumber ?? m.groupNumber}`;
+                known.add(key);
+                const s = byKey.get(key);
+                return s ? { ...m, id: s.id, tournamentId: s.tournamentId } : m;
+            });
+            saved.forEach(m => { if (!known.has(`${m.roundNumber || 1}-${m.courtNumber ?? m.groupNumber}`)) merged.push(m); });
+            return merged;
+        });
+    };
+
+    // "Procedi": valida il turno, calcola il turno successivo (JIT) e SALVA automaticamente
+    const handleAdvanceRound = async () => {
+        if (savingRef.current) return;
+        if (!isCurrentRoundComplete) {
+            showHIGAlert(`Completa tutte le partite del Turno ${currentRound} prima di procedere.`);
+            return;
+        }
+        const nextRoundNumber = currentRound + 1;
+        if (nextRoundNumber > totalRounds) return;
+
+        savingRef.current = true;
         setIsSavingCalendar(true);
-
         try {
-            const tournamentData: Omit<Tournament, 'id'> = {
-                name: tournamentName,
-                type: TournamentType.Mexican,
-                date: new Date(tournamentDate).toISOString(),
-                club: clubName,
-                matchIds: [],
-                status: 'scheduled',
-                giornataName: giornataName || undefined,
-                mexicanFields: effectiveFields,
-                mexicanRounds: totalRounds,
-                mexicanScoringType: scoringType,
-                playerMode: 'singles',
-                numCampi: effectiveFields
-            };
-
-            const matchesToSave = allMatches.map(m => ({
-                date: new Date(tournamentDate).toISOString(),
-                team1: m.team1,
-                team2: m.team2,
-                sets: m.sets || [{ team1: 0, team2: 0 }],
-                winner: m.winner,
-                phase: m.phase || 'group',
-                courtNumber: m.courtNumber,
-                roundNumber: m.roundNumber
-            }));
-
-            await addMultipleMatches(matchesToSave, tournamentData);
-            showHIGAlert('Torneo salvato come "In Programma". Potrai riprenderlo in qualsiasi momento.');
+            const existingNextRound = matchesByRound.get(nextRoundNumber) || [];
+            const nextRoundMatches = existingNextRound.length === 0
+                ? generateNextMexicanRoundMatches(allMatches, uniquePlayers, nextRoundNumber, tournamentDate, scoringType)
+                : [];
+            const saved = await persistProgress(allMatches, nextRoundMatches);
+            mergeSavedMatches(saved);
+            setCurrentRound(nextRoundNumber);
+            setSelectedTabRound(nextRoundNumber);
         } catch (e: any) {
-            console.error('Errore durante il salvataggio in programma:', e);
-            showHIGAlert('Errore durante il salvataggio del torneo.');
+            console.error('Errore durante il salvataggio del turno:', e);
+            showHIGAlert('Impossibile salvare il turno. Controlla la connessione e riprova: il turno successivo non è stato generato.');
         } finally {
+            savingRef.current = false;
             setIsSavingCalendar(false);
         }
     };
 
-    // Completamento Torneo (status: 'completed')
+    // Salva i punteggi correnti senza avanzare (stato: 'scheduled')
+    const handleSaveScheduled = async () => {
+        if (savingRef.current) return;
+        savingRef.current = true;
+        setIsSavingCalendar(true);
+        try {
+            const saved = await persistProgress(allMatches);
+            mergeSavedMatches(saved);
+            showHIGAlert('Torneo salvato come "In Programma". Potrai riprenderlo in qualsiasi momento da Risultati.');
+        } catch (e: any) {
+            console.error('Errore durante il salvataggio in programma:', e);
+            showHIGAlert('Errore durante il salvataggio del torneo.');
+        } finally {
+            savingRef.current = false;
+            setIsSavingCalendar(false);
+        }
+    };
+
+    // "Concludi Torneo": salva l'ultimo turno, calcola classifica finale ed ELO
     const handleCompleteTournament = async () => {
         if (!isCurrentRoundComplete || currentRound < totalRounds) {
-            showHIGAlert('Inserisci i risultati di tutte le partite dell\'ultimo turno prima di completare il torneo.');
+            showHIGAlert('Inserisci i risultati di tutte le partite dell\'ultimo turno prima di concludere il torneo.');
             return;
         }
-
-        if (isSubmitting) return;
+        if (savingRef.current) return;
+        savingRef.current = true;
         setIsSubmitting(true);
-
         try {
-            const tournamentData: Omit<Tournament, 'id'> = {
-                name: tournamentName,
-                type: TournamentType.Mexican,
-                date: new Date(tournamentDate).toISOString(),
-                club: clubName,
-                matchIds: [],
-                status: 'completed',
-                giornataName: giornataName || undefined,
-                mexicanFields: effectiveFields,
-                mexicanRounds: totalRounds,
-                mexicanScoringType: scoringType,
-                playerMode: 'singles',
-                numCampi: effectiveFields
-            };
-
-            const finalMatchesList: Omit<Match, 'id'>[] = allMatches.map(m => ({
-                date: new Date(tournamentDate).toISOString(),
-                team1: m.team1,
-                team2: m.team2,
-                sets: m.sets || [{ team1: 0, team2: 0 }],
-                winner: m.winner,
-                phase: m.phase || 'group',
-                courtNumber: m.courtNumber,
-                roundNumber: m.roundNumber
-            }));
-
-            await addMultipleMatches(finalMatchesList, tournamentData);
+            const saved = await persistProgress(allMatches);
+            mergeSavedMatches(saved);
+            const id = saved[0]?.tournamentId || savedTournamentId;
+            if (!id) throw new Error('ID torneo mancante');
+            await completeTournament(id);
             setStep('results');
         } catch (e: any) {
+            if (/TOURNAMENT_COMPLETED|già concluso/i.test(String(e?.message || e?.code || ''))) {
+                try { await fetchData(); } catch { /* noop */ }
+                setStep('results');
+                return;
+            }
             console.error('Errore completamento torneo messicano:', e);
-            showHIGAlert('Errore durante il salvataggio finale del torneo.');
+            showHIGAlert('Errore durante la conclusione del torneo. I risultati inseriti sono stati salvati: riprova a concludere.');
+            try { await fetchData(); } catch { /* noop */ }
         } finally {
+            savingRef.current = false;
             setIsSubmitting(false);
         }
     };
@@ -301,7 +350,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                     <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white break-words [overflow-wrap:anywhere]">
                                         {top3[1] ? formatPlayerShortName(top3[1].player) : '—'}
                                     </p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">
+                                    <p className="text-[11px] sm:text-xs text-slate-500">
                                         {top3[1] ? `${top3[1].points} pt` : ''}
                                     </p>
                                 </div>
@@ -331,7 +380,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                     <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white break-words [overflow-wrap:anywhere]">
                                         {top3[2] ? formatPlayerShortName(top3[2].player) : '—'}
                                     </p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">
+                                    <p className="text-[11px] sm:text-xs text-slate-500">
                                         {top3[2] ? `${top3[2].points} pt` : ''}
                                     </p>
                                 </div>
@@ -448,7 +497,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                             ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                                             : isCurrent
                                             ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700'
-                                            : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500'
+                                            : 'bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400'
                                     }`}
                                 >
                                     <span>Turno {rNum}</span>
@@ -486,7 +535,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                                     <div className="font-semibold text-slate-700 dark:text-slate-300">[{topP1}° Classificato]</div>
                                                     <div className="font-semibold text-slate-700 dark:text-slate-300">[{topP4}° Classificato]</div>
                                                 </div>
-                                                <div className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-black text-slate-500">
+                                                <div className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[11px] font-black text-slate-500">
                                                     VS
                                                 </div>
                                                 <div className="space-y-1">
@@ -520,7 +569,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                                 Campo {cNum} {cNum === 1 ? '• Top' : cNum === effectiveFields ? '• Flop' : ''}
                                             </span>
-                                            <span className="text-[10px] font-medium text-slate-400">
+                                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                                                 Partita 1 set
                                             </span>
                                         </div>
@@ -529,7 +578,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                             {/* Squadra A */}
                                             <div className={`min-w-0 text-left ${isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                                <div className="text-[11px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                                                     Squadra A
                                                 </div>
                                                 <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
@@ -542,14 +591,14 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
 
                                             {/* VS Badge */}
                                             <div className="flex items-center justify-center shrink-0">
-                                                <span className="text-[10px] font-black uppercase text-slate-400 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10">
+                                                <span className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10">
                                                     VS
                                                 </span>
                                             </div>
 
                                             {/* Squadra B */}
                                             <div className={`min-w-0 text-right ${isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
-                                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                                <div className="text-[11px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                                                     Squadra B
                                                 </div>
                                                 <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug">
@@ -566,6 +615,7 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                             <MatchScoreInput
                                                 sets={match.sets || [{ team1: 0, team2: 0 }]}
                                                 onSetsChange={(sets) => handleScoreChange(match.id, sets)}
+                                                disabled={selectedTabRound < currentRound}
                                             />
                                         </div>
                                     </div>
@@ -578,10 +628,10 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                     <div className="pt-4 border-t border-slate-100 dark:border-white/10">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                <SFIcon name="chart.bar.fill" size={14} className="text-[#0055D4]" />
+                                <SFIcon name="chart.bar.fill" size={14} className="text-[var(--ios-systemBlue)]" />
                                 <span>Classifica Provvisoria (aggiornata in tempo reale)</span>
                             </span>
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {scoringType === 'points' ? 'Conteggio a Punti/Game' : 'Differenza Games'}
                             </span>
                         </div>
@@ -636,11 +686,11 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                         {currentRound < totalRounds ? (
                             <Button
                                 onClick={handleAdvanceRound}
-                                disabled={!isCurrentRoundComplete}
+                                disabled={!isCurrentRoundComplete || isSavingCalendar}
                                 className="w-full sm:flex-1 font-bold !bg-[#0055D4] text-white"
                             >
                                 <span className="flex items-center justify-center gap-1.5">
-                                    <span>Avanza al Turno {currentRound + 1} (JIT)</span>
+                                    <span>{isSavingCalendar ? 'Salvataggio...' : `Procedi al Turno ${currentRound + 1}`}</span>
                                     <SFIcon name="arrow.right" size={14} />
                                 </span>
                             </Button>
@@ -650,10 +700,10 @@ export const MexicanTournamentFlow: React.FC<MexicanTournamentFlowProps> = ({
                                 disabled={isSubmitting || !isCurrentRoundComplete}
                                 className="w-full sm:flex-1 font-bold !bg-emerald-600 hover:!bg-emerald-700 text-white"
                             >
-                                {isSubmitting ? 'Salvataggio finale...' : (
+                                {isSubmitting ? 'Calcolo classifica ed ELO...' : (
                                     <span className="flex items-center justify-center gap-1.5">
                                         <SFIcon name="trophy.fill" size={16} />
-                                        <span>Completa Torneo Messicano</span>
+                                        <span>Concludi Torneo</span>
                                     </span>
                                 )}
                             </Button>

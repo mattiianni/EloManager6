@@ -1,3 +1,14 @@
+## v6.12.4 — 2026-11-12
+- **Torneo Messicano (turno per turno)**:
+  - Pulsante **Procedi** in ogni turno tranne l'ultimo: calcola il turno successivo (JIT) e lo **salva in automatico** sul database (primo salvataggio = creazione del torneo "In Programma", poi aggiornamenti senza duplicati). Nell'ultimo turno il pulsante diventa **Concludi Torneo** (classifica finale + ELO).
+  - **Ripresa da "In corso"**: da *Risultati* il Messicano riparte dal turno corrente con Procedi / Concludi, al posto del vecchio modale generico Annulla / Salva / Completa.
+  - Nuovo endpoint `PUT /api/tournaments/mexican-progress` (transazionale) e guardia `MEXICAN_INCOMPLETE` in `/api/tournaments/complete`. Metadati (turni, punteggio, campi) salvati in `custom_flow_config.mexican`, campo assegnato in `group_number`.
+  - Turni già chiusi in sola lettura; campi calcolati dal numero di partecipanti (4 per campo); rimosso il sorteggio "Manuale" (privo di interfaccia). "Stampa Vuoto" mostra tutti i turni previsti.
+- **Stampe iOS / iPadOS**: pulizia del documento di stampa ritardata dopo `afterprint` (evitava la stampa della schermata dell'app), ripristino di scroll e layout al termine, attesa ridotta prima di `window.print()`, errori di preparazione segnalati con un avviso. Stampa "Giocatori Singolo Torneo" protetta da errori.
+- **Bypass / Modifica**: corretta la conferma delle nuove coppie (la validazione veniva trattata come errore e bloccava sempre il salvataggio) in tutti i formati.
+- **Interfaccia (Apple HIG)**: barra di stato iOS leggibile, un solo `theme-color` per schema, pulsanti giocatore e punteggi a 44px (lo 0 resta visibile se l'altro punteggio è > 0), tab bar con safe area, `100dvh` fuori dalla modalità installata, contrasti (pulsanti rosso/verde, badge, grigi chiari, testo secondario in tema scuro), testi minimi a 11px, sidebar chiusa non raggiungibile da tastiera (con Escape), focus dei campi visibile, errore di login annunciato, footer del PDF Torneo Libero non più fisso. Stili di `HIGButton` spostati nel CSS globale.
+- **Test**: 162 test (nuovi: cleanup ritardato della stampa, PDF Messicano in bianco, `getPlayoffPhaseTeamsError`).
+
 ## v6.12.3 — 2026-11-10
 - **Stampe su iOS (iPhone / iPad, Safari e app installata)**:
   - Il CSS di stampa di `printInWindow` è ora limitato a `@media print`: durante la finestra di stampa non può più alterare l'interfaccia dell'app (tabelle, titoli, sfondo).

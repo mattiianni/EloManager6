@@ -26,7 +26,7 @@ import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
 import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
 import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
-import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams, updateMatchPlayer } from '../utils/playoffBypass.ts';
+import { getAssignedPlayerIdsInPhase, getPlayoffPhaseTeamsError, updateMatchPlayer } from '../utils/playoffBypass.ts';
 
 interface BeatTheBoxFlowProps {
  pairs: [Player, Player][];
@@ -671,7 +671,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
          : 'bg-white dark:bg-gray-800'
      }`}>
        <div className="flex items-center gap-2">
-         <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${idx < 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+         <span className={`px-1.5 py-0.5 rounded text-[11px] font-black ${idx < 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
            {badgeCode}
          </span>
          <span className="font-medium text-sm">
@@ -812,13 +812,13 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
     <div key={matchIdx} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="min-w-0 text-left">
-          <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+          <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
           <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t1p1.name} {t1p1.surname}</p>
           <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t1p2.name} {t1p2.surname}</p>
         </div>
-        <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">VS</div>
+        <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-black text-gray-500 dark:text-gray-400">VS</div>
         <div className="min-w-0 text-right">
-          <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+          <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
           <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t2p1.name} {t2p1.surname}</p>
           <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere]">{t2p2.name} {t2p2.surname}</p>
         </div>
@@ -887,7 +887,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
   };
 
   const handleConfirmNewPairs = () => {
-   const err = validatePlayoffPhaseTeams(draftSemifinalMatches);
+   const err = getPlayoffPhaseTeamsError(draftSemifinalMatches);
    if (err) {
     showHIGAlert(err);
     return;
@@ -987,7 +987,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
   };
 
   const handleConfirmNewPairsFinals = () => {
-   const err = validatePlayoffPhaseTeams(draftFinalMatches);
+   const err = getPlayoffPhaseTeamsError(draftFinalMatches);
    if (err) {
     showHIGAlert(err);
     return;

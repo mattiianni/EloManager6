@@ -82,7 +82,7 @@ const SplashScreen: React.FC = () => {
     const isComplete = code.length === 6;
 
     return (
-        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-slate-900 dark:text-white">
+        <div className="relative flex app-viewport-min-h items-center justify-center overflow-hidden bg-app p-4 text-slate-900 dark:text-white">
             <div className="relative z-10 w-full max-w-[390px]">
                 <div className="fade-in rounded-[28px] bg-white dark:bg-[#1a2233] border border-slate-200/80 dark:border-white/10 p-7 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-none">
                     <div className="mb-7 flex flex-col items-center text-center">
@@ -115,15 +115,16 @@ const SplashScreen: React.FC = () => {
                                 onKeyDown={e => handleKeyDown(index, e)}
                                 disabled={isLoading}
                                 style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' } as React.CSSProperties}
-                                className={`h-12 w-10 sm:h-13 sm:w-11 rounded-2xl text-center text-xl sm:text-2xl font-black
+                                className={`h-12 w-11 rounded-2xl text-center text-xl sm:text-2xl font-black
                                     ${error
                                         ? 'border-2 border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
                                         : 'border border-slate-200 dark:border-white/10 focus:border-[#0055D4] focus:ring-2 focus:ring-[#0055D4]/20 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white'
                                     }
                                     outline-none transition-all duration-200
-                                    placeholder:text-slate-400 ${isLoading ? 'opacity-50' : ''}
+                                    placeholder:text-slate-500 dark:placeholder:text-slate-400 ${isLoading ? 'opacity-50' : ''}
                                 `}
                                 aria-label={`Cifra ${index + 1}`}
+                                autoComplete="off"
                                 placeholder=""
                             />
                         ))}
@@ -131,7 +132,7 @@ const SplashScreen: React.FC = () => {
 
                     {error && (
                         <div className="mt-4 text-center">
-                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 px-3 py-2 rounded-xl">
+                            <p role="alert" className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 px-3 py-2 rounded-xl">
                                 {error}
                             </p>
                         </div>
@@ -159,7 +160,7 @@ const SplashScreen: React.FC = () => {
                     </Button>
                 </div>
 
-                <p className="mt-6 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
+                <p className="mt-6 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Padel ELO Manager v{APP_VERSION}
                 </p>
             </div>

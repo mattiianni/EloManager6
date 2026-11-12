@@ -91,7 +91,7 @@
     --app-border-strong: rgba(255, 255, 255, 0.16);
     --app-text: #F9FAFB;
     --app-text-soft: #9CA3AF;
-    --app-text-muted: #6B7280;
+    --app-text-muted: #9CA3AF;
     --app-accent: #3B82F6;
     --app-accent-strong: #60A5FA;
     --app-accent-ink: #1D4ED8;
@@ -202,8 +202,16 @@
   select:focus,
   textarea:focus {
     outline: none;
-    border-color: rgba(137, 206, 255, 0.55);
-    box-shadow: 0 0 0 4px rgba(137, 206, 255, 0.14);
+    border-color: var(--ios-systemBlue);
+    box-shadow: 0 0 0 3px var(--ios-systemBlue-tint);
+  }
+
+  /* HIG/WCAG 1.4.11: indicatore di focus da tastiera ben visibile */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid var(--ios-systemBlue);
+    outline-offset: 1px;
   }
 }
 
@@ -392,4 +400,33 @@ a:focus-visible,
   background: rgba(137, 206, 255, 0.40);
   border: 2px solid transparent;
   background-clip: padding-box;
+}
+
+
+/* ─── HIGButton (regole condivise, prima duplicate in un <style> per istanza) ─── */
+@media (min-width: 768px) {
+  .hig-btn-responsive-large   { min-height: 48px !important; font-size: 16px !important; padding-left: 22px !important; padding-right: 22px !important; }
+  .hig-btn-responsive-regular { min-height: 38px !important; font-size: 14px !important; padding-left: 18px !important; padding-right: 18px !important; }
+  .hig-btn-responsive-small   { min-height: 32px !important; font-size: 13px !important; padding-left: 14px !important; padding-right: 14px !important; }
+}
+/* HIG: target touch minimo 44pt (dopo la regola desktop, così vince anche su iPad) */
+@media (pointer: coarse) {
+  .hig-btn-responsive-large,
+  .hig-btn-responsive-regular,
+  .hig-btn-responsive-small { min-height: 44px !important; }
+  .hig-btn-responsive-small { min-width: 44px !important; }
+}
+.hig-btn-tint-scope { --hig-btn-tint-bg: rgba(0, 85, 212, 0.12); }
+.dark .hig-btn-tint-scope { --hig-btn-tint-bg: rgba(0, 85, 212, 0.22); }
+
+/* iOS Safari (non PWA): 100vh supera l'area visibile; in modalità standalone si mantiene 100vh (vedi CHANGELOG 6.7.x) */
+.app-viewport-h { height: 100vh; }
+.app-viewport-min-h { min-height: 100vh; }
+@supports (height: 100dvh) {
+  @media not (display-mode: standalone) {
+    body { min-height: 100dvh; }
+    #root { height: 100dvh; }
+    .app-viewport-h { height: 100dvh; }
+    .app-viewport-min-h { min-height: 100dvh; }
+  }
 }

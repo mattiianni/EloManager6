@@ -133,7 +133,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     </div>
                 );
             default:
-                return <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">{index + 1}°</span>;
+                return <span className="text-[13px] font-bold text-slate-500 dark:text-slate-400 font-mono">{index + 1}°</span>;
         }
     };
 
@@ -202,7 +202,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                             <div className={`p-1.5 sm:p-2 rounded-xl sm:rounded-2xl ${kpi.iconBadge} text-white shadow-sm shrink-0`}>
                                 <SFIcon name={kpi.icon} size={16} color="#FFFFFF" />
                             </div>
-                            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{kpi.label}</span>
+                            <span className="text-[11px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{kpi.label}</span>
                         </div>
                         <div className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5 text-right">{kpi.value}</div>
                     </div>
@@ -231,7 +231,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     >
                         <div className="divide-y divide-slate-200/60 dark:divide-white/10">
                             {top5.length === 0 ? (
-                                <div className="py-4 text-center text-slate-400 text-sm">Nessun giocatore registrato</div>
+                                <div className="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">Nessun giocatore registrato</div>
                             ) : (
                                 top5.map((p, i) => (
                                     <div key={p.id} className="flex justify-between items-center py-2.5 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => setProfilePlayer(p)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(p); } }} role="button" tabIndex={0}>
@@ -326,12 +326,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     {/* ULTIMA GIORNATA */}
                     <Card title="Ultima Giornata completata">
                         {!lastGiornata ? (
-                            <div className="py-4 text-center text-slate-400 text-sm">Nessuna giornata completata</div>
+                            <div className="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">Nessuna giornata completata</div>
                         ) : (
                             <div className="divide-y divide-slate-200/60 dark:divide-white/10">
                                 <div className="flex justify-between items-center py-3 px-1 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 rounded-xl transition-colors" onClick={() => onNavigateToTournaments?.(lastGiornata.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onNavigateToTournaments?.(lastGiornata.id); } }} role="button" tabIndex={0}>
                                     <div className="flex items-center gap-3">
-                                        <div className="flex items-center justify-center w-9 h-9 bg-amber-500 rounded-xl shadow-sm text-white shrink-0">
+                                        <div className="flex items-center justify-center w-9 h-9 bg-amber-700 rounded-xl shadow-sm text-white shrink-0">
                                             <SFIcon name="trophy" size={18} color="white" />
                                         </div>
                                         <div>
@@ -356,7 +356,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                     {/* ULTIME PARTITE */}
                     <Card title="Ultime Partite">
                         {recentMatches.length === 0 ? (
-                            <div className="py-4 text-center text-slate-400 text-sm">Nessuna partita registrata</div>
+                            <div className="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">Nessuna partita registrata</div>
                         ) : (
                             <div className="divide-y divide-slate-200/60 dark:divide-white/10">
                                 {recentMatches.map((m, i) => (
@@ -364,7 +364,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
                                         <div className="min-w-0 pr-3">
                                             <div className={`text-[14px] truncate ${m.winner === 'team1' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t1}</div>
                                             <div className={`text-[14px] truncate mt-0.5 ${m.winner === 'team2' ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{m.t2}</div>
-                                            <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1">{m.date}</div>
+                                            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">{m.date}</div>
                                         </div>
                                         <div className="text-right shrink-0 font-mono text-[13px] font-bold flex flex-col gap-0.5 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-white/10">
                                             <div className={m.winner === 'team1' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}>{m.t1Score}</div>

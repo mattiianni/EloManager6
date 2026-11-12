@@ -93,7 +93,7 @@ const TpraCreationFlow: React.FC<TpraCreationFlowProps> = ({
                                     <div className={`flex-1 ${node.winner === 'team2' ? 'opacity-50' : 'font-semibold text-gray-900 dark:text-white'}`}>
                                         {node.team1 ? `${node.team1[0].surname} / ${node.team1[1].surname}` : 'BYE'}
                                     </div>
-                                    <div className="px-4 font-bold text-gray-400">VS</div>
+                                    <div className="px-4 font-bold text-gray-500 dark:text-gray-400">VS</div>
                                     <div className={`flex-1 text-right ${node.winner === 'team1' ? 'opacity-50' : 'font-semibold text-gray-900 dark:text-white'}`}>
                                         {node.team2 ? `${node.team2[0].surname} / ${node.team2[1].surname}` : 'BYE'}
                                     </div>

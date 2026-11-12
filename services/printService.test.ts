@@ -191,7 +191,12 @@ describe('printService document helpers', () => {
 
             // Simuliamo afterprint per verificare il cleanup
             expect(listeners['afterprint']).toBeDefined();
+            vi.useFakeTimers();
             listeners['afterprint']();
+            // Il cleanup è ritardato: subito dopo afterprint il documento di stampa è ancora presente
+            expect(elements['padel-print-root']).toBeDefined();
+            vi.advanceTimersByTime(2500);
+            vi.useRealTimers();
 
             // Il titolo viene ripristinato e gli elementi rimossi
             expect(mockDocument.title).toBe('Initial Title');

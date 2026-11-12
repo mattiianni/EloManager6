@@ -75,13 +75,13 @@ function variantStyles(variant: NonNullable<HIGButtonProps['variant']>): React.C
       };
     case 'destructive':
       return {
-        backgroundColor: '#EF4444',
+        backgroundColor: '#DC2626',
         color: '#ffffff',
         borderRadius: 9999,
       };
     case 'success':
       return {
-        backgroundColor: '#10B981',
+        backgroundColor: '#047857',
         color: '#ffffff',
         borderRadius: 9999,
       };
@@ -185,43 +185,6 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
 
   return (
     <>
-      {/* Responsive button sizing for desktop */}
-      <style>{`
-        @media (min-width: 768px) {
-          .hig-btn-responsive-large   { min-height: 48px !important; font-size: 16px !important; padding-left: 22px !important; padding-right: 22px !important; }
-          .hig-btn-responsive-regular { min-height: 38px !important; font-size: 14px !important; padding-left: 18px !important; padding-right: 18px !important; }
-          .hig-btn-responsive-small   { min-height: 32px !important; font-size: 13px !important; padding-left: 14px !important; padding-right: 14px !important; }
-        }
-        /* HIG: target touch minimo 44pt (dopo la regola desktop, così vince anche su iPad) */
-        @media (pointer: coarse) {
-          .hig-btn-responsive-large,
-          .hig-btn-responsive-regular { min-height: 44px !important; }
-          .hig-btn-responsive-small   { min-height: 36px !important; min-width: 36px !important; }
-        }
-      `}</style>
-      {/* Inject tint-background CSS custom property scoped to dark / light */}
-      {variant === 'tinted' && (
-        <style>{`
-          .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 85, 212, 0.12);
-          }
-          @media (prefers-color-scheme: dark) {
-            .${TINT_SCOPE_CLASS} {
-              --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
-            }
-          }
-          .dark .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
-          }
-          [data-theme="dark"] .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 85, 212, 0.22);
-          }
-          [data-theme="light"] .${TINT_SCOPE_CLASS} {
-            --hig-btn-tint-bg: rgba(0, 85, 212, 0.12);
-          }
-        `}</style>
-      )}
-
       <button
         {...buttonProps}
         type={type}

@@ -59,7 +59,7 @@ export const PlayoffMatchCard: React.FC<PlayoffMatchCardProps> = ({
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 {/* Squadra A */}
                 <div className="min-w-0 text-left space-y-1.5">
-                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                    <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">
                         Squadra A
                     </div>
 
@@ -118,13 +118,13 @@ export const PlayoffMatchCard: React.FC<PlayoffMatchCardProps> = ({
                 </div>
 
                 {/* VS Badge */}
-                <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[10px] font-black text-slate-500">
+                <div className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10 text-[11px] font-black text-slate-500">
                     VS
                 </div>
 
                 {/* Squadra B */}
                 <div className="min-w-0 text-right space-y-1.5">
-                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                    <div className="text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400">
                         Squadra B
                     </div>
 

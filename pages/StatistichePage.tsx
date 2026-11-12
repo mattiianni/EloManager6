@@ -1824,7 +1824,7 @@ const StatistichePage: React.FC = () => {
                                         {stats.numeroGiornate} giornat{stats.numeroGiornate === 1 ? 'a' : 'e'} • {stats.totalePartite} partite • {stats.giocatoriPartecipanti} giocatori
                                     </p>
                                 </div>
-                                <ChevronDownIcon className={`h-6 w-6 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                <ChevronDownIcon className={`h-6 w-6 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </div>
 
                             {/* Contenuto espandibile */}
@@ -1868,7 +1868,7 @@ const StatistichePage: React.FC = () => {
                                         <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                             {stats.top5.map((entry, idx) => {
                                                 let rankBadge = (
-                                                    <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">
+                                                    <span className="text-[13px] font-bold text-slate-500 dark:text-slate-400 font-mono">
                                                         {idx + 1}°
                                                     </span>
                                                 );

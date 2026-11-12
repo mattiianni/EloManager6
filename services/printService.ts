@@ -503,7 +503,23 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
             document.title = title;
         }
 
+        // Dopo la stampa iOS/iPadOS può lasciare viewport e scroll in uno stato "da stampa":
+        // riportiamo l'app alle condizioni normali (scroll, reflow, resize) senza toccare gli stili.
+        const restoreAppLayout = () => {
+            try {
+                if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+                const rootEl = document.getElementById('root');
+                if (rootEl) { void rootEl.offsetHeight; }
+                if (typeof window.dispatchEvent === 'function' && typeof Event === 'function') {
+                    window.dispatchEvent(new Event('resize'));
+                }
+            } catch { /* noop */ }
+        };
+
         let cleanedUp = false;
+        // `afterprint` su iOS può arrivare mentre l'anteprima è ancora in composizione:
+        // la pulizia è sempre ritardata, così il documento di stampa non sparisce prima del tempo.
+        const onAfterPrint = () => { setTimeout(() => fullCleanup(), 2000); };
         const cleanup = () => {
             if (cleanedUp) return;
             cleanedUp = true;
@@ -513,10 +529,11 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
                 if (r) r.remove();
                 const s = document.getElementById('padel-print-style');
                 if (s) s.remove();
-                window.removeEventListener('afterprint', cleanup);
+                window.removeEventListener('afterprint', onAfterPrint);
             } catch (e) {
                 console.error('Print cleanup error:', e);
             }
+            restoreAppLayout();
         };
 
         // iOS (specie PWA standalone) non emette sempre `afterprint`: ascoltiamo
@@ -542,14 +559,14 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
         const fullCleanup = () => {
             baseCleanup();
             try {
-                window.removeEventListener('afterprint', fullCleanup);
+                window.removeEventListener('afterprint', onAfterPrint);
                 if (mql) {
                     if (mql.removeEventListener) mql.removeEventListener('change', onMediaChange);
                     else if ((mql as any).removeListener) (mql as any).removeListener(onMediaChange);
                 }
             } catch { /* noop */ }
         };
-        window.addEventListener('afterprint', fullCleanup);
+        window.addEventListener('afterprint', onAfterPrint);
         setTimeout(fullCleanup, 10 * 60 * 1000);
 
         const startPrint = () => {
@@ -562,11 +579,11 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
             }
         };
         const fontsReady: Promise<unknown> = (typeof document !== 'undefined' && (document as any).fonts && (document as any).fonts.ready)
-            ? Promise.race([(document as any).fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))])
+            ? Promise.race([(document as any).fonts.ready, new Promise(resolve => setTimeout(resolve, 600))])
             : Promise.resolve();
         fontsReady.then(() => {
             if (typeof requestAnimationFrame === 'function') {
-                requestAnimationFrame(() => requestAnimationFrame(startPrint));
+                requestAnimationFrame(startPrint);
             } else {
                 setTimeout(startPrint, 50);
             }
@@ -7296,10 +7313,7 @@ export const printTorneoLiberoBlank = (
                 font-size: 10px;
             }
             .footer {
-                position: fixed;
-                bottom: 10px;
-                left: 20px;
-                right: 20px;
+                margin-top: 14px;
                 font-size: 8px;
                 color: #666;
                 border-top: 1px solid #ddd;
@@ -7901,7 +7915,7 @@ export const printPlayerProfiles = (
         let gamesWon = 0, gamesLost = 0;
         playerMatches.forEach(m => {
             const isTeam1 = m.team1.includes(playerId);
-            m.sets.forEach(s => {
+            (m.sets || []).forEach(s => {
                 gamesWon += isTeam1 ? s.team1 : s.team2;
                 gamesLost += isTeam1 ? s.team2 : s.team1;
             });

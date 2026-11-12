@@ -3,7 +3,7 @@ import { Player, Tournament, Match, EloHistoryEntry, TournamentType } from '../t
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import Modal from './ui/Modal.tsx';
 import Button from './ui/Button.tsx';
-import { printPlayerProfiles } from '../services/printService.ts';
+import { showHIGAlert } from '../utils/higDialogService.ts';
 
 export interface TournamentGroupOption {
     groupId: string;
@@ -169,24 +169,12 @@ export default function PlayerPrintModal({
 
     const handlePrintTournamentSelected = () => {
         if (!selectedGroup || selectedGroup.activePlayerIds.length === 0) return;
-        if (onPrintTournament) {
-            onPrintTournament(selectedGroup, selectedGroup.activePlayerIds);
-        } else {
-            printPlayerProfiles(
-                selectedGroup.activePlayerIds,
-                players,
-                effectiveMatches,
-                effectiveEloHistory,
-                effectiveTournaments,
-                {
-                    tournamentFilter: {
-                        tournamentId: selectedGroup.groupId,
-                        tournamentName: selectedGroup.displayName,
-                        tournamentIds: selectedGroup.tournamentIds,
-                        tournamentDate: selectedGroup.date
-                    }
-                }
-            );
+        try {
+            onPrintTournament?.(selectedGroup, selectedGroup.activePlayerIds);
+        } catch (err) {
+            console.error('Errore stampa giocatori singolo torneo:', err);
+            showHIGAlert('Impossibile preparare la stampa del torneo.');
+            return;
         }
         onClose();
     };
@@ -286,7 +274,7 @@ export default function PlayerPrintModal({
                                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800/80 text-xs font-semibold text-slate-900 dark:text-white border border-slate-200/60 dark:border-white/10 shadow-sm"
                                             >
                                                 <span>{p.name} {p.surname}</span>
-                                                <span className="text-[10px] text-sky-600 dark:text-sky-400 font-mono">
+                                                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-mono">
                                                     {p.currentElo.toFixed(0)}
                                                 </span>
                                             </span>

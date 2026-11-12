@@ -21,6 +21,8 @@ interface PadelStore {
     updateTournamentMatches: (matchUpdates: Array<{ matchId: string; sets: SetScore[]; winner?: Match['winner']; team1?: string[]; team2?: string[] }>, skipRefresh?: boolean) => Promise<void>;
     cascadeResetTournament: (tournamentId: string, phaseMatchIds: string[], skipRefresh?: boolean) => Promise<void>;
     completeTournament: (tournamentId: string) => Promise<void>;
+    createMexicanTournament: (matches: Omit<Match, 'tournamentId'>[], tournament: Omit<Tournament, 'id'>) => Promise<{ tournamentId: string; matches: Array<{ id: string; roundNumber: number | null; groupNumber: number | null }> }>;
+    saveMexicanProgress: (tournamentId: string, updates: Array<{ matchId: string; sets: SetScore[] }>, newMatches: Array<Pick<Match, 'id' | 'date' | 'team1' | 'team2' | 'roundNumber' | 'sets'> & { groupNumber?: number }>) => Promise<Array<{ clientId: string | null; id: string }>>;
     addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<Tournament>;
     createTeamTournament: (payload: {
         name: string;
@@ -406,6 +408,30 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await fetchData();
     };
     
+    // Torneo Messicano: creazione (stato 'scheduled') con idempotenza e salvataggio incrementale JIT.
+    const mexicanCreateKeyRef = useRef<string | null>(null);
+    const createMexicanTournament = async (matchDataList: Omit<Match, 'tournamentId'>[], tournamentData: Omit<Tournament, 'id'>) => {
+        const requestId = mexicanCreateKeyRef.current
+            || globalThis.crypto?.randomUUID?.()
+            || `mex-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        mexicanCreateKeyRef.current = requestId;
+        const data = await apiRequest<{ tournamentId: string; matches?: Array<{ id: string; roundNumber: number | null; groupNumber: number | null }> }>('/api/tournaments/bulk-matches', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': requestId },
+            body: JSON.stringify({ matches: matchDataList, tournament: tournamentData, requestId }),
+        });
+        mexicanCreateKeyRef.current = null;
+        return { tournamentId: data.tournamentId, matches: data.matches || [] };
+    };
+
+    const saveMexicanProgress = async (tournamentId: string, updates: Array<{ matchId: string; sets: SetScore[] }>, newMatches: Array<any>) => {
+        const data = await apiRequest<{ created: Array<{ clientId: string | null; id: string }> }>('/api/tournaments/mexican-progress', {
+            method: 'PUT',
+            body: JSON.stringify({ tournamentId, updates, newMatches }),
+        });
+        return data.created || [];
+    };
+
     const completeTournament = async (tournamentId: string): Promise<void> => {
         await apiRequest(`/api/tournaments/complete`, {
             method: 'PUT',
@@ -465,6 +491,8 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             getTeamTournamentFixtures,
             updateTournament,
             completeTournament,
+            createMexicanTournament,
+            saveMexicanProgress,
             getPlayerById
         }}>
             {children}

@@ -39,7 +39,7 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
     return (
         <div className="flex flex-col items-center gap-1">
             {phaseLabel && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60">
                     {phaseLabel}
                 </span>
             )}
@@ -51,21 +51,21 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
                         inputMode="numeric"
                         aria-label={`Games squadra 1, set ${index + 1}`}
                         min="0"
-                        value={set.team1 || ''}
+                        value={(set.team1 || set.team2) ? set.team1 : ''}
                         onChange={(e) => handleScoreChange(index, 'team1', e.target.value)}
-                        className="w-10 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all py-1"
+                        className="h-11 w-12 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all"
                         placeholder="0"
                         disabled={disabled}
                     />
-                    <span className="text-xs font-black text-slate-400 dark:text-slate-500">-</span>
+                    <span className="text-xs font-black text-slate-500 dark:text-slate-400">-</span>
                     <input
                         type="number"
                         inputMode="numeric"
                         aria-label={`Games squadra 2, set ${index + 1}`}
                         min="0"
-                        value={set.team2 || ''}
+                        value={(set.team1 || set.team2) ? set.team2 : ''}
                         onChange={(e) => handleScoreChange(index, 'team2', e.target.value)}
-                        className="w-10 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all py-1"
+                        className="h-11 w-12 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-slate-800 text-center text-base sm:text-sm font-bold text-slate-900 dark:text-sky-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition-all"
                         placeholder="0"
                         disabled={disabled}
                     />
@@ -73,7 +73,7 @@ const MatchScoreInput: React.FC<MatchScoreInputProps> = ({ sets, onSetsChange, d
                          <button
                             type="button"
                             onClick={() => removeSet(index)}
-                            className="absolute -right-2 -top-2 flex h-6 w-6 [@media(pointer:coarse)]:h-8 [@media(pointer:coarse)]:w-8 items-center justify-center rounded-full bg-rose-500 text-white text-xs opacity-100 [@media(hover:hover)]:opacity-0 transition-opacity [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 shadow-md"
+                            className="absolute -right-3 -top-3 flex h-8 w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 items-center justify-center rounded-full bg-rose-500 text-white text-xs opacity-100 [@media(hover:hover)]:opacity-0 transition-opacity [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 shadow-md"
                             aria-label="Rimuovi set"
                         >
                             <MaterialIcon name="close" className="text-[14px]" />

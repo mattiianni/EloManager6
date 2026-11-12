@@ -11,7 +11,7 @@ import { showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from './ui/SFIcon.tsx';
 import { PlayoffBypassHeader } from './ui/PlayoffBypassHeader.tsx';
 import { PlayoffMatchCard } from './ui/PlayoffMatchCard.tsx';
-import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
+import { getAssignedPlayerIdsInPhase, getPlayoffPhaseTeamsError } from '../utils/playoffBypass.ts';
 import { CustomTournamentFlowConfig } from '../types/customTournament.ts';
 import { printCustomTournamentBlank, printCustomTournamentComplete } from '../services/printService.ts';
 import {
@@ -506,7 +506,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
               <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-300 font-extrabold text-sm mb-2 shadow-xs">
                 2°
               </div>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">2° Classificato</span>
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">2° Classificato</span>
               <p className="font-bold text-slate-900 dark:text-white text-sm">
                 {secondTeam.map(id => formatShort(getPlayerById(id))).join(' & ') || '—'}
               </p>
@@ -528,7 +528,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
               <div className="w-10 h-10 rounded-full bg-amber-700/15 border border-amber-700/30 flex items-center justify-center text-amber-700 dark:text-amber-500 font-extrabold text-sm mb-2 shadow-xs">
                 3°
               </div>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">3° Classificato</span>
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">3° Classificato</span>
               <p className="font-bold text-slate-900 dark:text-white text-sm">
                 {thirdTeam.map(id => formatShort(getPlayerById(id))).join(' & ') || '—'}
               </p>
@@ -555,10 +555,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                   {formatBadgeName}
                 </span>
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                   {isSingles ? 'Singoli' : 'Coppie Fisse'} • {numCampi} {numCampi === 1 ? 'Campo' : 'Campi'}
                 </span>
               </div>
@@ -655,7 +655,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                             key={match.id}
                             className="p-3 sm:p-3.5 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/60 dark:border-white/5 space-y-2.5 shadow-sm"
                           >
-                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1.5 border-b border-slate-200/50 dark:border-white/5">
+                            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1.5 border-b border-slate-200/50 dark:border-white/5">
                               <span>
                                 {match.roundNumber ? `Turno ${match.roundNumber} • ` : ''}Partita {mIdx + 1}
                               </span>
@@ -668,7 +668,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                               <div className={`min-w-0 text-left transition-colors ${
                                 isTeam1Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'
                               }`}>
-                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                <div className="text-[11px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                                   Squadra A
                                 </div>
                                 <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t1p1 ? `${t1p1.name} ${t1p1.surname}` : ''}>
@@ -681,7 +681,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
                               {/* VS Badge */}
                               <div className="flex items-center justify-center shrink-0">
-                                <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
+                                <span className="text-[11px] font-black uppercase text-slate-400 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-white/10">
                                   VS
                                 </span>
                               </div>
@@ -690,7 +690,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                               <div className={`min-w-0 text-right transition-colors ${
                                 isTeam2Winner ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-800 dark:text-slate-200'
                               }`}>
-                                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                                <div className="text-[11px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                                   Squadra B
                                 </div>
                                 <div className="text-xs sm:text-sm font-semibold break-words [overflow-wrap:anywhere] leading-snug" title={t2p1 ? `${t2p1.name} ${t2p1.surname}` : ''}>
@@ -716,13 +716,13 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
 
                     {/* Classifica Box / Americano */}
                     <div className="pt-3 border-t border-slate-100 dark:border-white/5">
-                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                         {isAmericanoMode ? 'Classifica Generale Americano' : `Classifica Box ${box.boxNumber}`}
                       </h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-slate-400 border-b border-slate-100 dark:border-white/5 text-[11px]">
+                            <tr className="text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/5 text-[11px]">
                               <th className="text-left py-1 w-8">#</th>
                               <th className="text-left py-1">{isSingles ? 'Giocatore' : 'Coppia'}</th>
                               <th className="text-center py-1 w-10">Pt</th>
@@ -744,10 +744,10 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                   }`}
                                 >
                                   <td className="py-1.5 font-bold">
-                                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] ${
+                                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${
                                       sIdx === 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
                                       sIdx === 1 ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400' :
-                                      'text-slate-400'
+                                      'text-slate-500 dark:text-slate-400'
                                     }`}>
                                       {sIdx + 1}
                                     </span>
@@ -755,7 +755,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
                                   <td className="py-1.5 break-words">
                                     {st.displayName}
                                     {isSingles && (hasSemifinals || hasFinals) && (
-                                      <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                                      <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[11px] font-black ${
                                         isQualifying
                                           ? 'bg-emerald-600 text-white shadow-xs'
                                           : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -810,7 +810,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
             };
 
             const handleConfirmNewPairs = () => {
-              const err = validatePlayoffPhaseTeams(draftSemifinalMatches);
+              const err = getPlayoffPhaseTeamsError(draftSemifinalMatches);
               if (err) {
                 showHIGAlert(err);
                 return;
@@ -905,7 +905,7 @@ export const CustomTournamentFlow: React.FC<CustomTournamentFlowProps> = ({
             };
 
             const handleConfirmNewPairs = () => {
-              const err = validatePlayoffPhaseTeams(draftFinalMatches);
+              const err = getPlayoffPhaseTeamsError(draftFinalMatches);
               if (err) {
                 showHIGAlert(err);
                 return;

@@ -26,7 +26,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
               <div className="flex flex-[2] md:flex-1 items-center justify-start overflow-hidden gap-1.5 md:gap-0">
                   <button
                       onClick={toggleSidebar}
-                      className="hig-focus-ring flex items-center justify-center text-slate-800 dark:text-white md:hidden w-[40px] h-[40px] -ml-1 shrink-0 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                      className="hig-focus-ring flex items-center justify-center text-slate-800 dark:text-white md:hidden w-[44px] h-[44px] -ml-1.5 shrink-0 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                       aria-label={isSidebarOpen ? 'Chiudi menu' : 'Apri menu'}
                       aria-expanded={isSidebarOpen}
                       aria-controls="app-sidebar"
@@ -46,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
                           alt="Padel Elo Manager" 
                           className="h-[32px] w-auto object-contain hidden dark:block" 
                       />
-                      <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full mt-0.5 text-left flex items-center gap-1">
+                      <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full mt-0.5 text-left flex items-center gap-1">
                           <span className="px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20">v{APP_VERSION}</span>
                           <span>{APP_MONTH}</span>
                           {workspace ? <span className="truncate">• {workspace.name}</span> : null}
@@ -67,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
                       className="h-9 w-auto object-contain hidden dark:block" 
                   />
                   <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate w-full mt-0.5 text-center flex items-center justify-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 text-[10px]">v{APP_VERSION}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 text-[11px]">v{APP_VERSION}</span>
                       <span>{APP_MONTH}</span>
                       {workspace ? <span className="font-semibold text-slate-700 dark:text-slate-300">• {workspace.name}</span> : null}
                   </div>
@@ -75,7 +75,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, theme, to
 
               {/* Right Actions */}
               <div className="flex flex-1 justify-end items-center flex-row gap-1 md:gap-3 -mr-1 shrink-0">
-                  <div className="flex items-center justify-center min-w-[44px] min-h-[44px] scale-90 md:scale-100">
+                  <div className="flex items-center justify-center min-w-[44px] min-h-[44px]">
                       <ThemeToggle theme={theme} onToggle={toggleTheme} />
                   </div>
                   <button

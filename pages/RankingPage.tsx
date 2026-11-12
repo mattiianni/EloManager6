@@ -377,7 +377,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     </div>
                 );
             default:
-                return <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500 font-mono">{index + 1}°</span>;
+                return <span className="text-[13px] font-bold text-slate-500 dark:text-slate-400 font-mono">{index + 1}°</span>;
         }
     };
 
@@ -479,7 +479,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                     <div className="flex flex-col items-center cursor-pointer" onClick={() => setProfilePlayer(rankingData[0])} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfilePlayer(rankingData[0]); } }} role="button" tabIndex={0}>
                         <div className="relative w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-100 dark:bg-amber-950 dark:border-amber-400 flex items-center justify-center shadow-xl mb-2 animate-bounce">
                             <SFIcon name="trophy.fill" size={26} color="#d97706" />
-                            <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white font-black text-[10px] px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 shadow-xs">1°</span>
+                            <span className="absolute -bottom-1 -right-1 bg-amber-700 text-white font-black text-[11px] px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 shadow-xs">1°</span>
                         </div>
                         <div className="w-full bg-amber-500/15 border border-amber-400/40 rounded-t-2xl p-3 text-center h-36 flex flex-col justify-between shadow-sm">
                             <p className="text-xs font-black truncate text-amber-600 dark:text-amber-300">{formatPlayerShortName(rankingData[0])}</p>
@@ -515,7 +515,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             >
                 <div className="divide-y divide-slate-200/60 dark:divide-white/10">
                     {loading && !players.length ? (
-                        <div className="py-6 text-center text-slate-400 text-sm">Caricamento classifica...</div>
+                        <div className="py-6 text-center text-slate-500 dark:text-slate-400 text-sm">Caricamento classifica...</div>
                     ) : (
                         (showAllPlayers ? rankingData : rankingData.slice(0, 10)).map((player, idx) => {
                             const isExpanded = expandedPlayerId === player.id;
@@ -557,7 +557,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                             <div className="flex items-center gap-2.5 shrink-0">
                                                 <span className="font-bold text-sky-600 dark:text-sky-400 text-xs px-2.5 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 dark:bg-sky-500/15 tracking-tight">{player.currentElo.toFixed(0)}</span>
                                                 {getTrendIcon(player.lastDelta)}
-                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 p-1 hover:bg-sky-500/10 rounded-lg transition-colors" aria-label="Info">
+                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-sky-500 inline-flex h-11 w-11 items-center justify-center hover:bg-sky-500/10 rounded-full transition-colors" aria-label={`Profilo di ${player.name} ${player.surname}`}>
                                                     <SFIcon name="info.circle" size={16} />
                                                 </button>
                                                 <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={12} color="var(--ios-label-tertiary)" />
@@ -574,7 +574,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                                                         <div key={entry.key} className="flex justify-between items-center text-[13px] py-1 border-b border-slate-200/40 dark:border-white/5 last:border-none">
                                                             <div className="text-slate-800 dark:text-slate-200 font-medium">
                                                                 <span>{labelText}</span> 
-                                                                <span className="text-slate-400 dark:text-slate-500 ml-1 text-xs">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
+                                                                <span className="text-slate-500 dark:text-slate-400 ml-1 text-xs">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
                                                             </div>
                                                             <div className={`font-mono font-bold ${entry.delta >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                 {deltaSign}{entry.delta.toFixed(1)}
@@ -601,7 +601,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
             )}
 
             {rankingData.length === 0 && !loading && (
-                <div className="text-center py-8 text-slate-400 text-sm">Nessun giocatore in classifica.</div>
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">Nessun giocatore in classifica.</div>
             )}
 
             <div className="mt-4">

@@ -1220,7 +1220,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                             Coppia {index + 1}
                                         </span>
                                         <div className="flex items-center gap-1.5 bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20">
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">ELO</span>
+                                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">ELO</span>
                                             <span className="text-xs font-black text-sky-600 dark:text-sky-400">{pairAvgElo}</span>
                                         </div>
                                     </div>
@@ -1233,12 +1233,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                     {pair[0].name} {pair[0].surname}
                                                 </span>
                                             </div>
-                                            <span className="text-sm font-bold text-slate-400 shrink-0">{pair[0].currentElo.toFixed(0)}</span>
+                                            <span className="text-sm font-bold text-slate-500 dark:text-slate-400 shrink-0">{pair[0].currentElo.toFixed(0)}</span>
                                         </div>
 
                                         <div className="flex items-center justify-center py-1">
                                             <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800 relative">
-                                                <span className="absolute left-1/2 -top-2.5 -translate-x-1/2 bg-slate-100 dark:bg-slate-800 text-[11px] font-extrabold text-slate-400 px-2 rounded-full">
+                                                <span className="absolute left-1/2 -top-2.5 -translate-x-1/2 bg-slate-100 dark:bg-slate-800 text-[11px] font-extrabold text-slate-500 dark:text-slate-400 px-2 rounded-full">
                                                     &
                                                 </span>
                                             </div>
@@ -1251,7 +1251,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                     {pair[1].name} {pair[1].surname}
                                                 </span>
                                             </div>
-                                            <span className="text-sm font-bold text-slate-400 shrink-0">{pair[1].currentElo.toFixed(0)}</span>
+                                            <span className="text-sm font-bold text-slate-500 dark:text-slate-400 shrink-0">{pair[1].currentElo.toFixed(0)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1298,7 +1298,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div className="p-3 rounded-2xl bg-[#0055D4] text-white shadow-sm">
                                 <CalendarIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-sky-500 group-hover:bg-sky-500/10 transition-colors">
                                 <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
@@ -1317,7 +1317,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-sm">
                                 <UsersIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
                                 <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
@@ -1333,10 +1333,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
                         className="group relative flex flex-col justify-between p-5 rounded-[22px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/80 dark:hover:border-amber-400/80 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] h-full min-h-[175px]"
                     >
                         <div className="flex justify-between items-start">
-                            <div className="p-3 rounded-2xl bg-amber-500 text-white shadow-sm">
+                            <div className="p-3 rounded-2xl bg-amber-700 text-white shadow-sm">
                                 <TrophyIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
                                 <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
@@ -1355,7 +1355,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-sm">
                                 <PlusIcon className="w-6 h-6" />
                             </div>
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
                                 <ArrowUpRightIcon className="w-3 h-3" />
                             </div>
                         </div>
@@ -2084,7 +2084,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                     type="button"
                                     onClick={handleCompleteTeamTournamentConfiguration}
                                     disabled={!canCompleteTeamTournamentConfiguration || isCompletingTeamTournamentConfiguration}
-                                    className="ml-auto disabled:!border-gray-300 disabled:!bg-gray-300 disabled:!text-gray-500 dark:disabled:!border-gray-700 dark:disabled:!bg-gray-700 dark:disabled:!text-gray-400"
+                                    className="ml-auto disabled:!border-gray-300 disabled:!bg-gray-300 disabled:!text-gray-500 dark:disabled:!border-gray-700 dark:disabled:!bg-gray-700 dark:disabled:!text-gray-500 dark:text-gray-400"
                                 >
                                     {isCompletingTeamTournamentConfiguration ? 'Salvataggio...' : 'Completa Configurazione'}
                                 </Button>

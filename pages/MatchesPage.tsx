@@ -26,9 +26,10 @@ import {
  groupMatchesByPlayerSets,
 } from '../services/beatTheBoxService.ts';
 import { TournamentRegistry } from '../formats/registry.ts';
+import MexicanTournamentFlow from '../components/MexicanTournamentFlow.tsx';
 import { PlayoffBypassHeader } from '../components/ui/PlayoffBypassHeader.tsx';
 import { PlayoffMatchCard } from '../components/ui/PlayoffMatchCard.tsx';
-import { getAssignedPlayerIdsInPhase, validatePlayoffPhaseTeams } from '../utils/playoffBypass.ts';
+import { getAssignedPlayerIdsInPhase, getPlayoffPhaseTeamsError } from '../utils/playoffBypass.ts';
 
 // Helper: build fetch headers with auth token
 const authHeaders = (): Record<string, string> => {
@@ -283,6 +284,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+ const [mexicanResume, setMexicanResume] = useState<Tournament | null>(null);
  const [editScores, setEditScores] = useState<Record<string, SetScore[]>>({});
  const [deleteAlert, setDeleteAlert] = useState<{
      isOpen: boolean;
@@ -826,6 +828,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }
 
  const tournamentMatches: Match[] = matches.filter(m => m.tournamentId === tournament.id);
+
+    // Torneo Messicano "in corso": riprende dal turno corrente con "Procedi" / "Concludi Torneo"
+    if (tournament.type === TournamentType.Mexican && tournament.status === 'scheduled') {
+        setMexicanResume(tournament);
+        return;
+    }
 
     const openRegularEditor = (t: Tournament) => {
         const initialScores = tournamentMatches.reduce((acc, match) => {
@@ -2616,7 +2624,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div key={match.id} className="flex items-center justify-between text-sm">
  {court && <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-16">{court}</span>}
  <div className={`text-right flex-1 ${match.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</div>
- <span className={`mx-4 font-bold text-lg ${(!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)) ? 'text-gray-400' : 'text-sky-500'}`}>
+ <span className={`mx-4 font-bold text-lg ${(!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)) ? 'text-gray-500 dark:text-gray-400' : 'text-sky-500'}`}>
  {(!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)) ? '0-0' : match.sets.map(s => `${s.team1}-${s.team2}`).join(' ')}
  </span>
  <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</div>
@@ -2676,6 +2684,36 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  )}
  </div>
+
+ {mexicanResume && (() => {
+     const resumeMatches = matches
+         .filter(m => m.tournamentId === mexicanResume.id)
+         .sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1) || (a.groupNumber || 0) - (b.groupNumber || 0));
+     const resumePlayerIds = Array.from(new Set(resumeMatches.flatMap(m => [...m.team1, ...m.team2])));
+     const resumePlayers = resumePlayerIds.map(id => getPlayerById(id)).filter((p): p is Player => !!p);
+     const closeResume = () => { setMexicanResume(null); fetchData(); };
+     return (
+         <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--app-bg)] p-4 pb-24" role="dialog" aria-modal="true" aria-label="Torneo Messicano in corso">
+             <div className="mx-auto max-w-3xl mb-3">
+                 <Button variant="secondary" onClick={closeResume}>Chiudi</Button>
+             </div>
+             <MexicanTournamentFlow
+                 players={resumePlayers}
+                 onFinish={closeResume}
+                 tournamentDate={mexicanResume.date}
+                 clubName={mexicanResume.club}
+                 tournamentName={mexicanResume.name}
+                 giornataName={mexicanResume.giornataName || undefined}
+                 fieldsCount={mexicanResume.mexicanFields || Math.max(2, Math.floor(resumePlayers.length / 4))}
+                 roundsCount={mexicanResume.mexicanRounds || Math.max(...resumeMatches.map(m => m.roundNumber || 1), 2)}
+                 scoringType={mexicanResume.mexicanScoringType || 'games-diff'}
+                 drawMode="Normal"
+                 initialMatches={resumeMatches}
+                 tournamentId={mexicanResume.id}
+             />
+         </div>
+     );
+ })()}
 
  <HIGSheet
  isOpen={!!editingTournament && !isInFinalsPhase && !showFinalsStandingsModal && !showBeatBoxStandingsModal && !isInBeatBoxFinalsPhase && !isInBeatBoxSemifinalsPhase && !showGironiStandingsModal && !isInGironiQuarterfinalsPhase && !isInGironiSemifinalsPhase && !isInGironiFinalsPhase}
@@ -2788,7 +2826,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
@@ -2799,12 +2837,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         )}
     </div>
 
-    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-black text-gray-500 dark:text-gray-400">
         VS
     </div>
 
     <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
@@ -2863,7 +2901,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
@@ -2874,12 +2912,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         )}
     </div>
 
-    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-black text-gray-500 dark:text-gray-400">
         VS
     </div>
 
     <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
@@ -2975,7 +3013,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                              <div key={match.id} id={`match-card-${match.id}`} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
                                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
@@ -2986,12 +3024,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         )}
     </div>
 
-    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-black text-gray-500 dark:text-gray-400">
         VS
     </div>
 
     <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
@@ -3030,7 +3068,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
              <div key={match.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm space-y-2">
                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra A</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
@@ -3041,12 +3079,12 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
         )}
     </div>
 
-    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-black text-gray-400">
+    <div className="shrink-0 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-black text-gray-500 dark:text-gray-400">
         VS
     </div>
 
     <div className="min-w-0 text-right">
-        <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500">Squadra B</div>
+        <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
@@ -3373,7 +3411,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
     };
 
     const handleConfirmNewPairs = () => {
-      const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+      const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
       if (err) {
         showHIGAlert(err);
         return;
@@ -3597,7 +3635,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
    };
 
    const handleConfirmNewPairs = () => {
-     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
      if (err) {
        showHIGAlert(err);
        return;
@@ -3776,7 +3814,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
    };
 
    const handleConfirmNewPairs = () => {
-     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
      if (err) {
        showHIGAlert(err);
        return;
@@ -4100,7 +4138,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
    };
 
    const handleConfirmNewPairs = () => {
-     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
      if (err) {
        showHIGAlert(err);
        return;
@@ -4207,7 +4245,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
    };
 
    const handleConfirmNewPairs = () => {
-     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
      if (err) {
        showHIGAlert(err);
        return;
@@ -4380,7 +4418,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
    };
 
    const handleConfirmNewPairs = () => {
-     const err = validatePlayoffPhaseTeams(draftPlayoffMatches);
+     const err = getPlayoffPhaseTeamsError(draftPlayoffMatches);
      if (err) {
        showHIGAlert(err);
        return;

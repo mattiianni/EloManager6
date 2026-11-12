@@ -249,7 +249,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                         </span>
                         {stats && stats.lastDelta > 0 && <ArrowUpIcon className="h-5 w-5 text-green-500" />}
                         {stats && stats.lastDelta < 0 && <ArrowDownIcon className="h-5 w-5 text-red-500" />}
-                        {stats && stats.lastDelta === 0 && <ArrowStableIcon className="h-5 w-5 text-gray-400" />}
+                        {stats && stats.lastDelta === 0 && <ArrowStableIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500 dark:text-gray-400">{player.position}</span>
@@ -313,7 +313,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                                     {stats.form.map((won, i) => (
                                         <span key={i} className={`inline-block w-3.5 h-3.5 rounded-full ${won ? 'bg-green-500' : 'bg-red-500'}`}></span>
                                     ))}
-                                    {stats.form.length === 0 && <span className="text-sm text-gray-400">N/A</span>}
+                                    {stats.form.length === 0 && <span className="text-sm text-gray-500 dark:text-gray-400">N/A</span>}
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Form (ultime 5)</div>
                             </div>
@@ -333,7 +333,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                         <div>
                             <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-2">Compagni Frequenti</h3>
                             {partners.length === 0 ? (
-                                <p className="text-sm text-gray-400">Nessun dato.</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Nessun dato.</p>
                             ) : (
                                 <div className="space-y-0">
                                     {partners.map((p, i) => (
@@ -352,7 +352,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                         <div>
                             <h3 className="text-sm font-bold text-sky-600 dark:text-sky-400 mb-2">Avversari Frequenti</h3>
                             {opponents.length === 0 ? (
-                                <p className="text-sm text-gray-400">Nessun dato.</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Nessun dato.</p>
                             ) : (
                                 <div className="space-y-0">
                                     {opponents.map((o, i) => (
@@ -374,13 +374,13 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                     <div>
                         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ultime 5 Partite</h3>
                         {recentMatches.length === 0 ? (
-                            <p className="text-sm text-gray-400">Nessuna partita trovata.</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Nessuna partita trovata.</p>
                         ) : (
                             <div className="space-y-1">
                                 {recentMatches.map((m, i) => (
                                     <div key={i} className={`py-1.5 px-3 rounded-lg text-sm ${m.won ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0 w-10">{m.date}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0 w-10">{m.date}</span>
                                             <span className="text-gray-600 dark:text-gray-300 truncate flex-1">
                                                 con <span className="font-medium">{m.partner}</span>
                                             </span>

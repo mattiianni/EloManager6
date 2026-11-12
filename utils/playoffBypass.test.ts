@@ -109,3 +109,12 @@ describe('playoffBypass utilities', () => {
         expect(eloResult.totalDeltas.get('p4')).toBeUndefined();
     });
 });
+
+import { getPlayoffPhaseTeamsError } from './playoffBypass';
+describe('getPlayoffPhaseTeamsError', () => {
+    it('ritorna null per coppie valide e un messaggio per quelle non valide', () => {
+        expect(getPlayoffPhaseTeamsError([{ team1: ['a', 'b'], team2: ['c', 'd'] }])).toBeNull();
+        expect(getPlayoffPhaseTeamsError([{ team1: ['a', 'b'], team2: ['a', 'd'] }])).toContain('assegnato più volte');
+        expect(typeof getPlayoffPhaseTeamsError([])).toBe('string');
+    });
+});

@@ -395,7 +395,7 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                     Trascina qui i campi torneo
                   </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Oppure clicca su un blocco qui sotto per aggiungerlo in coda
                   </p>
                 </div>
@@ -423,7 +423,7 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
                             <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                               {block.label}
                             </h4>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {block.description}
                             </p>
                           </div>
@@ -434,7 +434,7 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
                             type="button"
                             onClick={() => handleMoveUp(index)}
                             disabled={index === 0}
-                            className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                            className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white disabled:opacity-30 cursor-pointer"
                             title="Sposta su"
                           >
                             <span className="material-symbols-outlined text-base">arrow_upward</span>
@@ -443,7 +443,7 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
                             type="button"
                             onClick={() => handleMoveDown(index)}
                             disabled={index === selectedPhases.length - 1}
-                            className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                            className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white disabled:opacity-30 cursor-pointer"
                             title="Sposta giù"
                           >
                             <span className="material-symbols-outlined text-base">arrow_downward</span>
@@ -522,12 +522,12 @@ const CustomTournamentBuilder: React.FC<CustomTournamentBuilderProps> = ({
                       <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">
                         {block.label}
                       </span>
-                      <span className="block text-xs text-slate-400 dark:text-slate-500 truncate leading-snug">
+                      <span className="block text-xs text-slate-500 dark:text-slate-400 truncate leading-snug">
                         {block.description}
                       </span>
                     </div>
                   </div>
-                  <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 text-slate-400 hover:text-sky-500 flex items-center justify-center font-bold text-xs shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-sky-500 flex items-center justify-center font-bold text-xs shrink-0">
                     +
                   </span>
                 </div>

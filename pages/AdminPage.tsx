@@ -515,7 +515,7 @@ const AdminPage: React.FC = () => {
                                                     <button
                                                         onClick={() => handleDeleteWorkspace(ws)}
                                                         disabled={workspace?.id === ws.id}
-                                                        className="text-xs text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed dark:hover:text-red-400 font-medium"
+                                                        className="text-xs text-red-600 hover:text-red-800 disabled:text-gray-500 disabled:cursor-not-allowed dark:hover:text-red-400 font-medium"
                                                         title={workspace?.id === ws.id ? 'Non puoi cancellare il workspace attualmente in uso' : 'Cancella definitivamente il workspace'}
                                                     >
                                                         Cancella
@@ -538,7 +538,7 @@ const AdminPage: React.FC = () => {
                         <button
                             onClick={handleRecalculateElos}
                             disabled={recalculating}
-                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+                            className="px-4 py-2 bg-orange-700 hover:bg-orange-800 disabled:bg-orange-300 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
                         >
                             {recalculating ? 'Ricalcolo in corso...' : (
                                 <>
@@ -757,12 +757,12 @@ const AdminPage: React.FC = () => {
                                                             }}
                                                         />
                                                         <button onClick={() => handleSetPlain(code.id)} className="text-xs text-green-600 hover:text-green-800">OK</button>
-                                                        <button onClick={() => { setSettingPlainId(null); setPlainInput(''); }} className="text-xs text-gray-400 hover:text-gray-600">X</button>
+                                                        <button onClick={() => { setSettingPlainId(null); setPlainInput(''); }} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-600">X</button>
                                                     </span>
                                                 ) : (
                                                     <button
                                                         onClick={() => { setSettingPlainId(code.id); setPlainInput(''); }}
-                                                        className="text-gray-400 hover:text-sky-500 cursor-pointer"
+                                                        className="text-gray-500 dark:text-gray-400 hover:text-sky-500 cursor-pointer"
                                                         title="Clicca per impostare il codice in chiaro"
                                                     >••••••</button>
                                                 )}

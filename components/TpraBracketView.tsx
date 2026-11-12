@@ -314,7 +314,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
                                 <p className="font-bold">{selectedNode.team1[0].surname}</p>
                                 <p className="font-bold">{selectedNode.team1[1].surname}</p>
                             </div>
-                            <div className="text-gray-400 font-bold">VS</div>
+                            <div className="text-gray-500 dark:text-gray-400 font-bold">VS</div>
                             <div className="text-center w-1/2">
                                 <p className="font-bold">{selectedNode.team2[0].surname}</p>
                                 <p className="font-bold">{selectedNode.team2[1].surname}</p>

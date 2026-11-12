@@ -31,13 +31,13 @@ const NavItem: React.FC<{
                     onClick();
                 }}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-full px-4 py-2.5 transition-all duration-200 ${itemClassName}`}
+                className={`flex items-center gap-3 rounded-full px-4 py-3 min-h-[44px] transition-all duration-200 ${itemClassName}`}
             >
                 <div className="flex w-6 items-center justify-center">
                     <SFIcon 
                         name={isActive ? `${icon}.fill` : icon} 
                         size={20} 
-                        color={isActive ? '#FFFFFF' : '#0055D4'} 
+                        color={isActive ? '#FFFFFF' : 'var(--ios-systemBlue)'} 
                     />
                 </div>
                 <span className="text-[15px]">{label}</span>
@@ -60,6 +60,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
         ...(isAdmin ? [{ id: 'Admin' as Page, label: 'Admin', icon: 'admin_panel_settings' }] : []),
     ];
 
+    // Escape chiude il menu mobile
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, setIsOpen]);
+
     const handleNavigation = (page: Page) => {
         setActivePage(page);
         if (window.innerWidth < 768) {
@@ -80,19 +88,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, se
             {/* Sidebar */}
             <aside
                 id="app-sidebar"
-                className={`fixed top-0 left-0 z-40 flex h-full w-[min(82vw,300px)] flex-col bg-white dark:bg-[#111827] text-slate-900 dark:text-white border-r border-slate-200/80 dark:border-white/10 shadow-xl transform transition-transform duration-300 md:relative md:w-[260px] md:translate-x-0 ${
-                    isOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed top-0 left-0 z-40 flex h-full w-[min(82vw,300px)] flex-col bg-white dark:bg-[#111827] text-slate-900 dark:text-white border-r border-slate-200/80 dark:border-white/10 shadow-xl transform transition-[transform,visibility] duration-300 md:relative md:w-[260px] md:translate-x-0 ${
+                    isOpen ? 'translate-x-0' : '-translate-x-full max-md:invisible'
                 }`}
             >
                 <div className="flex items-center justify-between px-5 pb-3 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] md:p-5 md:pt-6">
                     <div>
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Menu</h2>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="hig-focus-ring md:hidden flex min-h-[38px] min-w-[38px] items-center justify-center rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors" aria-label="Chiudi menu">
+                    <button onClick={() => setIsOpen(false)} className="hig-focus-ring md:hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors" aria-label="Chiudi menu">
                         <SFIcon name="xmark" size={20} />
                     </button>
                 </div>
-                <nav className="flex-1 p-4">
+                <nav className="flex-1 p-4" aria-label="Menu principale">
                     <ul className="space-y-2">
                         {navItems.map((item) => (
                             <NavItem

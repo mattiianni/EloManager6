@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.3)
+# Istruzioni d'uso (v6.12.4)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.3`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.4`, `Nov 2026`).
 
 ## Indice
 
@@ -125,14 +125,15 @@ Il PDF del calendario si può stampare prima di giocare, in bianco, da far compi
 
 Il Messicano è un torneo a coppie mobili, per 8, 12, 16, 20 o 24 giocatori:
 
-- **Turno 1**: scegli come distribuire i giocatori sui campi: teste di serie (`Seeded`), bilanciato (serpentina), casuale (`Normal`) o manuale.
-- **Dal turno 2**: le partite vengono generate al salvataggio del turno precedente, in base alla classifica provvisoria. Finché il turno in corso non è completo, il turno successivo resta bloccato e mostra segnaposto del tipo `[1° Class.] & [4° Class.] vs [2° Class.] & [3° Class.]`.
-- **Campi**: il Campo 1 è il **Top Court** (posizioni 1-4), gli intermedi sono i **Mid Courts**, l'ultimo è il **Flop Court**.
+- **Turno 1**: scegli come distribuire i giocatori sui campi: teste di serie (`Seeded`), bilanciato (serpentina) o casuale (`Normal`).
+- **Procedi**: a turno completo premi `Procedi`. L'app calcola il turno successivo in base alla classifica provvisoria e lo **salva in automatico**. Finché il turno in corso non è completo, il pulsante resta disattivato e i turni successivi mostrano segnaposto del tipo `[1° Class.] & [4° Class.] vs [2° Class.] & [3° Class.]`. I turni già chiusi non si possono più modificare.
+- **Concludi Torneo**: nell'ultimo turno (quello scelto da te all'inizio) il pulsante diventa `Concludi Torneo`: calcola la classifica finale e l'ELO.
+- **Campi**: i campi sono sempre 4 giocatori ciascuno (con 12 giocatori, 3 campi). Il Campo 1 è il **Top Court** (posizioni 1-4), gli intermedi sono i **Mid Courts**, l'ultimo è il **Flop Court**.
 - **Coppie**: l'app evita di rimettere insieme compagni già avuti. Se non è possibile, usa l'accoppiamento di merito (1° + 4° contro 2° + 3°).
 - **Giornata singola o tappa**: può essere un evento a sé oppure una tappa di una serie.
 - **ELO**: aggiornamento standard con K = 16 a somma zero; sono supportati anche i pareggi.
 
-Puoi salvare il torneo in corso e riprenderlo più tardi, oppure salvarlo in modo definitivo a fine serata.
+Puoi chiudere l'app in qualsiasi momento: il torneo resta `In Programma` e lo riprendi da `Risultati`, dal turno in cui eri arrivato.
 
 ## Torneo a Squadre (Round Robin)
 
@@ -242,7 +243,7 @@ Ogni formato ha il proprio PDF, in due versioni: **in bianco** (da stampare prim
 Come si stampa a seconda del dispositivo:
 
 - **Computer e Android**: l'app apre il documento in una nuova scheda. In alto trovi la barra con **Stampa / Salva PDF** e **Chiudi**; la barra non compare nella stampa.
-- **iPhone e iPad (Safari o app installata)**: la stampa parte direttamente sopra l'app e si apre il menu di stampa di iOS (AirPrint). Da lì puoi stampare oppure salvare un PDF dal menu di condivisione.
+- **iPhone e iPad (Safari o app installata)**: la stampa parte direttamente sopra l'app e si apre il menu di stampa di iOS (AirPrint). Da lì puoi stampare oppure salvare un PDF dal menu di condivisione. Al termine l'app torna come prima.
 - **Profili giocatore**: una pagina per ogni giocatore.
 
 Se il documento non si apre, controlla che il browser non blocchi i popup per questo sito.

@@ -310,7 +310,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             >
                 <div className="flex items-center gap-2">
                     <span>ELO History</span>
-                    <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
+                    <ChevronDownIcon className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
                 </div>
                 <Button
                     onClick={(e) => {

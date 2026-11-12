@@ -12,7 +12,7 @@ export const getAvatarGradientByElo = (elo?: number, seed?: string): string => {
         const AVATAR_COLORS = [
             'bg-[#0055D4] text-white',
             'bg-emerald-600 text-white',
-            'bg-amber-500 text-white',
+            'bg-amber-700 text-white',
             'bg-rose-500 text-white',
             'bg-indigo-600 text-white',
         ];
@@ -35,7 +35,7 @@ export const getAvatarGradientByElo = (elo?: number, seed?: string): string => {
         return 'bg-[#0055D4] text-white';
     } else if (elo >= 1460) {
         // Below average - Warm Amber
-        return 'bg-amber-500 text-white';
+        return 'bg-amber-700 text-white';
     } else {
         // Bottom ranking - Rose
         return 'bg-rose-500 text-white';

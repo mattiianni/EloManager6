@@ -706,7 +706,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                                 size="sm"
                                                 onClick={refreshFixtures}
                                                 disabled={isRefreshingFixtures || loading}
-                                                className="!bg-orange-500 hover:!bg-orange-600 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-3 !py-1.5 !text-xs disabled:!border-gray-400/40 disabled:!bg-gray-400"
+                                                className="!bg-orange-700 hover:!bg-orange-800 !border-orange-700/50 dark:!border-orange-300/35 !text-white !px-3 !py-1.5 !text-xs disabled:!border-gray-400/40 disabled:!bg-gray-400"
                                             >
                                                 {isRefreshingFixtures ? 'Ricarico...' : 'Ricarica'}
                                             </Button>
