@@ -1,3 +1,21 @@
+# Regole di verifica obbligatorie (introdotte il 2026-11-12)
+
+Aggiunte dopo i problemi delle release 6.12.4-6.12.10 (stampa iOS rotta, Torneo Libero con singoli senza circolo, barra inferiore e nomi modificati senza richiesta). Valgono per ogni modifica e per ogni release.
+
+1. **Nessuna ipotesi presentata come causa.** Se qualcosa "funzionava prima", si confronta il codice con l'ultima versione funzionante nell'archivio iCloud (`App TorneOtto 3.0/<versione>`) e si indica la differenza esatta, con file e riga, prima di modificare. Se la causa è solo probabile, si scrive "ipotesi" e non si fa passare per un fatto.
+2. **Percorso dell'utente, passo per passo.** Per ogni flusso toccato o aggiunto si ricostruisce il percorso completo dall'ingresso al salvataggio, per **tutti** i modi di arrivarci (nuovo torneo, "+ Inserisci giornata", Coppie Fisse / Giocatori Singoli, serie esistente, ripresa da "In corso"). Per ogni passo si elencano i dati richiesti e dove vengono raccolti; un dato richiesto al salvataggio ma mai chiesto prima è un bug. Il caso del circolo mancante nel Torneo Libero con i singoli nasce da qui.
+3. **Il controllo del Senior Engineer non è una prova.** Va avviato con l'elenco degli scenari da percorrere (non solo con il diff) e il suo report deve dire quali scenari ha seguito fino in fondo. Un "PASS" sul solo codice non autorizza a scrivere "funziona".
+4. **Un test per ogni bug corretto**, quando la logica è testabile (`npx vitest run`). Se il flusso non è testabile in automatico, lo scenario va scritto in `QA_CHECKLIST.md` e dichiarato come "da provare dall'utente".
+5. **Nessuna modifica non richiesta.** Grafica, dimensioni, comportamenti già approvati non si toccano senza che l'utente lo chieda; una modifica fuori richiesta si propone e si aspetta la risposta.
+6. **Dire sempre cosa non è verificato.** La stampa su iPhone/iPad, l'app installata e i flussi che richiedono il login non sono verificabili dall'assistente: vanno dichiarati come tali nel messaggio finale, con i passi esatti da provare.
+7. **Stampa iOS**: non si cambia il meccanismo di apertura/stampa senza prima confrontarlo con la versione funzionante dell'archivio (6.10.x per iPhone, 6.12.2 per iPad). Il CSS dei documenti da stampare non deve avere `break-inside: avoid` su blocchi più alti di una pagina.
+
+## v6.12.11 — 2026-11-12
+- **Torneo Libero con Giocatori Singoli**: dal percorso dei singoli il circolo non veniva mai chiesto e il salvataggio falliva con "Per favore compila tutti i campi richiesti". La schermata di setup ora chiede anche **Data** e **Circolo**, il pulsante "Crea partite" resta disattivato finché mancano dati e i messaggi indicano il dato mancante (nome, circolo o data). Nuovo helper `utils/torneoLibero.ts` con test; scenario in `QA_CHECKLIST.md`.
+- **Torneo Libero dentro una serie** (trovato dalla verifica per scenari): da "+ Inserisci giornata" il Torneo Libero veniva salvato come torneo separato e il circolo non era precompilato; ora la giornata resta nella serie scelta, con il banner "Nuova giornata per" e il circolo della serie. Il pulsante "Indietro" del setup non porta più a una schermata di nome torneo separata; "Conferma Risultati" con 0-0 mostra un messaggio chiaro.
+- **Guardia contro la regressione della stampa iOS**: un test (`services/printService.test.ts`) fallisce se `break-inside: avoid` torna sulle schede giocatore (`.player-page`), regola che su iPhone impediva l'apertura del foglio di stampa; commento nel CSS di `printPlayerProfiles` e regola 7 in testa al CHANGELOG.
+- **Processo**: aggiunte in testa al CHANGELOG e in `docs/RELEASE_ROUTINE.md` le regole di verifica obbligatorie (percorso utente da tutti gli ingressi, confronto con l'archivio, Senior Engineer con scenari, un test per bug, nessuna modifica non richiesta).
+
 ## v6.12.10 — 2026-11-12
 - **Stampa schede giocatore su iPhone**: rimosso `break-inside: avoid` dalle schede (introdotto nelle 6.12.1-6.12.3, assente nella 6.10.4 funzionante). Una scheda più alta di una pagina con quella regola impediva a iOS di generare l'anteprima e il foglio di stampa non si apriva. Resta una sola regola di interruzione: ogni giocatore inizia su una pagina nuova; se la scheda è lunga continua sulla successiva.
 

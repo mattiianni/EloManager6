@@ -357,6 +357,10 @@ describe('printService document helpers', () => {
             // Regressione pagine bianche: nessun divisore .page-break e nessun break-after sulle schede
             expect(capturedHtml).not.toContain('class="page-break"');
             expect(capturedHtml).toContain('.player-page + .player-page');
+            // GUARDIA iOS: break-inside: avoid su una scheda più alta di una pagina impedisce a iOS di aprire
+            // il foglio di stampa (stampa profili giocatori su iPhone). Non va mai rimesso sulle schede.
+            expect(capturedHtml).not.toMatch(/\.player-page[^{}]*\{[^{}]*(page-)?break-inside\s*:\s*avoid/);
+            expect(capturedHtml).not.toMatch(/class="player-page"[^>]*break-inside/);
             expect(capturedHtml).toContain('nel torneo');
 
             // Partite filtrate: solo le 2 partite del torneo Sociale Messicano (non m99 dell'altro torneo)

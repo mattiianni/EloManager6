@@ -13,6 +13,7 @@ import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
 import CustomTournamentFlow from './CustomTournamentFlow.tsx';
 import MexicanTournamentFlow from './MexicanTournamentFlow.tsx';
+import { getTorneoLiberoMissingField } from '../utils/torneoLibero.ts';
 import { MexicanDrawMode } from '../formats/messicano/types.ts';
 import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
@@ -393,7 +394,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  // Handle preselected tournament (auto-select existing tournament for new giornata)
  React.useEffect(() => {
- if (preselectedTournamentName && step === 'setup') {
+ if (preselectedTournamentName && (step === 'setup' || step === 'torneo-libero-setup')) {
  console.log('🎯 Auto-selecting existing tournament:', preselectedTournamentName);
  setIsCreatingNew(false); // Use existing tournament mode
  setSelectedTournamentName(preselectedTournamentName);
@@ -403,7 +404,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  );
  if (existingTournament) {
  setSavedTournamentType(existingTournament.type);
- setClubName(existingTournament.club);
+ // Nel setup del Torneo Libero non si sovrascrive ciò che l'utente ha già scritto
+ setClubName(prev => step === 'setup' ? existingTournament.club : (prev || existingTournament.club));
  }
  }
  }, [preselectedTournamentName, step, tournaments]);
@@ -988,8 +990,9 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  const handleTorneoLiberoSaveScheduled = async () => {
- if (!nomeTorneoLibero.trim() || !tournamentDate || !clubName) {
- showHIGAlert('Per favore compila tutti i campi richiesti');
+ const liberoMissing = getTorneoLiberoMissingField(nomeTorneoLibero, clubName, tournamentDate);
+ if (liberoMissing) {
+ showHIGAlert(liberoMissing);
  return;
  }
 
@@ -1057,8 +1060,20 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  };
 
  const handleTorneoLiberoConfirm = async () => {
- if (!nomeTorneoLibero.trim() || !tournamentDate || !clubName) {
- showHIGAlert('Per favore compila tutti i campi richiesti');
+ const liberoMissing = getTorneoLiberoMissingField(nomeTorneoLibero, clubName, tournamentDate);
+ if (liberoMissing) {
+ showHIGAlert(liberoMissing);
+ return;
+ }
+ // Conferma con 0-0: il server rifiuta; messaggio chiaro invece dell'errore generico
+ const liberoUnscored = torneoLiberoMatches.some(match => {
+ const complete = torneoLiberoMode === 'fixed'
+ ? !!(match.team1 && match.team2)
+ : !!(match.team1Player1 && match.team1Player2 && match.team2Player1 && match.team2Player2);
+ return complete && !(match.scores || []).some(sc => (sc.team1 || 0) > 0 || (sc.team2 || 0) > 0);
+ });
+ if (liberoUnscored) {
+ showHIGAlert('Inserisci il punteggio di tutte le partite compilate prima di confermare i risultati, oppure usa "Salva Tabellone".');
  return;
  }
 
@@ -2995,6 +3010,14 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return (
  <Card title="Setup Torneo Libero">
  <div className="space-y-6 px-4">
+ {preselectedTournamentName && (
+ <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 flex items-center gap-2">
+ <SFIcon name="checkmark.circle.fill" size={16} className="text-green-600 dark:text-green-400 shrink-0" />
+ <p className="text-sm text-green-800 dark:text-green-200 break-words">
+ Nuova giornata per: <strong>{preselectedTournamentName}</strong>
+ </p>
+ </div>
+ )}
  <div>
  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
  Numero di partite da giocare
@@ -3019,6 +3042,29 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  onChange={(e) => setNomeTorneoLibero(e.target.value)}
  placeholder="es. Giornata Speciale, Sfida Serale..."
  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+ />
+ </div>
+
+ <div className="w-full min-w-0 overflow-hidden">
+ <label htmlFor="liberoTournamentDate" className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Data Giornata</label>
+ <input
+ type="date"
+ id="liberoTournamentDate"
+ value={tournamentDate}
+ onChange={e => setTournamentDate(e.target.value)}
+ className="mobile-date-input block w-full min-w-0 max-w-full overflow-hidden bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-sm"
+ />
+ </div>
+
+ <div className="w-full">
+ <label htmlFor="liberoClubName" className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Circolo</label>
+ <input
+ type="text"
+ id="liberoClubName"
+ value={clubName}
+ onChange={e => setClubName(e.target.value)}
+ placeholder="es. Padel Club Milano"
+ className="block w-full min-w-0 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-sm"
  />
  </div>
 
@@ -3056,7 +3102,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  <div className="flex gap-3 mt-6">
  <Button
- onClick={() => setStep('setup')}
+ onClick={() => (initialFormat ? onFinish() : setStep('tournament-selection'))}
  variant="outline"
  className="flex-1"
  >
@@ -3065,7 +3111,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  <Button
  onClick={handleTorneoLiberoSetup}
  className="flex-1"
- disabled={numeroPartite < 1 || !nomeTorneoLibero.trim()}
+ disabled={numeroPartite < 1 || getTorneoLiberoMissingField(nomeTorneoLibero, clubName, tournamentDate) !== null}
  >
  Crea {numeroPartite} Partit{numeroPartite === 1 ? 'a' : 'e'}
  </Button>

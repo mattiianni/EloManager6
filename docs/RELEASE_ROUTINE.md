@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.12.10`
+- Versione attuale: `6.12.11`
 - Mese attuale: `Nov 2026`
 
 ## Regole generali
@@ -14,6 +14,10 @@
 ## Terminologia da usare nei testi
 
 `Coppie Fisse`, `Giocatori Singoli`, `Torneo a Squadre`, `Beat the Box`, `Messicano`, `Torneo Personale`, `Bypass / Modifica`, `Classifiche`, `Risultati`, `Sorteggi`. Le posizioni in campo sono `Sinistra`, `Destra`, `Indifferente`. L'ELO usa un solo fattore `K = 16` a somma zero per tutti i formati e viene applicato al completamento del torneo.
+
+## Regole di verifica (vedi anche `CHANGELOG.md`, in cima)
+
+Prima di ogni release valgono le sette regole in testa al `CHANGELOG.md`: confronto con l'ultima versione funzionante dell'archivio, percorso utente passo per passo per tutti gli ingressi, Senior Engineer avviato con l'elenco degli scenari (il suo PASS non è una prova), un test per ogni bug corretto, nessuna modifica non richiesta, dichiarare cosa non è verificato, cautele sulla stampa iOS.
 
 ## Checklist operativa
 

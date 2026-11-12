@@ -48,3 +48,13 @@ Eseguire ogni formato in stato `scheduled` e `completed`:
 - `npm run build`
 - Nessun errore nella console durante creazione, salvataggio, modifica e stampa.
 - Confronto visuale degli snapshot alle tre larghezze e dei PDF a una e più pagine.
+
+## Torneo Libero con Giocatori Singoli (da provare dall'utente, v6.12.11)
+1. Sorteggi → Giocatori Singoli → scegli almeno 4 giocatori → formato **Torneo Libero**.
+2. Setup: inserisci numero di partite, nome, **circolo** e data (senza circolo il pulsante "Crea partite" resta disattivato).
+3. Per ogni partita scegli 4 giocatori diversi (nei menu ogni giocatore compare una sola volta) e inserisci i punteggi.
+4. "Salva Tabellone" → il torneo compare in Tornei con "In Corso - Inserisci Risultati".
+5. Ripeti da "+ Inserisci giornata" di una serie esistente (Giocatori Singoli e Coppie Fisse): nel setup compare "Nuova giornata per: <serie>", il circolo è precompilato, e dopo il salvataggio la giornata compare **dentro la serie** in Tornei (non come torneo separato).
+   - "Indietro" dal setup non deve aprire una schermata di nome torneo diversa.
+   - "Conferma Risultati" con punteggio 0-0 deve mostrare un messaggio chiaro.
+6. "Conferma Risultati" → classifica e ELO aggiornati.
