@@ -374,14 +374,19 @@ export const isIOS = (): boolean => {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+export const isIPhone = (): boolean => {
+    if (typeof navigator === 'undefined') return false;
+    return /iPhone|iPod/.test(navigator.userAgent);
+};
+
 export const isIPhoneStandalone = (): boolean => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-    const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = Boolean(
-        (navigator as any).standalone ||
+    const iPhone = isIPhone();
+    const standalone = Boolean(
+        (navigator as any).standalone === true ||
         (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches)
     );
-    return isIPhone && isStandalone;
+    return iPhone && standalone;
 };
 
 /**
@@ -455,48 +460,6 @@ const hoistTopLevelPageRules = (css: string): { pageRules: string; rest: string 
 export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
-        // Su iPhone in modalità PWA standalone (aggiunta a schermata Home), Apple WebKit
-        // non dispone del delegato di presentazione per UIPrintInteractionController e
-        // scarta silenziosamente window.print(). In questo specifico contesto, usiamo la
-        // Web Share API con il file HTML formattato: iOS apre istantaneamente il foglio
-        // nativo di condivisione di sistema che include direttamente l'azione nativa "Stampa" (AirPrint).
-        if (isIPhoneStandalone() && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-            try {
-                const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
-                const basePrintCss = getPrintStyles(true);
-                const fullHtml = `<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=1024, initial-scale=1.0">
-    <title>${escapeHtml(title)}</title>
-    <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
-    ${basePrintCss}
-</head>
-<body>
-    ${cleanBody}
-</body>
-</html>`;
-                const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-                const cleanName = (title || 'stampa').replace(/[^a-zA-Z0-9_\u00C0-\u017F-]/g, '_');
-                const file = new File([blob], `${cleanName}.html`, { type: 'text/html' });
-
-                if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: title || 'Stampa'
-                    }).catch(err => {
-                        if (err && err.name !== 'AbortError') {
-                            console.error('Share error:', err);
-                        }
-                    });
-                    return true;
-                }
-            } catch (shareErr) {
-                console.warn('Web share fallback to in-window print:', shareErr);
-            }
-        }
-
         const existingRoot = document.getElementById('padel-print-root');
         if (existingRoot) existingRoot.remove();
         const existingStyle = document.getElementById('padel-print-style');
@@ -614,8 +577,89 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
     }
 };
 
-// Fallback printing for iframes/blobs: su iOS delega direttamente a printInWindow
+// Stampa per iPhone in modalità Standalone (PWA installata sulla Home).
+// Poiché WebKit nel container WebClip di iPhone non supporta window.print(),
+// apriamo il documento formattato in Safari con auto-print e la barra Apple HIG
+// con il pulsante "Stampa con AirPrint" e "Chiudi".
+export const printInSafariForIPhone = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
+    try {
+        const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
+
+        const toolbarHtml = `
+            <div class="print-toolbar no-print">
+                <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
+                <div class="print-toolbar-actions">
+                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa con AirPrint</button>
+                    <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
+                </div>
+            </div>
+        `;
+
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html lang="it">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <title>${escapeHtml(title)}</title>
+                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
+                ${getPrintStyles(true)}
+            </head>
+            <body>
+                ${toolbarHtml}
+                ${cleanBody}
+                <script>
+                    function triggerAutoPrint() {
+                        ${waitForPrintFontsScript}.finally(function() {
+                            setTimeout(function() {
+                                try {
+                                    window.print();
+                                } catch(e) {
+                                    console.error('Print error:', e);
+                                }
+                            }, 150);
+                        });
+                    }
+                    if (document.readyState === 'complete') {
+                        triggerAutoPrint();
+                    } else {
+                        window.addEventListener('load', triggerAutoPrint);
+                    }
+                <\/script>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        if (existingWindow) {
+            existingWindow.location.replace(url);
+            setTimeout(() => URL.revokeObjectURL(url), 120000);
+            return true;
+        }
+
+        const printWindow = window.open(url, '_blank');
+        if (!printWindow) {
+            URL.revokeObjectURL(url);
+            showHIGAlert('Impossibile aprire Safari per la stampa. Verifica che i popup non siano bloccati.');
+            return false;
+        }
+
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+        return true;
+    } catch (error) {
+        console.error('printInSafariForIPhone error:', error);
+        showHIGAlert('Errore durante la preparazione della stampa per Safari.');
+        return false;
+    }
+};
+
+// Fallback printing for iframes/blobs: su iPhone PWA apre Safari, su iPad/iOS usa printInWindow
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
+    if (isIPhoneStandalone()) {
+        return printInSafariForIPhone(title, htmlContent);
+    }
     if (isIOS()) {
         return printInWindow(title, htmlContent);
     }
@@ -672,6 +716,12 @@ const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
 
 export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
+        // Su iPhone PWA (Home Screen standalone), WebKit non gestisce UIPrintInteractionController:
+        // apriamo il documento formattato in Safari con barra AirPrint e auto-print.
+        if (isIPhoneStandalone()) {
+            return printInSafariForIPhone(title, content, pageStyles, existingWindow);
+        }
+
         const iOS = isIOS();
 
         if (iOS) {
