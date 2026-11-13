@@ -351,6 +351,19 @@ export const getPrintStyles = (fontImport: boolean = false) => `
             font-size: 11px;
             color: #ffffff;
         }
+        .score-box-blank {
+            display: inline-block !important;
+            width: 28px !important;
+            height: 22px !important;
+            line-height: 22px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: transparent !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
     </style>
 `;
 

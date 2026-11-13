@@ -249,8 +249,9 @@ describe('Collaudo e Simulazione End-to-End Torneo Messicano Individuale', () =>
             expect(blankHtml).toContain('Sociale Messicano 8P');
             expect(blankHtml).toContain('Padel Arena Milano');
             expect(blankHtml).toContain('score-box');
-            expect(blankHtml).toContain('[1° Class.] & [4° Class.]');
-            expect(blankHtml).toContain('[2° Class.] & [3° Class.]');
+            expect(blankHtml).toContain('score-box-blank');
+            expect(blankHtml).not.toContain('[1° Class.]');
+            expect(blankHtml).not.toContain('[2° Class.]');
             // Nel tabellone in bianco la classifica finale non deve apparire
             expect(blankHtml).not.toContain('CLASSIFICA INDIVIDUALE');
             // Nessuna emoji

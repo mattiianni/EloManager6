@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.16)
+# Istruzioni d'uso (v6.13.0)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.16`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.13.0`, `Nov 2026`).
 
 ## Indice
 
@@ -239,7 +239,7 @@ Per i tornei a squadre:
 
 ## Stampa e PDF
 
-Ogni formato ha il proprio PDF, in due versioni: **in bianco** (da stampare prima del torneo e far compilare a mano) e **completo** (con risultati e classifiche). Tutti i PDF hanno lo stesso stile e lo stesso piè di pagina.
+Ogni formato ha il proprio PDF, in due versioni: **in bianco** (da stampare prima del torneo e far compilare a mano, con caselle punteggio bianche a bordo grigio e campi squadre vuoti pronti per la scrittura a penna) e **completo** (con risultati e classifiche). Tutti i PDF hanno lo stesso stile e lo stesso piè di pagina.
 
 Come si stampa a seconda del dispositivo:
 

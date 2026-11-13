@@ -95,24 +95,37 @@ export const generateMexicanPdfHtml = (
         let team2Name: string;
 
         if (!match.team1?.[0] && !match.team2?.[0]) {
-            const cNum = court || 1;
-            const topP1 = (cNum - 1) * 4 + 1;
-            const topP2 = (cNum - 1) * 4 + 2;
-            const topP3 = (cNum - 1) * 4 + 3;
-            const topP4 = (cNum - 1) * 4 + 4;
-            team1Name = `[${topP1}° Class.] & [${topP4}° Class.]`;
-            team2Name = `[${topP2}° Class.] & [${topP3}° Class.]`;
+            if (isBlank) {
+                team1Name = '&nbsp;';
+                team2Name = '&nbsp;';
+            } else {
+                const cNum = court || 1;
+                const topP1 = (cNum - 1) * 4 + 1;
+                const topP2 = (cNum - 1) * 4 + 2;
+                const topP3 = (cNum - 1) * 4 + 3;
+                const topP4 = (cNum - 1) * 4 + 4;
+                team1Name = `[${topP1}° Class.] & [${topP4}° Class.]`;
+                team2Name = `[${topP2}° Class.] & [${topP3}° Class.]`;
+            }
         } else {
-            const t1p1 = getPlayerById(match.team1[0]);
-            const t1p2 = getPlayerById(match.team1[1]);
-            const t2p1 = getPlayerById(match.team2[0]);
-            const t2p2 = getPlayerById(match.team2[1]);
-            team1Name = printableTeamName([t1p1, t1p2]);
-            team2Name = printableTeamName([t2p1, t2p2]);
+            const t1p1 = getPlayerById(match.team1?.[0]);
+            const t1p2 = getPlayerById(match.team1?.[1]);
+            const t2p1 = getPlayerById(match.team2?.[0]);
+            const t2p2 = getPlayerById(match.team2?.[1]);
+            if (isBlank && (!t1p1 || !t1p2)) {
+                team1Name = '&nbsp;';
+            } else {
+                team1Name = printableTeamName([t1p1, t1p2]);
+            }
+            if (isBlank && (!t2p1 || !t2p2)) {
+                team2Name = '&nbsp;';
+            } else {
+                team2Name = printableTeamName([t2p1, t2p2]);
+            }
         }
 
         const scoreHtml = isBlank || !hasScore
-            ? `<span class="score-box">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold;">-</span> <span class="score-box">&nbsp;</span>`
+            ? `<span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 22px; line-height: 22px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle;">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold; margin: 0 4px;">-</span> <span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 22px; line-height: 22px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle;">&nbsp;</span>`
             : formatScoreBoxes(match.sets, false);
 
         const isT1Winner = !isBlank && (match.winner === 'team1' || (!match.winner && hasScore && (match.sets[0]?.team1 || 0) > (match.sets[0]?.team2 || 0)));
@@ -214,6 +227,7 @@ export const generateMexicanPdfHtml = (
             tr { height: 24px; }
             tr:nth-child(even) { background-color: #f8fafc; }
             .score-box { display: inline-block; width: 22px; height: 20px; line-height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-size: 11px; background: #ffffff; }
+            .score-box-blank { display: inline-block !important; width: 28px !important; height: 22px !important; line-height: 22px !important; border: 1.5px solid #cbd5e1 !important; border-radius: 4px !important; background: #ffffff !important; background-color: #ffffff !important; color: transparent !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
         </style>
         <div class="print-page">

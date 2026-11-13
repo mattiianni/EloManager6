@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Padel ELO Manager v6.13.0 - Guida all'Uso</title>
+<style>
+    @page { size: A4; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: 'Manrope', sans-serif;
+        font-size: 11pt;
+        color: #172033;
+        line-height: 1.5;
+        padding: 18mm 16mm;
+        background: #ffffff;
+    }
+    .cover {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .cover-icon {
+        width: 104px;
+        height: 104px;
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        border-radius: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 32px;
+        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.28);
+    }
+    .cover-icon svg { width: 62px; height: 62px; color: white; }
+    .cover h1 { font-size: 35pt; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+    .cover .subtitle { font-size: 14pt; color: #64748b; margin-bottom: 40px; }
+    .cover .version { font-size: 11pt; color: #94a3b8; }
+    .cover .author { font-size: 12pt; color: #475569; margin-top: 60px; }
+    h2 {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #0ea5e9;
+        page-break-before: always;
+    }
+    h3 { font-size: 13pt; font-weight: 700; color: #1e293b; margin-top: 18px; margin-bottom: 8px; }
+    h4 { font-size: 11pt; font-weight: 700; color: #334155; margin-top: 12px; margin-bottom: 6px; }
+    p { margin-bottom: 8px; }
+    ul, ol { margin-left: 20px; margin-bottom: 10px; }
+    li { margin-bottom: 5px; }
+    strong { color: #0f172a; }
+    .info-box {
+        background: #f0f9ff;
+        border-left: 4px solid #0ea5e9;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .warning-box {
+        background: #fff7ed;
+        border-left: 4px solid #f97316;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .success-box {
+        background: #f0fdf4;
+        border-left: 4px solid #22c55e;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .info-box p, .warning-box p, .success-box p { margin: 0; font-size: 10pt; }
+    .step {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        break-inside: avoid;
+    }
+    .step-num {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        background: #0ea5e9;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        margin-top: 2px;
+    }
+    .step-text { flex: 1; }
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 10px 0;
+    }
+    .card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px;
+        break-inside: avoid;
+    }
+    .card h4 { margin-top: 0; color: #0ea5e9; }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0 16px 0;
+        font-size: 10pt;
+    }
+    th {
+        background: #0f172a;
+        color: white;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+    }
+    td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .mobile-figure {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        margin: 14px 0 18px 0;
+        break-inside: avoid;
+    }
+    .phone {
+        width: 190px;
+        min-width: 190px;
+        height: 338px;
+        border: 8px solid #1e293b;
+        border-radius: 28px;
+        background: #eaf4ff;
+        padding: 10px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+        position: relative;
+        overflow: hidden;
+    }
+    .phone:before {
+        content: "";
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 5px;
+        border-radius: 999px;
+        background: #334155;
+        z-index: 2;
+    }
+    .phone-screen {
+        height: 100%;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #f8fbff 0%, #e9f3ff 100%);
+        padding: 18px 10px 10px 10px;
+        overflow: hidden;
+    }
+    .app-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #3ea0e8;
+        line-height: 1.05;
+        margin-bottom: 3px;
+    }
+    .app-sub {
+        font-size: 8px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+    }
+    .mini-card {
+        background: rgba(255,255,255,0.92);
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        padding: 9px;
+        margin-bottom: 8px;
+    }
+    .mini-card h5 {
+        font-size: 10px;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+    .mini-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 8px;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+    .mini-button {
+        background: #3ea0e8;
+        color: white;
+        border-radius: 8px;
+        padding: 7px;
+        text-align: center;
+        font-size: 9px;
+        font-weight: 700;
+        margin-top: 6px;
+    }
+    .mini-button.green { background: #22c55e; }
+    .mini-button.orange { background: #f97316; }
+    .mini-pill {
+        display: inline-block;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 3px 6px;
+        font-size: 7px;
+        font-weight: 700;
+        margin: 2px 2px 2px 0;
+    }
+    .mini-list {
+        display: grid;
+        gap: 5px;
+    }
+    .mini-list div {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px;
+        font-size: 8px;
+        color: #334155;
+    }
+    .figure-text { flex: 1; }
+    .figure-text h4 { margin-top: 0; color: #0f172a; }
+    .figure-text p { font-size: 10.5pt; color: #475569; }
+    .caption {
+        font-size: 9pt;
+        color: #64748b;
+        font-style: italic;
+        margin-top: -8px;
+        margin-bottom: 12px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 9pt;
+        color: #94a3b8;
+        margin-top: 40px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+    }
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .card, .info-box, .warning-box, .success-box, .mobile-figure { break-inside: avoid; }
+    }
+</style>
+</head>
+<body>
+
+<div class="cover">
+    <div class="cover-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.7">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 6H3v2a4 4 0 004 4M19 6h2v2a4 4 0 01-4 4" />
+        </svg>
+    </div>
+    <h1>Padel ELO Manager</h1>
+    <p class="subtitle">Guida completa all'utilizzo dell'applicazione</p>
+    <p class="version">Versione Guida v6.13.0 — Novembre 2026</p>
+    <p class="author">Mattia Ianniello &mdash; Novembre 2026</p>
+</div>
+
+<h2>Indice</h2>
+<ol style="font-size: 12pt; line-height: 2;">
+    <li>Cos'è Padel ELO Manager</li>
+    <li>Accesso, Home e navigazione</li>
+    <li>Giocatori e profili</li>
+    <li>Sorteggi: cosa vuoi organizzare oggi</li>
+    <li>Inserimento risultati: in tempo reale o da foglio stampato, salvataggi progressivi</li>
+    <li>Creare una giornata a Coppie Fisse o Giocatori Singoli</li>
+    <li>10 formati di torneo: regole e mini-guide</li>
+    <li>Torneo a Squadre: guida completa</li>
+    <li>Stampa e PDF</li>
+    <li>Inserire i risultati, correggere le fasi finali (Bypass / Modifica) e creare il resoconto</li>
+    <li>Classifiche, Statistiche ed ELO-Playtomic</li>
+    <li>Admin, Workspace e codici di accesso</li>
+    <li>Domande frequenti</li>
+</ol>
+
+<h2>1. Cos'è Padel ELO Manager</h2>
+<p><strong>Padel ELO Manager</strong> è una piattaforma web/PWA per organizzare tornei di padel, creare sorteggi, stampare tabelloni, inserire risultati e mantenere aggiornata la classifica ELO di ogni giocatore.</p>
+
+<div class="info-box">
+    <p><strong>Idea centrale:</strong> l'app accompagna tutta la giornata: scelta dei giocatori, sorteggio, tabellone, PDF da portare in campo, inserimento dei risultati, classifiche e statistiche.</p>
+</div>
+
+<div class="warning-box">
+    <p><strong>Programma Beta Testing e Anteprima:</strong> questa non è ancora la versione finale dell'applicazione. Viene fornita in anteprima ad alcuni circoli pilota, in qualità di beta tester, per provarla sul campo, raccogliere feedback reali e segnalare eventuali anomalie, così da migliorare costantemente la piattaforma.</p>
+</div>
+
+<div class="success-box">
+    <p><strong>Novità v6.13.0:</strong> correzione della stampa in bianco del <strong>Torneo Messicano (Tabellone Vuoto)</strong>: le caselle del punteggio ora sono bianche con bordo grigio chiaro anziché blu pieno, pronte per la compilazione manuale a penna a bordo campo. Nei turni non ancora generati i campi delle squadre sono completamente vuoti (eliminati i testi formula che occupavano lo spazio di scrittura).</p>
+    <p><strong>Novità v6.12.16:</strong> stabilizzazione definitiva della stampa <strong>AirPrint su iPhone PWA standalone</strong>: grazie al pattern WebKit ufficiale PDF + Web Share, premendo Stampa si apre istantaneamente il foglio nativo iOS con l'azione AirPrint, le miniature delle pagine e la scelta stampante, mantenendo l'applicazione al 100% a tutto schermo (senza barre di Safari). Rimane invariata la stampa nativa AirPrint a due colonne per iPad, Mac e Safari.</p>
+    <p><strong>Novità v6.12.14:</strong> la <strong>stampa su iPhone e iPad</strong> torna a funzionare come nelle versioni 6.10: si apre una pagina con il documento creato dall'app e subito il menu di stampa di iOS (pinch sull'anteprima per il PDF). Nel Torneo Libero compare il nome dato dall'utente al posto di "Torneo Libero"; in Statistiche il titolo è sempre il nome del torneo madre.</p>
+    <p><strong>Novità v6.12.13:</strong> la stampa dei profili giocatore filtrata per torneo mostra ora l'<strong>ELO del torneo</strong> (come in Classifiche) e non l'ELO generale: numero in alto, grafico, ELO massimo, posizione e variazione per giornata. La barra inferiore è 5px più alta, con icone e testo centrati.</p>
+    <p><strong>Novità v6.12.12:</strong> nel <strong>Torneo Libero</strong> un set o una partita in pareggio non assegna più alcuna vittoria (risultato = pareggio), e una partita compilata a metà o rimasta vuota viene segnalata con un messaggio che indica quale partita manca, invece di essere scartata o di lasciare il pulsante spento.</p>
+    <p><strong>Novità v6.12.11:</strong> nel <strong>Torneo Libero</strong> con i Giocatori Singoli la schermata di setup chiede ora anche <strong>Data</strong> e <strong>Circolo</strong>, e i messaggi d'errore indicano quale dato manca.</p>
+    <p><strong>Novità v6.12.10:</strong> corretta la stampa delle schede giocatore su iPhone: ogni giocatore parte su una pagina nuova e, se la scheda è lunga, continua sulla pagina successiva.</p>
+    <p><strong>Novità v6.12.9:</strong> il <strong>Torneo Libero</strong> è ora disponibile anche con i <strong>Giocatori Singoli</strong> (scegli tu i quattro giocatori di ogni partita) e nei menu ogni giocatore compare una sola volta. Su <strong>iPhone</strong> la stampa torna ad aprire il documento in una pagina con l'anteprima e il menu di stampa.</p>
+    <p><strong>Novità v6.12.8:</strong> la stampa su iPhone e iPad torna a funzionare come prima, direttamente dall'app (anche installata): si apre il menu di stampa di iOS. Elenco giocatori e classifiche con nomi, pill ELO e icone più grandi.</p>
+    <p><strong>Novità v6.12.7:</strong> nel Messicano i pulsanti di stampa non vanno più a capo su iPhone e il pulsante <strong>Chiudi</strong> è sempre raggiungibile.</p>
+    <p><strong>Novità v6.12.6:</strong> i campi punteggio non mostrano più lo 0 da cancellare: toccando un campo il valore viene selezionato e sostituito. Elenco giocatori e classifiche con nomi di nuovo leggibili (su due righe).</p>
+    <p><strong>Novità v6.12.5:</strong> il Torneo Messicano salvato come <em>In Programma</em> compare subito in <em>Tornei</em> con la pill <em>In Corso - Inserisci Risultati</em>; dopo ogni salvataggio o completamento l'app torna sempre a <em>Tornei</em>.</p>
+    <p><strong>Novità v6.12.4:</strong> il <strong>Torneo Messicano</strong> ora si gioca turno per turno con <strong>Procedi</strong> (salvataggio automatico) e si chiude con <strong>Concludi Torneo</strong> (classifica ed ELO), con ripresa dal turno in corso. Stampe su iPad e iPhone più affidabili, conferma delle nuove coppie nel <strong>Bypass / Modifica</strong> corretta, pulsanti e punteggi più grandi e leggibili, contrasti migliorati.</p>
+    <p><strong>Novità v6.12.3:</strong> stampe su iPhone e iPad più affidabili (niente pagine bianche tra i profili giocatore e nessuna alterazione dell'app durante la stampa), nomi dei giocatori gestiti in modo sicuro nei PDF, pulsanti e punteggi più comodi da toccare, e maggiore affidabilità nel salvataggio dei tornei e nel calcolo dell'ELO.</p>
+    <p><strong>Novità v6.12.0:</strong> nelle fasi finali calcolate (Beat the Box, Gironi + Fase Finale, Round Robin + Finali, Torneo Personale) è disponibile la funzione <strong>"Bypass / Modifica"</strong>, che permette di correggere le coppie scese realmente in campo quando il referto cartaceo non coincide con il calcolo dell'app. La procedura è sicura e in 3 passaggi (richiesta, conferma dell'irreversibilità, conferma delle nuove coppie) e impedisce i duplicati.</p>
+    <p><strong>Novità v6.11.1:</strong> nella stampa dei profili è disponibile l'opzione <strong>"Giocatori Singolo Torneo"</strong>: scegli un torneo e stampi solo i giocatori che hanno disputato almeno una partita con punteggio registrato, con statistiche e grafico ELO (Start, E1, E2...) riferiti a quel torneo.</p>
+</div>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Padel ELO<br>Manager</div>
+            <div class="app-sub">v6.13.0 / Nov 2026</div>
+            <div class="mini-card">
+                <h5>Panoramica</h5>
+                <span class="mini-pill">Giocatori 28</span>
+                <span class="mini-pill">Partite 202</span>
+                <span class="mini-pill">Giornate 48</span>
+            </div>
+            <div class="mini-card">
+                <h5>Menu rapido</h5>
+                <div class="mini-list">
+                    <div>Tornei</div>
+                    <div>Classifiche</div>
+                    <div>Risultati</div>
+                    <div>Statistiche</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Home su smartphone / PWA</h4>
+        <p>La Home (Panoramica) mostra lo stato generale del circolo. Dal menu raggiungi le sezioni operative: Tornei, Sorteggi, Risultati, Classifiche, Giocatori e Statistiche.</p>
+        <p>Su telefono l'app è pensata per essere usata come PWA: puoi tenerla sulla schermata Home e lavorare durante la giornata di torneo.</p>
+    </div>
+</div>
+
+<h2>2. Accesso, Home e navigazione</h2>
+<p>L'accesso avviene tramite <strong>codice a 6 cifre</strong>. Ogni codice porta dentro il workspace di un circolo, cioè un ambiente separato con i propri giocatori, tornei, classifiche e risultati: i dati di ogni circolo sono isolati da quelli degli altri.</p>
+
+<div class="step"><div class="step-num">1</div><div class="step-text"><strong>Apri l'app</strong> dal browser o dalla PWA installata sul telefono.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text"><strong>Inserisci il codice</strong> a 6 cifre ricevuto dall'amministratore.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text"><strong>Entra nella Home</strong> e usa il menu per raggiungere la sezione che ti serve.</div></div>
+
+<div class="warning-box">
+    <p><strong>Codici temporanei:</strong> l'amministratore può creare codici con scadenza, ad esempio 8 ore, 24 ore, 48 ore o 7 giorni. Un codice scaduto o disattivato non permette nuovi accessi e l'app chiede di inserirne uno nuovo.</p>
+</div>
+
+<p>La sessione resta attiva sul dispositivo, quindi non devi reinserire il codice a ogni apertura.</p>
+
+<h3>Home (Panoramica)</h3>
+<p>La Home riassume la situazione del circolo:</p>
+<ul>
+    <li><strong>azioni rapide</strong> per iniziare un nuovo sorteggio o inserire una giornata;</li>
+    <li>i <strong>primi 5 giocatori</strong> della classifica;</li>
+    <li>l'<strong>ultima giornata completata</strong>;</li>
+    <li>le <strong>ultime partite</strong> giocate.</li>
+</ul>
+
+<h3>Navigazione, tema e installazione</h3>
+<ul>
+    <li><strong>Su smartphone</strong> usi la barra in basso: Home, Tornei, Classifiche, Giocatori e Stats.</li>
+    <li><strong>Su computer e tablet</strong> usi il menu laterale, che comprende anche Risultati, Sorteggi, Statistiche e, se hai i privilegi, Admin.</li>
+    <li><strong>Tema chiaro o scuro</strong>: puoi cambiarlo con l'interruttore in alto.</li>
+    <li><strong>Installazione sulla schermata Home</strong>: da Safari su iPhone e iPad, oppure dal browser su Android, puoi aggiungere l'app alla schermata Home e usarla come una normale app.</li>
+</ul>
+
+<h2>3. Giocatori e profili</h2>
+<p>Nella sezione <strong>Giocatori</strong> puoi:</p>
+<ul>
+    <li><strong>aggiungere un giocatore</strong> indicando nome, cognome, posizione in campo (<em>Sinistra</em>, <em>Destra</em> o <em>Indifferente</em>) ed ELO iniziale (di default 1500). ELO e livello Playtomic sono collegati: se modifichi uno dei due, l'altro si aggiorna subito;</li>
+    <li><strong>modificare</strong> nome, cognome, posizione ed ELO/Playtomic;</li>
+    <li><strong>eliminare</strong> un giocatore;</li>
+    <li><strong>aprire il profilo giocatore</strong>, con grafico dell'andamento ELO, compagni e avversari più frequenti e storico delle giornate.</li>
+</ul>
+
+<div class="info-box">
+    <p><strong>Giocatore Esistente Trovato:</strong> se aggiungi un giocatore con un nome simile a uno già presente, l'app mostra la finestra <em>"Giocatore Esistente Trovato"</em> e ti chiede se collegare l'inserimento al giocatore esistente oppure crearne uno nuovo. In questo modo eviti i doppioni.</p>
+</div>
+
+<h3>Stampa dei profili giocatore</h3>
+<p>Il pulsante di stampa offre tre opzioni:</p>
+<ol>
+    <li><strong>Tutti i Giocatori</strong>: stampa l'intero archivio.</li>
+    <li><strong>Giocatori Singolo Torneo</strong>: scegli un torneo dal menu a tendina. L'app stampa soltanto i giocatori che hanno disputato almeno una partita con punteggio registrato in quel torneo; statistiche e grafico ELO (<em>Start</em>, <em>E1</em>, <em>E2</em>...) sono riferiti solo a quel torneo.</li>
+    <li><strong>Scegli Giocatori</strong>: selezioni a mano i giocatori da stampare.</li>
+</ol>
+<p>Ogni giocatore occupa una pagina del PDF.</p>
+
+<h2>4. Sorteggi: cosa vuoi organizzare oggi</h2>
+<p>Nella sezione <strong>Sorteggi</strong> un percorso guidato ti chiede <strong>"Cosa vuoi organizzare oggi?"</strong>. I flussi disponibili sono cinque: <strong>Multi Giornata</strong>, <strong>Torneo a Squadre</strong>, <strong>Torneo Singolo</strong>, <strong>Nuova Giornata</strong> e <strong>Crea Torneo Personale</strong>. I due approcci principali per i tornei a coppie sono complementari e si adattano a ogni esigenza del circolo:</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Cosa vuoi<br>organizzare oggi?</div>
+            <div class="mini-card">
+                <h5>Scelte disponibili</h5>
+                <div class="mini-button">Multi Giornata ↗</div>
+                <div class="mini-button green">Torneo a Squadre ↗</div>
+                <div class="mini-button orange">Torneo Singolo ↗</div>
+                <div class="mini-button blue">Nuova Giornata ↗</div>
+                <div class="mini-button">Crea Torneo Personale ↗</div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>I due approcci principali</h4>
+        <p><strong>1. Multi Giornata (si parte dai giocatori):</strong> scegli questo percorso se conosci già il numero di giocatori o di coppie presenti al circolo. Inserisci i partecipanti e l'app ti proporrà automaticamente tutti e soli i formati compatibili.</p>
+        <p><strong>2. Torneo Singolo (si parte dal formato):</strong> scegli questo percorso se hai in mente un formato specifico per un evento in una sola giornata (ad esempio <em>Americano</em>, <em>Beat the Box</em>, <em>Gironi + Fase Finale</em>). Scegli prima il formato e, al passo successivo, l'app ti indicherà il numero di giocatori necessario.</p>
+    </div>
+</div>
+
+<table>
+    <thead><tr><th>Modalità</th><th>Approccio di partenza</th><th>Quando usarla</th><th>Risultato</th></tr></thead>
+    <tbody>
+        <tr><td><strong>Multi Giornata</strong></td><td>Parti dai <strong>giocatori presenti</strong></td><td>Sai quanti giocatori hai al circolo.</td><td>L'app propone i formati compatibili col numero di coppie.</td></tr>
+        <tr><td><strong>Torneo Singolo</strong></td><td>Parti dal <strong>formato desiderato</strong></td><td>Vuoi un evento specifico in una sola giornata.</td><td>Scegli il formato, l'app richiede il numero giusto di coppie o giocatori.</td></tr>
+        <tr><td><strong>Torneo a Squadre</strong></td><td>Parti dalle <strong>squadre del campionato</strong></td><td>Sfide tra club o team.</td><td>Configuri squadre numerate, giocatori e giornate.</td></tr>
+        <tr><td><strong>Nuova Giornata</strong></td><td>Parti dal <strong>torneo esistente</strong></td><td>Vuoi aggiungere una tappa a una serie già avviata.</td><td>La nuova giornata si collega allo storico del torneo di partenza.</td></tr>
+        <tr><td><strong>Crea Torneo Personale</strong></td><td>Parti dalle <strong>fasi che vuoi comporre</strong></td><td>Vuoi un torneo su misura, con Coppie Fisse o Giocatori Singoli.</td><td>Componi le fasi con il drag and drop: Box, Americano, Gironi, TorneOtto, Quarti, Semifinali e Finali.</td></tr>
+    </tbody>
+</table>
+
+<p>In qualsiasi momento puoi premere <strong>← Torna indietro</strong>, in alto, per tornare alla schermata iniziale. Su smartphone il pulsante per proseguire è fissato in basso, così lo raggiungi comodamente con una sola mano.</p>
+
+<h3>Coppie Fisse o Giocatori Singoli</h3>
+<p>In alto puoi passare da una modalità all'altra:</p>
+<ul>
+    <li><strong>Coppie Fisse</strong>: selezioni i partecipanti, scegli come formare le coppie (Casuale, Bilanciato, Teste di Serie o Manuale) e confermi.</li>
+    <li><strong>Giocatori Singoli</strong>: scegli quanti partecipanti ci sono e chi sono. Il Messicano richiede un multiplo di 4 (8, 12, 16, 20 o 24); gli altri formati accettano 4, 5, 6, 7, 8 o più giocatori. L'app propone solo i formati adatti ai singoli: <strong>Messicano</strong>, <strong>Americano</strong>, <strong>Box</strong> (Beat the Box singoli, con distribuzione a teste di serie secondo l'ELO, così che le prime due teste di serie non finiscano nello stesso box), <strong>Torneo Libero</strong> (partite a piacimento: scegli tu i quattro giocatori di ogni partita) e <strong>Crea Torneo Personale</strong>.</li>
+</ul>
+
+<h2>5. Inserimento risultati: in tempo reale o da foglio stampato, salvataggi progressivi</h2>
+<p>L'app è flessibile: va bene sia per chi gestisce l'evento in digitale, sia per chi preferisce la classica carta e penna a bordo campo.</p>
+
+<h3>Flessibilità di inserimento</h3>
+<ul>
+    <li><strong>Flusso cartaceo (offline)</strong>: generi il torneo, stampi il PDF in bianco (le schede partita vuote) e lo affiggi in bacheca o lo consegni ai giocatori di ogni campo. Gli atleti compilano a mano i punteggi e ti restituiscono la scheda. A fine evento, o a blocchi, carichi i punteggi al desk in pochi minuti.</li>
+    <li><strong>Flusso digitale (in tempo reale)</strong>: se hai un tablet o un computer, o gestisci il torneo dallo smartphone a bordo campo, puoi evitare del tutto le stampe. Tocca la scheda di una partita per aprire l'inserimento del punteggio, digita i set e premi "Salva Risultato": la classifica del torneo si aggiorna subito. L'ELO dei giocatori viene aggiornato al completamento del torneo (vedi sezione 11).</li>
+</ul>
+
+<h3>Salvataggi progressivi</h3>
+<div class="info-box">
+    <p><strong>Salva un po' alla volta:</strong> i tornei richiedono tempo. Non devi aspettare la fine di tutte le partite né inserire tutti i punteggi insieme: puoi salvare anche una partita alla volta.</p>
+</div>
+<p>I dati vengono salvati subito sul database cloud. Se chiudi l'app, si scarica il dispositivo o decidi di sospendere il torneo e riprenderlo il giorno dopo, non perdi nulla: rientrando in <strong>Risultati</strong> trovi il torneo esattamente come lo hai lasciato.</p>
+<p>Nei tornei a più fasi (come <em>Gironi + Fase Finale</em> o <em>Beat the Box</em>), le fasi finali (quarti, semifinali o finali) vengono calcolate e si sbloccano automaticamente non appena tutte le partite della fase precedente sono state completate e registrate.</p>
+
+<h2>6. Creare una giornata a Coppie Fisse o Giocatori Singoli</h2>
+<p>Questo flusso vale per i tornei classici, escluso il Torneo a Squadre, che ha un pannello di gestione dedicato.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Sorteggio</div>
+            <div class="mini-card">
+                <h5>Numero coppie</h5>
+                <span class="mini-pill">4</span><span class="mini-pill">6</span><span class="mini-pill">8</span><span class="mini-pill">10</span>
+            </div>
+            <div class="mini-card">
+                <h5>Tipo di sorteggio</h5>
+                <div class="mini-list">
+                    <div>Casuale</div>
+                    <div>Bilanciato</div>
+                    <div>Teste di serie</div>
+                    <div>Manuale</div>
+                </div>
+            </div>
+            <div class="mini-button">Avvia sorteggio</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Impostare il sorteggio</h4>
+        <p>Inserisci il <strong>numero di coppie da sorteggiare</strong> e scegli il <strong>tipo di sorteggio</strong>. Questo passaggio non riguarda il Torneo a Squadre, che ha un flusso dedicato.</p>
+        <p>Dopo l'avvio, l'app prepara le coppie o la configurazione necessaria per il formato scelto.</p>
+    </div>
+</div>
+
+<ol>
+    <li>Scegli <strong>Coppie Fisse</strong> oppure <strong>Giocatori Singoli</strong>.</li>
+    <li>Indica il <strong>numero di coppie</strong> (o di giocatori) da sorteggiare.</li>
+    <li>Seleziona i giocatori disponibili.</li>
+    <li>Se giochi a Coppie Fisse, scegli il <strong>tipo di sorteggio</strong>:
+        <ul>
+            <li><strong>Casuale</strong>: abbinamenti decisi dal sorteggio.</li>
+            <li><strong>Bilanciato</strong>: accoppia un giocatore forte con uno meno forte (metodo a serpentina sull'ELO) per equilibrare le coppie.</li>
+            <li><strong>Teste di Serie</strong>: separa i giocatori più forti e li abbina agli altri.</li>
+            <li><strong>Manuale</strong>: scegli tu le coppie.</li>
+        </ul>
+    </li>
+    <li>Controlla le coppie generate e scegli il formato.</li>
+    <li>Decidi se creare un nuovo torneo o aggiungere una giornata a una serie esistente, poi imposta data e circolo.</li>
+    <li>Controlla il calendario: ogni partita è una scheda a tutta larghezza, con la Squadra A a sinistra, la Squadra B a destra, il badge <em>VS</em> al centro e i campi del punteggio sotto. I nomi dei due compagni stanno su righe separate, così non vengono tagliati.</li>
+    <li>Inserisci subito i risultati oppure salva il calendario per compilarli più tardi (se il formato lo permette).</li>
+</ol>
+
+<h2>7. 10 formati di torneo: regole e mini-guide</h2>
+<p>L'app include 10 formati di torneo, più il <strong>Match Singolo</strong> (una sola partita tra due coppie):</p>
+
+<h3>1. TorneOtto 30'</h3>
+<p><strong>Configurazione</strong>: esattamente 8 giocatori, con rotazione di compagni e campi, su 2 campi in parallelo.<br>
+<strong>Regole</strong>: formato a tempo. Si disputano 6 partite complessive (ogni coppia ne gioca 3) e ciascun match dura 30 minuti. Vince chi accumula più punti/game totali.<br>
+<strong>Uso</strong>: il formato ideale per serate rapide ed equilibrate, senza tempi morti.</p>
+
+<h3>2. Americano</h3>
+<p><strong>Configurazione</strong>: Giocatori Singoli, da 4 a 12 o più.<br>
+<strong>Regole</strong>: si gioca senza coppie fisse, con rotazione continua su tutti i campi. A ogni turno l'app rimescola i giocatori per formare coppie diverse, così ciascuno gioca con compagni e contro avversari diversi. La classifica finale è individuale ed è data dalla somma dei game vinti nei vari turni.<br>
+<strong>Uso</strong>: ideale per favorire la socializzazione nei gruppi misti.</p>
+
+<h3>3. Messicano (JIT)</h3>
+<p><strong>Configurazione</strong>: Giocatori Singoli, in numero multiplo di 4 (8, 12, 16, 20 o 24 partecipanti).<br>
+<strong>Regole</strong>: è un torneo a coppie mobili con classifica individuale basata sui punti/game fatti. Nel <strong>Turno 1</strong> scegli come distribuire i giocatori sui campi: teste di serie (<em>Seeded</em>), bilanciato (serpentina), casuale (<em>Normal</em>). A turno completo premi <strong>Procedi</strong>: l'app calcola il turno successivo (<em>Just-In-Time</em>) in base alla classifica provvisoria e lo <strong>salva in automatico</strong>; finché il turno in corso non è completo il pulsante resta disattivato e i turni successivi mostrano segnaposto come <em>[1° Class.] &amp; [4° Class.] vs [2° Class.] &amp; [3° Class.]</em>. I campi sono sempre da 4 giocatori (12 giocatori = 3 campi). Il Campo 1 è il <strong>Top Court</strong> (posizioni 1-4), i campi intermedi sono i <strong>Mid Courts</strong> e l'ultimo è il <strong>Flop Court</strong>. L'app evita di rimettere insieme compagni già avuti; se non è possibile, usa l'accoppiamento di merito (1° + 4° contro 2° + 3°). Può essere un evento a sé (giornata singola) oppure una tappa di una serie. L'ELO si aggiorna con K = 16 a somma zero, con supporto ai pareggi. Nell'ultimo turno il pulsante diventa <strong>Concludi Torneo</strong> e calcola classifica finale ed ELO. Puoi interrompere in qualsiasi momento e riprendere da <em>Risultati</em> dal turno in cui eri arrivato.<br>
+<strong>Uso</strong>: il massimo della competizione per tornei individuali, in cui il livello dei campi si adegua al merito turno dopo turno.</p>
+
+<h3>4. Round Robin + Finali</h3>
+<p><strong>Configurazione</strong>: da 4 a 12 Coppie Fisse.<br>
+<strong>Regole</strong>: girone all'italiana con gestione dei campi, andata e ritorno e riposi equi (ogni coppia sfida tutte le altre). La fase finale può essere solo girone, solo finale, oppure semifinali + finali.<br>
+<strong>Uso</strong>: il formato di campionato standard del circolo, per eleggere la coppia vincitrice.</p>
+
+<h3>5. Gironi + Fase Finale</h3>
+<p><strong>Configurazione</strong>: da 6 a 16 o più Coppie Fisse.<br>
+<strong>Regole</strong>: le coppie vengono divise in 2, 3 o 4 gironi separati. Alla fase finale (a eliminazione diretta, con quarti o semifinali) si qualificano le prime di ogni girone ed eventualmente le migliori seconde o terze, calcolate automaticamente dall'app. Dalle 8 coppie in su è possibile configurare anche i quarti di finale.<br>
+<strong>Uso</strong>: perfetto per tornei lunghi o domenicali con molti iscritti.</p>
+
+<h3>6. Beat the Box</h3>
+<p><strong>Configurazione</strong>: Coppie Fisse oppure Giocatori Singoli, divisi in box. Con i singoli, i giocatori sono distribuiti a teste di serie secondo l'ELO, in modo che le prime due teste di serie non finiscano nello stesso box.<br>
+<strong>Regole</strong>: nei box da 4 giocatori singoli si disputano 3 partite cambiando compagno a ogni match; i punteggi individuali determinano la classifica del box. Seguono le fasi finali tra i migliori.<br>
+<strong>Uso</strong>: molto competitivo e coinvolgente, perché si gioca con compagni diversi.</p>
+
+<h3>7. Eliminazione Diretta (TPRA)</h3>
+<p><strong>Configurazione</strong>: Coppie Fisse.<br>
+<strong>Regole</strong>: tabellone ad albero a eliminazione diretta, come nel tennis. Le teste di serie vengono posizionate in base all'ELO dei giocatori e l'app gestisce i BYE (turni di riposo) quando il tabellone è incompleto. Chi vince avanza, chi perde è eliminato.<br>
+<strong>Uso</strong>: per tornei ufficiali o eventi agonistici ad alta tensione.</p>
+
+<h3>8. Torneo Libero</h3>
+<p><strong>Configurazione</strong>: Coppie Fisse, a partire da 4 coppie.<br>
+<strong>Regole</strong>: accoppiamenti liberi, senza un calendario rigido. La classifica tiene conto dei punti accumulati (3 punti per la vittoria, 1 per il pareggio, 0 per la sconfitta).<br>
+<strong>Uso</strong>: per pomeriggi di sfide libere o raduni amichevoli non strutturati.</p>
+
+<h3>9. Torneo Personale (Crea Torneo Personale)</h3>
+<p><strong>Configurazione</strong>: Coppie Fisse oppure Giocatori Singoli.<br>
+<strong>Regole</strong>: componi il torneo a tuo piacimento scegliendo le fasi con il trascinamento (drag and drop): Box, Americano, Gironi, TorneOtto, Quarti, Semifinali e Finali. Le fasi finali calcolate possono essere corrette con <strong>Bypass / Modifica</strong> (vedi sezione 10).<br>
+<strong>Uso</strong>: per eventi su misura che non rientrano negli altri formati.</p>
+
+<h3>10. Torneo a Squadre</h3>
+<p>Vedi la sezione successiva, dedicata a questo formato.</p>
+
+<h2>8. Torneo a Squadre: guida completa</h2>
+<p>Il <strong>Torneo a Squadre</strong> non segue il percorso dei tornei a coppie: serve a gestire campionati tra club o squadre del circolo. Si articola in tre fasi:</p>
+
+<h3>Fase 1: creazione del torneo</h3>
+<p>In questa fase crei il contenitore principale del torneo:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Accedi alla pagina <strong>Tornei</strong> e premi <strong>Nuovo torneo / Nuova giornata</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Nella pagina <strong>Sorteggi</strong>, tra le opzioni di sorteggio, scegli <strong>Torneo a Squadre</strong>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Inserisci il nome del torneo, il circolo, il numero di squadre e il numero di giocatori per squadra (valori iniziali, modificabili in seguito).</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Conferma la creazione: il torneo compare in <strong>Tornei</strong> nel blocco <strong>Gestione torneo</strong>, con la configurazione ancora da completare.</div></div>
+
+<h3>Fase 2: Completa configurazione</h3>
+<p>Prima di giocare devi impostare le regole e le rose delle squadre:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Trova il torneo in <strong>Tornei</strong> e premi il pulsante <strong>+ Completa configurazione</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Imposta le opzioni del torneo: per ora è selezionabile solo il <em>Round Robin</em> (girone all'italiana); gli altri formati verranno attivati in seguito.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Imposta la fase finale, il tipo di punteggio e quante partite compongono la sfida (giornata) tra due squadre: <strong>3 partite</strong> o <strong>5 partite</strong>.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Per ogni squadra: premi "Modifica", imposta il nome e inserisci i giocatori (nome e cognome). Per giocare 5 partite servono almeno 8 giocatori per squadra.</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-text">Il pulsante arancione <strong>Completa configurazione</strong> si attiva solo quando i dati minimi sono completi: premilo per attivare il torneo. Quando esistono dei risultati, alcune opzioni non sono più modificabili.</div></div>
+
+<h3>Fase 3: inserimento delle giornate</h3>
+<p>Una volta completata la configurazione, puoi gestire il calendario delle sfide:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Nel blocco <strong>Gestione torneo</strong> premi <strong>+ Inserisci giornata</strong>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Scegli la data e la sfida squadra contro squadra (ad esempio Squadra A vs Squadra B). Le combinazioni già giocate sono escluse.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Inserisci i giocatori delle 3 o 5 partite della serata, scegliendoli dalle rose delle due squadre. Ogni giocatore gioca al massimo una partita a sera.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-text">Salva la giornata. Ora puoi stamparla, inserire i risultati partita per partita (in tempo reale o in un secondo momento) e chiudere la giornata.</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-text">A girone completato, il pulsante diventa <strong>+ Inserisci Finali</strong> e usa le partite finali già calcolate. A fase finale completata diventa <strong>Riepilogo</strong> e apre la pagina di riepilogo: il PDF di riepilogo include in fondo anche le statistiche e la classifica individuale dei giocatori.</div></div>
+
+<h2>9. Stampa e PDF</h2>
+<p>Quando il tabellone è creato, puoi stampare o condividere il PDF. È il documento da portare in campo e far compilare a mano dai giocatori.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Tabellone</div>
+            <div class="mini-card">
+                <h5>Partita 1</h5>
+                <div class="mini-row"><span>Rossi &amp; Bianchi</span><strong>vs</strong></div>
+                <div class="mini-row"><span>Verdi &amp; Neri</span><strong></strong></div>
+            </div>
+            <div class="mini-card">
+                <h5>Azioni</h5>
+                <div class="mini-button green">Salva giornata</div>
+                <div class="mini-button">Stampa PDF</div>
+                <div class="mini-button orange">Inserisci risultati</div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Tre possibilità dopo il tabellone</h4>
+        <p><strong>Salva</strong> la giornata se vuoi recuperarla più tardi. <strong>Stampa PDF</strong> se vuoi consegnare il foglio ai giocatori. <strong>Inserisci risultati</strong> se carichi subito i punteggi.</p>
+        <p>Il salvataggio è il passaggio da non saltare: senza una giornata salvata, non trovi poi la partita in Risultati.</p>
+    </div>
+</div>
+
+<div class="warning-box">
+    <p><strong>Non dimenticare di salvare.</strong> Il PDF serve per il campo, ma il salvataggio serve all'app per ritrovare la giornata in seguito.</p>
+</div>
+
+<p>Ogni formato ha il proprio PDF, in due versioni: <strong>in bianco</strong> (da stampare prima del torneo e far compilare a mano) e <strong>completo</strong> (con risultati e classifiche). Tutti i PDF hanno lo stesso stile e lo stesso piè di pagina.</p>
+
+<h3>Come si stampa a seconda del dispositivo</h3>
+<ul>
+    <li><strong>Computer e Android</strong>: l'app apre il documento in una nuova scheda. In alto trovi la barra con <strong>Stampa / Salva PDF</strong> e <strong>Chiudi</strong>; la barra non compare nella stampa.</li>
+    <li><strong>iPhone e iPad (Safari o app installata)</strong>: si apre una pagina con il documento creato dall'app e subito dopo il menu di stampa di iOS (AirPrint): puoi stampare, oppure allargare l'anteprima con due dita (pinch) per ottenere il PDF da condividere o salvare; poi chiudi la pagina con il pulsante di Safari. Se compare l'avviso "Impossibile aprire la finestra di stampa", riprova.</li>
+    <li><strong>Profili giocatore</strong>: una pagina per ogni giocatore.</li>
+</ul>
+<div class="info-box">
+    <p><strong>Il documento non si apre?</strong> Controlla che il browser non blocchi i popup per questo sito.</p>
+</div>
+
+<h2>10. Inserire i risultati, correggere le fasi finali (Bypass / Modifica) e creare il resoconto</h2>
+<p>Dopo che i giocatori hanno compilato il foglio in campo, rientra nell'app e registra i punteggi reali.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Risultati</div>
+            <div class="mini-card">
+                <h5>Giornate salvate</h5>
+                <div class="mini-list">
+                    <div>ATP Platinum - 30/04</div>
+                    <div>TorneOtto Inverno 2025</div>
+                    <div>Six Flags Test</div>
+                </div>
+            </div>
+            <div class="mini-card">
+                <h5>Punteggio</h5>
+                <div class="mini-row"><span>Set 1</span><strong>6 - 4</strong></div>
+                <div class="mini-row"><span>Set 2</span><strong>7 - 5</strong></div>
+            </div>
+            <div class="mini-button green">Salva risultati</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Recupero da Risultati</h4>
+        <p>Vai in <strong>Risultati</strong>, apri la giornata salvata, riporta i punteggi del foglio e conferma. Dopo il salvataggio puoi creare il PDF finale e controllare classifiche e statistiche.</p>
+    </div>
+</div>
+
+<ol>
+    <li>Vai su <strong>Risultati</strong>.</li>
+    <li>Apri la giornata salvata.</li>
+    <li>Inserisci i punteggi reali.</li>
+    <li>Controlla vincitori e set.</li>
+    <li>Salva i risultati.</li>
+    <li>Genera il PDF o il resoconto finale.</li>
+</ol>
+
+<p>In <strong>Risultati</strong> puoi anche aprire un torneo, modificare i set, salvare e stampare il report del torneo. Nei tornei a più fasi, se modifichi una fase iniziale già conclusa, l'app elimina semifinali e finali e le rigenera in modo coerente (reset a cascata).</p>
+
+<h3>Bypass / Modifica delle fasi finali</h3>
+<p>A volte il referto cartaceo contiene un errore e le coppie che hanno giocato semifinali o finali non coincidono con quelle calcolate dall'app. In tutte le fasi finali calcolate (Beat the Box, Gironi + Fase Finale, Round Robin + Finali, Torneo Personale) trovi in alto a destra il pulsante rosso <strong>Bypass / Modifica</strong>. La procedura ha tre passaggi:</p>
+<div class="step"><div class="step-num">1</div><div class="step-text">Premi <strong>Bypass / Modifica</strong>: compare l'avviso <em>"Stai per modificare la fase finale del torneo. L'azione è irreversibile. Vuoi proseguire?"</em></div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text">Premi <strong>Sì, procedi</strong>: ogni giocatore delle coppie diventa un menu a tendina.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text">Scegli le coppie reali e premi <strong>Conferma Nuove Coppie</strong>.</div></div>
+
+<div class="warning-box">
+    <p><strong>Regole di sicurezza:</strong> un giocatore già scelto in uno slot non è selezionabile negli altri; si possono scegliere solo i giocatori che hanno partecipato al torneo; le coppie devono essere complete e senza duplicati; i punteggi già inseriti restano; l'ELO viene calcolato sulle coppie che sono scese in campo davvero.</p>
+</div>
+
+<h2>11. Classifiche, Statistiche ed ELO-Playtomic</h2>
+<p>Quando i risultati sono salvati, l'app aggiorna classifiche e statistiche.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Statistiche</div>
+            <div class="mini-card">
+                <h5>Filtro torneo</h5>
+                <div class="mini-button">TorneOtto Inverno 2025</div>
+            </div>
+            <div class="mini-card">
+                <h5>Top giocatori</h5>
+                <div class="mini-row"><span>1. Roberto</span><strong>1737</strong></div>
+                <div class="mini-row"><span>2. Mattia</span><strong>1672</strong></div>
+                <div class="mini-row"><span>3. Alberto</span><strong>1563</strong></div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Dopo i risultati</h4>
+        <p><strong>Classifiche</strong> mostra la classifica ELO. <strong>Statistiche</strong> mostra l'analisi del torneo o della serie: migliori giocatori, games, serie di vittorie, coppie frequenti e dati parziali se il torneo è ancora in corso.</p>
+    </div>
+</div>
+
+<div class="info-box">
+    <p><strong>Integrazione ELO-Playtomic:</strong> nella gestione dei giocatori e nelle classifiche, il punteggio ELO viene convertito automaticamente nel livello Playtomic equivalente. In questo modo chiunque capisce subito il proprio livello e può confrontarlo con la scala Playtomic.</p>
+</div>
+
+<h3>Classifiche</h3>
+<p>In <strong>Classifiche</strong> puoi:</p>
+<ul>
+    <li>vedere la classifica globale del circolo, con il podio;</li>
+    <li>filtrare per serie di tornei;</li>
+    <li>impostare la <strong>soglia di presenze</strong>: i giocatori sotto la soglia vengono mostrati in fondo;</li>
+    <li>vedere l'andamento dell'ELO;</li>
+    <li>stampare la classifica e il grafico ELO.</li>
+</ul>
+
+<h3>Statistiche</h3>
+<p>In <strong>Statistiche</strong> puoi:</p>
+<ul>
+    <li>filtrare per serie di tornei;</li>
+    <li>vedere i migliori giocatori, i premi, le serie di vittorie, le sorprese (upset) e il picco ELO;</li>
+    <li>consultare la <strong>forma recente</strong>, indicata con <strong>V</strong> (vittoria) e <strong>P</strong> (persa);</li>
+    <li>stampare il riepilogo.</li>
+</ul>
+<p>Per i tornei a squadre c'è una sezione dedicata, selezionabile dal filtro, e il PDF delle statistiche è separato dal report del torneo.</p>
+
+<h3>Come funziona l'ELO</h3>
+<ul>
+    <li>Ogni giocatore parte da <strong>1500</strong> punti, oppure dal valore che imposti tu.</li>
+    <li>In tutti i formati l'app usa lo stesso fattore <strong>K = 16</strong>. In ogni partita i punti guadagnati da una coppia sono esattamente quelli persi dall'altra (somma zero), quindi il punteggio totale non cresce a vuoto.</li>
+    <li>Battere una coppia più forte vale più punti; battere una coppia più debole ne vale pochi.</li>
+    <li>Nei tornei l'ELO si aggiorna <strong>al completamento del torneo</strong>, non a ogni singola partita. Se correggi un risultato e completi di nuovo il torneo, l'ELO viene ricalcolato correttamente.</li>
+    <li>Il livello Playtomic equivalente si ricava automaticamente dall'ELO.</li>
+</ul>
+
+<h2>12. Admin, Workspace e codici di accesso</h2>
+<p>Se il tuo codice ha privilegi di amministratore, in <strong>Admin</strong> trovi quattro sezioni:</p>
+<ul>
+    <li><strong>Workspace</strong>: crei i circoli, li attivi o disattivi e puoi entrare in un circolo (impersonificazione). Nella stessa pagina trovi anche <em>Ricalcola ELO</em> (allinea i valori correnti allo storico, per tutti i circoli) e il ricalcolo completo. Sono operazioni delicate: usale solo se sai che servono.</li>
+    <li><strong>Accessi</strong>: generi e disattivi i codici di accesso, con scadenza facoltativa. Quando disponibile, vedi il codice in chiaro.</li>
+    <li><strong>Invia dati</strong>: copi un torneo da un circolo a un altro. L'operazione è atomica: o viene copiato tutto, oppure niente.</li>
+    <li><strong>Audit Log</strong>: consulti gli ultimi accessi e le operazioni registrate.</li>
+</ul>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Admin</div>
+            <div class="mini-card">
+                <h5>Genera nuovo codice</h5>
+                <div class="mini-row"><span>Workspace</span><strong>Principale</strong></div>
+                <div class="mini-row"><span>Nome Utilizzatore</span><strong>Marco</strong></div>
+                <div class="mini-row"><span>Scadenza</span><strong>24 ore</strong></div>
+            </div>
+            <div class="mini-button green">Genera</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Codici temporanei</h4>
+        <p>Puoi creare codici per collaboratori o amici che devono inserire una giornata. Dopo la scadenza il codice non permette più nuovi accessi.</p>
+        <p>La cancellazione di un workspace elimina anche i codici collegati. Non puoi cancellare il workspace in uso né l'ultimo workspace disponibile.</p>
+    </div>
+</div>
+
+<table>
+    <thead><tr><th>Scadenza codice</th><th>Quando usarla</th></tr></thead>
+    <tbody>
+        <tr><td>Nessuna</td><td>Utente abituale.</td></tr>
+        <tr><td>8 ore</td><td>Aiuto temporaneo per una singola giornata.</td></tr>
+        <tr><td>24 / 48 ore</td><td>Collaboratore che deve inserire risultati o gestire una sessione.</td></tr>
+        <tr><td>7 giorni</td><td>Evento o torneo distribuito su più giorni.</td></tr>
+    </tbody>
+</table>
+
+<h2>13. Domande frequenti</h2>
+
+<h3>Devo creare un nuovo torneo ogni volta?</h3>
+<p>No. Se è la stessa serie, usa <strong>Nuova Giornata</strong> per agganciarla a un torneo esistente. Creare sempre tornei nuovi rende lo storico meno leggibile.</p>
+
+<h3>Quando uso Risultati?</h3>
+<p>Quando devi recuperare una giornata salvata, inserire i punteggi dopo il campo o correggere un risultato già presente.</p>
+
+<h3>Cosa fanno le icone di stampa e condivisione?</h3>
+<p>Generano il PDF: il tabellone in bianco prima della giornata o il riepilogo completo dopo i risultati.</p>
+
+<h3>Posso far compilare il PDF a mano?</h3>
+<p>Sì. Il flusso consigliato è: crea la giornata, salvala, stampa il PDF, portalo in campo e fallo compilare a mano; poi recupera la giornata da Risultati e inserisci i punteggi finali.</p>
+
+<h3>Cosa succede se un codice scade?</h3>
+<p>Il codice scaduto non permette nuovi accessi. Le sessioni già aperte restano valide fino alla loro scadenza naturale.</p>
+
+<h3>Il PDF non si apre o la stampa non parte. Cosa faccio?</h3>
+<p>Controlla che il browser non blocchi i popup per questo sito. Su iPhone e iPad si apre una pagina con il documento e poi il menu di stampa di iOS (AirPrint); su computer e Android il documento si apre in una nuova scheda con la barra <strong>Stampa / Salva PDF</strong>.</p>
+
+<h3>Ho sbagliato le coppie delle semifinali o delle finali. Posso correggerle?</h3>
+<p>Sì, con il pulsante <strong>Bypass / Modifica</strong> presente nelle fasi finali calcolate (vedi sezione 10).</p>
+
+<div class="footer">
+    Padel ELO Manager v6.13.0 - Guida all'uso - Novembre 2026
+</div>
+
+</body>
+</html>

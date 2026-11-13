@@ -558,9 +558,10 @@ describe('Verifica Completezza PDF - Singoli e Coppie (Tutte le fasi incluse)', 
         });
 
         expect(blankHtml).toContain('Tabellone Vuoto');
-        expect(blankHtml).toContain('[1° Class.] & [4° Class.]');
-        expect(blankHtml).toContain('[2° Class.] & [3° Class.]');
+        expect(blankHtml).not.toContain('[1° Class.]');
+        expect(blankHtml).not.toContain('[2° Class.]');
         expect(blankHtml).toContain('score-box');
+        expect(blankHtml).toContain('score-box-blank');
         expect(blankHtml).not.toContain('CLASSIFICA INDIVIDUALE');
         expect(blankHtml).toContain('<svg');
         expect(blankHtml).toContain('#0055D4');

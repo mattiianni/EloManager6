@@ -18,7 +18,10 @@ describe('Messicano - stampa in bianco', () => {
         } as Tournament;
         const html = generateMexicanPdfHtml(tournament, matches, id => players.find(p => p.id === id), 'Test', true);
         for (let r = 1; r <= 6; r++) expect(html).toContain(`Turno ${r}`);
-        expect(html).toContain('[1° Class.]');
+        // Nella stampa in bianco le caselle dei turni non ancora generati devono essere vuote per scrittura a mano
+        expect(html).not.toContain('[1° Class.]');
+        expect(html).toContain('score-box-blank');
+        expect(html).toContain('background: #ffffff !important');
         // Turno 1: nomi reali
         expect(html).toContain('Cognome');
     });
