@@ -579,86 +579,129 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
 
 // Stampa per iPhone in modalità Standalone (PWA installata sulla Home).
 // Poiché WebKit nel container WebClip di iPhone non supporta window.print(),
-// apriamo il documento formattato in Safari con auto-print e la barra Apple HIG
-// con il pulsante "Stampa con AirPrint" e "Chiudi".
-export const printInSafariForIPhone = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
+// convertiamo il documento in un vero PDF (application/pdf) e usiamo la Web Share API nativa.
+// iOS mostra l'anteprima e include l'azione di sistema "Stampa" (AirPrint) con opzioni e miniature,
+// mantenendo l'app al 100% a tutto schermo senza barre di Safari.
+export const printViaPdfShareForIPhone = async (title: string, content: string, pageStyles = ""): Promise<boolean> => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+    // Feedback visivo immediato Apple HIG
+    const loadingEl = document.createElement('div');
+    loadingEl.id = 'padel-pdf-loading';
+    loadingEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#ffffff;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;backdrop-filter:blur(10px);font-family:-apple-system,BlinkMacSystemFont,sans-serif;pointer-events:none;';
+    loadingEl.innerHTML = `<span style="font-size:16px;">⏳</span> Preparazione documento per AirPrint...`;
+    document.body.appendChild(loadingEl);
+
+    const cleanupLoading = () => {
+        const el = document.getElementById('padel-pdf-loading');
+        if (el) el.remove();
+    };
+
     try {
         const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
+        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
 
-        const toolbarHtml = `
-            <div class="print-toolbar no-print">
-                <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
-                <div class="print-toolbar-actions">
-                    <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa con AirPrint</button>
-                    <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
-                </div>
-            </div>
+        // Contenitore offscreen per il rendering fedele
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;color:#000000;padding:24px;box-sizing:border-box;z-index:-1;';
+        container.innerHTML = `
+            <style>
+                ${basePrintCss}
+                ${pageStyles}
+                ${extractedStyles}
+                body, html { background: #ffffff !important; color: #000000 !important; }
+                .no-print, .print-toolbar { display: none !important; }
+            </style>
+            ${cleanBody}
         `;
+        document.body.appendChild(container);
 
-        const fullHtml = `
-            <!DOCTYPE html>
-            <html lang="it">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>${escapeHtml(title)}</title>
-                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
-                ${getPrintStyles(true)}
-            </head>
-            <body>
-                ${toolbarHtml}
-                ${cleanBody}
-                <script>
-                    function triggerAutoPrint() {
-                        ${waitForPrintFontsScript}.finally(function() {
-                            setTimeout(function() {
-                                try {
-                                    window.print();
-                                } catch(e) {
-                                    console.error('Print error:', e);
-                                }
-                            }, 150);
-                        });
-                    }
-                    if (document.readyState === 'complete') {
-                        triggerAutoPrint();
-                    } else {
-                        window.addEventListener('load', triggerAutoPrint);
-                    }
-                <\/script>
-            </body>
-            </html>
-        `;
+        const { jsPDF } = await import('jspdf');
+        const html2canvas = (await import('html2canvas')).default;
 
-        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+        const canvas = await html2canvas(container, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            windowWidth: 794
+        });
 
-        if (existingWindow) {
-            existingWindow.location.replace(url);
-            setTimeout(() => URL.revokeObjectURL(url), 120000);
-            return true;
+        container.remove();
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
         }
 
-        const printWindow = window.open(url, '_blank');
-        if (!printWindow) {
-            URL.revokeObjectURL(url);
-            showHIGAlert('Impossibile aprire Safari per la stampa. Verifica che i popup non siano bloccati.');
-            return false;
+        cleanupLoading();
+
+        const pdfBlob = pdf.output('blob');
+        const cleanName = (title || 'Stampa').replace(/[^a-zA-Z0-9_\u00C0-\u017F-]/g, '_');
+        const file = new File([pdfBlob], `${cleanName}.pdf`, { type: 'application/pdf' });
+
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: title || 'Stampa'
+                });
+                return true;
+            } catch (shareErr: any) {
+                if (shareErr && shareErr.name === 'AbortError') {
+                    return true;
+                }
+                console.warn('navigator.share fallito, fallback a visualizzazione PDF:', shareErr);
+            }
         }
 
-        setTimeout(() => URL.revokeObjectURL(url), 120000);
+        // Fallback: apertura PDF per visualizzatore nativo iOS con pulsante Stampa
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const pdfWin = window.open(pdfUrl, '_blank');
+        if (!pdfWin) {
+            const a = document.createElement('a');
+            a.href = pdfUrl;
+            a.download = `${cleanName}.pdf`;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+        setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
         return true;
     } catch (error) {
-        console.error('printInSafariForIPhone error:', error);
-        showHIGAlert('Errore durante la preparazione della stampa per Safari.');
+        cleanupLoading();
+        console.error('printViaPdfShareForIPhone error:', error);
+        showHIGAlert('Errore durante la preparazione del documento per la stampa.');
         return false;
     }
 };
 
-// Fallback printing for iframes/blobs: su iPhone PWA apre Safari, su iPad/iOS usa printInWindow
+// Fallback printing for iframes/blobs: su iPhone PWA genera PDF AirPrint, su iPad/iOS usa printInWindow
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     if (isIPhoneStandalone()) {
-        return printInSafariForIPhone(title, htmlContent);
+        printViaPdfShareForIPhone(title, htmlContent);
+        return true;
     }
     if (isIOS()) {
         return printInWindow(title, htmlContent);
@@ -717,9 +760,13 @@ const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
 export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
         // Su iPhone PWA (Home Screen standalone), WebKit non gestisce UIPrintInteractionController:
-        // apriamo il documento formattato in Safari con barra AirPrint e auto-print.
+        // generiamo il PDF (application/pdf) e usiamo la Web Share API nativa con opzione AirPrint.
         if (isIPhoneStandalone()) {
-            return printInSafariForIPhone(title, content, pageStyles, existingWindow);
+            if (existingWindow) {
+                try { existingWindow.close(); } catch(e) {}
+            }
+            printViaPdfShareForIPhone(title, content, pageStyles);
+            return true;
         }
 
         const iOS = isIOS();

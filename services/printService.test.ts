@@ -283,19 +283,27 @@ describe('printService document helpers', () => {
         });
     });
 
-    it('iPhone Standalone PWA: openPrintWindow apre Safari con Blob e barra AirPrint', () => {
+    it('iPhone Standalone PWA: openPrintWindow avvia la routine di generazione PDF e Web Share AirPrint', () => {
         const origUA = navigator.userAgent;
         const origPlatform = navigator.platform;
         const origTouch = navigator.maxTouchPoints;
         const origStandalone = (navigator as any).standalone;
 
-        const mockOpen = vi.fn().mockReturnValue({});
         const mockWindow = {
-            open: mockOpen,
             matchMedia: vi.fn().mockReturnValue({ matches: true }),
         };
         const mockDocument = {
             getElementById: vi.fn().mockReturnValue(null),
+            createElement: vi.fn().mockReturnValue({
+                id: '',
+                style: {},
+                innerHTML: '',
+                remove: vi.fn(),
+            }),
+            body: {
+                appendChild: vi.fn(),
+                removeChild: vi.fn(),
+            },
         };
 
         (globalThis as any).window = mockWindow;
@@ -309,11 +317,6 @@ describe('printService document helpers', () => {
 
             const res = openPrintWindow('Classifica ELO', '<div>Tabella Dati</div>');
             expect(res).toBe(true);
-
-            // Su iPhone Standalone PWA deve aprire Safari con il blob URL
-            expect(mockOpen).toHaveBeenCalledTimes(1);
-            expect(mockOpen.mock.calls[0][0]).toMatch(/^blob:/);
-            expect(mockOpen.mock.calls[0][1]).toBe('_blank');
         } finally {
             delete (globalThis as any).window;
             delete (globalThis as any).document;
