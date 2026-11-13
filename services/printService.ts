@@ -374,6 +374,16 @@ export const isIOS = (): boolean => {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+export const isIPhoneStandalone = (): boolean => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+    const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = Boolean(
+        (navigator as any).standalone ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches)
+    );
+    return isIPhone && isStandalone;
+};
+
 /**
  * Normalizza il contenuto HTML per la stampa estraendo body e stili se il frammento fornito
  * include già tag <html>, <head> o <body>, evitando doppi documenti annidati.
@@ -445,6 +455,48 @@ const hoistTopLevelPageRules = (css: string): { pageRules: string; rest: string 
 export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
+        // Su iPhone in modalità PWA standalone (aggiunta a schermata Home), Apple WebKit
+        // non dispone del delegato di presentazione per UIPrintInteractionController e
+        // scarta silenziosamente window.print(). In questo specifico contesto, usiamo la
+        // Web Share API con il file HTML formattato: iOS apre istantaneamente il foglio
+        // nativo di condivisione di sistema che include direttamente l'azione nativa "Stampa" (AirPrint).
+        if (isIPhoneStandalone() && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+            try {
+                const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
+                const basePrintCss = getPrintStyles(true);
+                const fullHtml = `<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1024, initial-scale=1.0">
+    <title>${escapeHtml(title)}</title>
+    <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
+    ${basePrintCss}
+</head>
+<body>
+    ${cleanBody}
+</body>
+</html>`;
+                const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+                const cleanName = (title || 'stampa').replace(/[^a-zA-Z0-9_\u00C0-\u017F-]/g, '_');
+                const file = new File([blob], `${cleanName}.html`, { type: 'text/html' });
+
+                if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: title || 'Stampa'
+                    }).catch(err => {
+                        if (err && err.name !== 'AbortError') {
+                            console.error('Share error:', err);
+                        }
+                    });
+                    return true;
+                }
+            } catch (shareErr) {
+                console.warn('Web share fallback to in-window print:', shareErr);
+            }
+        }
+
         const existingRoot = document.getElementById('padel-print-root');
         if (existingRoot) existingRoot.remove();
         const existingStyle = document.getElementById('padel-print-style');

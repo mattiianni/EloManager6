@@ -283,6 +283,69 @@ describe('printService document helpers', () => {
         });
     });
 
+    it('iPhone Standalone PWA: usa navigator.share con File HTML se disponibile per aggirare il blocco di window.print()', () => {
+        const origUA = navigator.userAgent;
+        const origPlatform = navigator.platform;
+        const origTouch = navigator.maxTouchPoints;
+        const origStandalone = (navigator as any).standalone;
+        const origShare = navigator.share;
+        const origCanShare = navigator.canShare;
+
+        const mockShare = vi.fn().mockResolvedValue(undefined);
+        const mockCanShare = vi.fn().mockReturnValue(true);
+
+        const mockWindow = {
+            print: vi.fn(),
+            matchMedia: vi.fn().mockReturnValue({ matches: true }),
+        };
+        const mockDocument = {
+            getElementById: vi.fn().mockReturnValue(null),
+            head: { appendChild: vi.fn() },
+            body: { appendChild: vi.fn() },
+            createElement: vi.fn(() => ({ id: '', remove: vi.fn() })),
+        };
+
+        (globalThis as any).window = mockWindow;
+        (globalThis as any).document = mockDocument;
+
+        try {
+            Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', configurable: true });
+            Object.defineProperty(navigator, 'platform', { value: 'iPhone', configurable: true });
+            Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
+            Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
+            Object.defineProperty(navigator, 'share', { value: mockShare, configurable: true });
+            Object.defineProperty(navigator, 'canShare', { value: mockCanShare, configurable: true });
+
+            const res = openPrintWindow('Classifica ELO', '<div>Tabella Classifica</div>');
+            expect(res).toBe(true);
+            expect(mockCanShare).toHaveBeenCalled();
+            expect(mockShare).toHaveBeenCalled();
+            // window.print non deve essere chiamato perché su iPhone standalone WebKit lo scarta
+            expect(mockWindow.print).not.toHaveBeenCalled();
+        } finally {
+            delete (globalThis as any).window;
+            delete (globalThis as any).document;
+            Object.defineProperty(navigator, 'userAgent', { value: origUA, configurable: true });
+            Object.defineProperty(navigator, 'platform', { value: origPlatform, configurable: true });
+            Object.defineProperty(navigator, 'maxTouchPoints', { value: origTouch, configurable: true });
+            if (origStandalone !== undefined) {
+                Object.defineProperty(navigator, 'standalone', { value: origStandalone, configurable: true });
+            } else {
+                delete (navigator as any).standalone;
+            }
+            if (origShare) {
+                Object.defineProperty(navigator, 'share', { value: origShare, configurable: true });
+            } else {
+                delete (navigator as any).share;
+            }
+            if (origCanShare) {
+                Object.defineProperty(navigator, 'canShare', { value: origCanShare, configurable: true });
+            } else {
+                delete (navigator as any).canShare;
+            }
+        }
+    });
+
     it('printPlayerProfiles con tournamentFilter: isola le partite del torneo, imposta etichette ELO Start/E1 e personalizza header/footer', async () => {
         const { printPlayerProfiles } = vi.importActual('./printService.ts') as any;
         // Mock window per catturare l'HTML di openPrintWindow
