@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.12.15)
+# Istruzioni d'uso (v6.12.16)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.15`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.12.16`, `Nov 2026`).
 
 ## Indice
 
@@ -244,7 +244,8 @@ Ogni formato ha il proprio PDF, in due versioni: **in bianco** (da stampare prim
 Come si stampa a seconda del dispositivo:
 
 - **Computer e Android**: l'app apre il documento in una nuova scheda. In alto trovi la barra con **Stampa / Salva PDF** e **Chiudi**; la barra non compare nella stampa.
-- **iPhone e iPad (Safari o app installata)**: toccando l'icona di stampa si apre direttamente sopra l'app la schermata di stampa di iOS (AirPrint), con le miniature sulla sinistra e le opzioni a destra su iPad. Da lì puoi stampare, oppure allargare un'anteprima con due dita (pinch) per aprire il PDF da condividere o salvare nei File. Quando chiudi la schermata torni subito all'app.
+- **iPad e Safari su iPhone**: toccando l'icona di stampa si apre direttamente sopra l'app la schermata di stampa di iOS (AirPrint), con le miniature sulla sinistra e le opzioni a destra su iPad. Da lì puoi stampare, oppure allargare un'anteprima con due dita (pinch) per aprire il PDF da condividere o salvare nei File. Quando chiudi la schermata torni subito all'app.
+- **iPhone PWA (app aggiunta alla schermata Home)**: toccando l'icona di stampa si genera il documento PDF in memoria e si apre istantaneamente il foglio nativo di iOS con l'azione "Stampa" (AirPrint con miniature e opzioni), "Salva su File" e condivisione rapida, preservando l'app al 100% a tutto schermo (senza barre di navigazione Safari). Quando chiudi la schermata torni subito all'app.
 - **Profili giocatore**: una pagina per ogni giocatore.
 
 Se il documento non si apre, controlla che il browser non blocchi i popup per questo sito.

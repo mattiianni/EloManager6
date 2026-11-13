@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.12.15`
+- Versione attuale: `6.12.16`
 - Mese attuale: `Nov 2026`
 
 ## Regole generali
@@ -64,4 +64,4 @@ Prima di ogni release valgono le sette regole in testa al `CHANGELOG.md`: confro
 - I riferimenti mese/anno nei PDF e nei footer vanno aggiornati solo quando il mese reale cambia.
 - Le guide HTML delle versioni precedenti restano nel repository come storico; i PDF vecchi invece vanno rimossi (vedi punto 10).
 - `DESIGN.md` e `REBUILD_BRIEF_FOR_AI.txt` sono documenti di prodotto e architettura: aggiornali solo quando cambia qualcosa di sostanziale.
-- Per le stampe su iOS vale la regola 7 in testa al `CHANGELOG.md`: su iPhone e iPad si usa il sistema della 6.10.4 (pagina Blob con auto-stampa); la stampa dentro la finestra dell'app è vietata.
+- Per le stampe su iOS vale tassativamente la Regola 7 in testa al `CHANGELOG.md`: su iPadOS, macOS, Android e Safari standard su iPhone si usa `printInWindow` (AirPrint diretto); su iPhone PWA standalone (WebClip) si usa tassativamente il pattern WebKit PDF + Web Share (`navigator.share`) che preserva l'app a tutto schermo e apre AirPrint con miniature e opzioni. È vietato sostituire questo flusso con `window.print()` o pagine Blob su iPhone standalone.
