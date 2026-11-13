@@ -78,3 +78,7 @@ Regola: ogni formato mostra la sua etichetta standard (Americano, Beat the Box, 
 1. Statistiche → Filtra per Torneo → scegli una serie (es. "TorneOtto 2026/2027") con giornate di tipo diverso: il titolo della scheda è sempre il nome del torneo madre, mai il nome dell'ultima giornata (es. "Beat the Box (No Finali)").
 2. "Stampa Riepilogo": intestazione e titolo del documento col nome del torneo madre.
 3. Torneo singolo (senza serie): il titolo è il nome del torneo.
+
+## Stampa su iPhone e iPad (sistema 6.10.4) — da provare dall'utente, app installata e Safari
+Per ognuna: Giocatori → Stampa → Tutti / Scegli / Singolo Torneo; Home → Stampa giocatori; Tornei → Stampa di un torneo e "Stampa Tabellone Vuoto"; Classifiche → Stampa; grafico ELO; Statistiche → Stampa Riepilogo; Torneo a Squadre → Stampa.
+Atteso su iPhone **e** iPad: si apre una pagina con il documento e subito il foglio di stampa di iOS con il documento (non la schermata dell'app); pinch sull'anteprima → PDF. Se compare "Impossibile aprire la finestra di stampa", annotare quale stampa e da dove.

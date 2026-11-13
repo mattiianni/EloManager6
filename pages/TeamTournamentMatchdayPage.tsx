@@ -5,7 +5,7 @@ import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { ArrowLeftIcon, PencilIcon, XIcon } from '../components/ui/Icons.tsx';
-import { printTeamTournamentMatchdayReport, usesInAppPrint } from '../services/printService.ts';
+import { printTeamTournamentMatchdayReport } from '../services/printService.ts';
 import { requestHIGConfirmation } from '../utils/higDialogService.ts';
 
 type Page = 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'Statistiche' | 'Admin' | 'TeamMatchday';
@@ -1112,7 +1112,7 @@ const TeamTournamentMatchdayPage: React.FC<TeamTournamentMatchdayPageProps> = ({
                                     type="button"
                                     variant="secondary"
                                     onClick={() => {
-                                        const preOpenedWindow = usesInAppPrint() ? null : window.open('', '_blank');
+                                        const preOpenedWindow = window.open('', '_blank');
                                         (async () => {
                                             const tournamentInfo = rootTournament || matchday.tournament || { name: 'Torneo a squadre', club: '', type: TournamentType.TorneoASquadre };
                                             const rootId = matchday.rootTournamentId;
