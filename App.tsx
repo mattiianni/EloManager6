@@ -290,14 +290,16 @@ const App: React.FC = () => {
                                         color: active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)',
                                     }}
                                 >
-                                    <div className="flex items-center justify-center h-[26px]">
-                                        <SFIcon 
-                                            name={active ? `${item.icon}.fill` : item.icon} 
-                                            size={22} 
-                                            color={active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)'} 
-                                        />
+                                    <div className="flex flex-col items-center justify-center -translate-y-[5px]">
+                                        <div className="flex items-center justify-center h-[26px]">
+                                            <SFIcon 
+                                                name={active ? `${item.icon}.fill` : item.icon} 
+                                                size={22} 
+                                                color={active ? 'var(--ios-systemBlue)' : 'var(--ios-secondaryLabel)'} 
+                                            />
+                                        </div>
+                                        <span className="text-[10px] tracking-tight leading-none mt-0.5">{item.label}</span>
                                     </div>
-                                    <span className="text-[10px] tracking-tight leading-none mt-0.5">{item.label}</span>
                                 </button>
                             );
                         })}

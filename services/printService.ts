@@ -542,15 +542,17 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
         window.addEventListener('afterprint', cleanup);
         setTimeout(cleanup, 120000);
 
-        setTimeout(() => {
-            try {
-                window.print();
-            } catch (err) {
-                console.error('window.print error:', err);
-                cleanup();
-                showHIGAlert('Impossibile avviare la stampa su iOS.');
-            }
-        }, 150);
+        // Su iOS WebKit, window.print() DEVE essere invocato in modo rigorosamente SINCRONO
+        // nel contesto dell'evento click/tap dell'utente.
+        // Qualsiasi setTimeout (anche di pochi ms) distrugge la "user activation" e WebKit scarta silenziosamente la chiamata.
+        void printRoot.offsetHeight;
+        try {
+            window.print();
+        } catch (err) {
+            console.error('window.print error:', err);
+            cleanup();
+            showHIGAlert('Impossibile avviare la stampa su iOS.');
+        }
 
         return true;
     } catch (error) {
