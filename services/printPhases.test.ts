@@ -9,6 +9,7 @@ import {
     printRanking
 } from './printService.ts';
 import { generateRoundRobinPdfHtml } from '../formats/roundRobinFinali/printer.ts';
+import { generateAmericanoPdfHtml } from '../formats/americano/printer.ts';
 import { printMexicanTournamentReport, generateMexicanPdfHtml } from '../formats/messicano/printer.ts';
 import { Match, Player, FieldPosition, TournamentType, Tournament } from '../types.ts';
 
@@ -567,6 +568,58 @@ describe('Verifica Completezza PDF - Singoli e Coppie (Tutte le fasi incluse)', 
         expect(blankHtml).toContain('#0055D4');
         expect(blankHtml).not.toContain('🏆');
         expect(blankHtml).not.toContain('🥇');
+    });
+
+    it('9. Coerenza stampe in bianco: Beat the Box, Americano, Round Robin e Messicano non mostrano classifiche spoiler e usano caselle punteggio bianche', () => {
+        const dummyPlayers = Array.from({ length: 8 }, (_, i) => mockPlayer(`p${i + 1}`, `Nome${i + 1}`, `Cognome${i + 1}`));
+        const getP = (id: string) => dummyPlayers.find(p => p.id === id);
+
+        // A. Americano in bianco
+        const americanoTourn: Tournament = {
+            id: 'ame-blank',
+            name: 'Americano Sociale',
+            club: 'Circolo Padel',
+            date: '2026-11-13',
+            type: TournamentType.Americano,
+            status: 'scheduled',
+            matchIds: ['m1'],
+            americanoFields: 2,
+            americanoScoringType: 'games-diff',
+        };
+        const blankMatches: Match[] = [
+            { id: 'm1', date: '2026-11-13', team1: ['p1', 'p2'], team2: ['p3', 'p4'], sets: [], winner: null, tournamentId: 'ame-blank', roundNumber: 1 }
+        ];
+        const ameHtml = generateAmericanoPdfHtml(americanoTourn, blankMatches, getP);
+        expect(ameHtml).toContain('Tabellone Vuoto');
+        expect(ameHtml).not.toContain('CLASSIFICA DEFINITIVA INDIVIDUALE');
+
+        // B. Round Robin in bianco
+        const rrTourn: Tournament = {
+            id: 'rr-blank',
+            name: 'Round Robin Sociale',
+            club: 'Circolo Padel',
+            date: '2026-11-13',
+            type: TournamentType.RoundRobinFinali,
+            status: 'scheduled',
+            matchIds: ['m1'],
+            roundRobinFields: 2,
+        };
+        const rrHtml = generateRoundRobinPdfHtml(rrTourn, blankMatches, getP);
+        expect(rrHtml).toContain('Tabellone Vuoto');
+        expect(rrHtml).not.toContain('CLASSIFICA DEFINITIVA');
+        expect(rrHtml).not.toContain('CLASSIFICA ROUND ROBIN');
+
+        // C. Beat the Box in bianco
+        const btbTourn = { name: 'BTB Test', club: 'Padel Club', date: '2026-11-13', type: TournamentType.BeatTheBox };
+        const boxes = [
+            { boxNumber: 1, players: dummyPlayers.slice(0, 4), matches: blankMatches },
+            { boxNumber: 2, players: dummyPlayers.slice(4, 8), matches: blankMatches },
+        ];
+        const btbHtml = capturePrintHtml(() => {
+            printBeatTheBoxBlank(btbTourn as any, boxes, getP);
+        });
+        expect(btbHtml).toContain('score-box-blank');
+        expect(btbHtml).toContain('background: #ffffff !important');
     });
 });
 

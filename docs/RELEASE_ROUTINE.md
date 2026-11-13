@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.13.0`
+- Versione attuale: `6.13.1`
 - Mese attuale: `Nov 2026`
 
 ## Regole generali
@@ -37,7 +37,7 @@ Prima di ogni release valgono le sette regole in testa al `CHANGELOG.md`: confro
 ### C. Istruzioni, guide e testi
 
 8. **Istruzioni d'uso**: confrontare `docs/ISTRUZIONI_USO.md` con le funzioni dell'app (pagine, formati, stampe, Admin) e con le voci di `CHANGELOG.md` dall'ultima release: ogni funzione nuova o cambiata deve essere descritta, e nulla di ciò che è stato rimosso deve restare. Aggiornare l'intestazione con versione e mese.
-9. **Guida HTML**: creare `docs/Padel_ELO_Manager_Guida_v${VERSION}.html` partendo dall'ultima versione, aggiornare contenuti, indice, numero di formati e riquadri `Novità`, poi sostituire i riferimenti alla versione precedente.
+9. **Guida HTML**: creare `docs/Padel_ELO_Manager_Guida_v${VERSION}.html` partendo dall'ultima versione, aggiornare contenuti, indice, numero di formati e riquadri `Novità`. **Regola tassativa per "Novità"**: non fare elenchi lunghi di decine di versioni passate; sintetizzare solo i cambiamenti più rilevanti e includere al massimo le ultime 3 versioni come "Novità", poi sostituire i riferimenti alla versione precedente.
 10. **PDF**: i contenuti dei due script sono scritti a mano e **non** leggono `ISTRUZIONI_USO.md`: aggiornarli a mano in modo che coincidano con le istruzioni. Poi eseguire `node scripts/generate-user-guide-pdf.mjs` e `node scripts/generate-team-tournament-guide-pdf.mjs`, controllare i PDF generati (`Guida_Uso_v${VERSION}.pdf` e `Guida_Torneo_a_Squadre_v${VERSION}.pdf`) e **rimuovere dalla cartella `docs/` i PDF delle versioni precedenti**.
 11. **Testi promozionali e presentazione**: aggiornare `docs/Padel_ELO_Manager_Testi_Promo.txt` e `docs/Padel_ELO_Manager_Presentazione.html` (versione, mese, numero di formati, funzioni citate). Non inserire funzioni che non esistono.
 12. **Controllo dell'italiano**: rileggere istruzioni, guida HTML, promo, presentazione e testi degli script PDF. Controlli rapidi: cercare `e'`, `gia'`, `puo'`, `piu'`, `cioe'`, ` / ` tra i nomi dei compagni, e verificare che il numero di formati e i nomi dei menu coincidano con l'app.

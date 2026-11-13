@@ -351,6 +351,8 @@ export const generateRoundRobinPdfHtml = (
         `;
     }).join('');
 
+    const isScheduled = tournament.status === 'scheduled' || roundRobinMatches.every(m => !m.sets || m.sets.length === 0 || m.sets.every(s => (s.team1 || 0) === 0 && (s.team2 || 0) === 0));
+
     return `
         <style>
             @page { size: A4; margin: 12mm 10mm; }
@@ -365,7 +367,7 @@ export const generateRoundRobinPdfHtml = (
         <div class="print-page">
             <div style="text-align: center; margin-bottom: 14px;">
                 <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800;">${PDF_ICONS.trophy} ${safeDisplayName}</h1>
-                <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Round Robin + Finali</h2>
+                <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Round Robin + Finali • ${isScheduled ? 'Tabellone Vuoto' : 'Riepilogo'}</h2>
                 <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                     ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
                 </div>
@@ -392,7 +394,8 @@ export const generateRoundRobinPdfHtml = (
                 </table>
             </div>
 
-            <!-- CLASSIFICA FASE ROUND ROBIN -->
+            <!-- CLASSIFICA FASE ROUND ROBIN (solo se completato o con risultati) -->
+            ${!isScheduled ? `
             <div class="section-block" style="margin-top: 16px;">
                 <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #eff6ff; border-left: 4px solid #0055D4; color: #1e3a8a; border-radius: 4px; display: flex; align-items: center;">
                     ${PDF_ICONS.standings} CLASSIFICA ROUND ROBIN
@@ -413,12 +416,14 @@ export const generateRoundRobinPdfHtml = (
                     </tbody>
                 </table>
             </div>
+            ` : ''}
 
             ${quartersHtml}
             ${semifinalsHtml}
             ${finalsHtml}
 
-            <!-- CLASSIFICA DEFINITIVA ALWAYS AT THE VERY END -->
+            <!-- CLASSIFICA FINALE (solo se completato o con risultati) -->
+            ${!isScheduled ? `
             <div class="section-block" style="margin-top: 20px;">
                 <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #ecfdf5; border-left: 4px solid #059669; color: #065f46; border-radius: 4px; display: flex; align-items: center;">
                     ${PDF_ICONS.medal} CLASSIFICA DEFINITIVA
@@ -439,6 +444,7 @@ export const generateRoundRobinPdfHtml = (
                     </tbody>
                 </table>
             </div>
+            ` : ''}
 
             <div class="footer">
                 <div style="text-align: left;">

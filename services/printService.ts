@@ -4971,7 +4971,7 @@ export const printGironiTournament = (
 
         <div style="text-align: center; margin-bottom: 12px;">
             <h1>${PDF_ICONS.box} ${safeDisplayName}</h1>
-            <h2>${safeClubName} - ${escapeHtml(tournament.type)}</h2>
+            <h2>${safeClubName} • Gironi + Fase Finale • ${isScheduled ? 'Tabellone Vuoto' : 'Riepilogo'}</h2>
             <div style="color: #0055D4; font-size: 11px; font-weight: bold; margin: 3px 0 0 0;">
                 Giornata del ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
             </div>
@@ -6302,15 +6302,32 @@ export const printBeatTheBoxBlank = (
                 background-color: #f8fafc;
             }
             .score-box {
-                border: 1.5px solid #cbd5e1;
-                border-radius: 4px;
-                padding: 3px 10px;
-                display: inline-block;
-                font-size: 12px;
-                background: #ffffff;
-                min-width: 20px;
-                text-align: center;
-                font-weight: 600;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                padding: 3px 10px !important;
+                display: inline-block !important;
+                font-size: 12px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+                min-width: 20px !important;
+                text-align: center !important;
+                font-weight: 600 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .score-box-blank {
+                display: inline-block !important;
+                width: 28px !important;
+                height: 22px !important;
+                line-height: 22px !important;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: transparent !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .footer {
                 margin-top: 24px;
@@ -6708,15 +6725,32 @@ export const printBeatTheBoxComplete = (
             }
             tr:nth-child(even) { background-color: #f8fafc; }
             .score-box {
-                border: 1.5px solid #cbd5e1;
-                border-radius: 4px;
-                padding: 3px 10px;
-                display: inline-block;
-                font-size: 12px;
-                background: #ffffff;
-                min-width: 20px;
-                text-align: center;
-                font-weight: 600;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                padding: 3px 10px !important;
+                display: inline-block !important;
+                font-size: 12px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+                min-width: 20px !important;
+                text-align: center !important;
+                font-weight: 600 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .score-box-blank {
+                display: inline-block !important;
+                width: 28px !important;
+                height: 22px !important;
+                line-height: 22px !important;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: transparent !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .footer {
                 margin-top: 24px;
@@ -7136,15 +7170,32 @@ export const printCustomTournamentBlank = (
                 background-color: #f8fafc;
             }
             .score-box {
-                border: 1.5px solid #cbd5e1;
-                border-radius: 4px;
-                padding: 3px 10px;
-                display: inline-block;
-                font-size: 12px;
-                background: #ffffff;
-                min-width: 20px;
-                text-align: center;
-                font-weight: 600;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                padding: 3px 10px !important;
+                display: inline-block !important;
+                font-size: 12px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+                min-width: 20px !important;
+                text-align: center !important;
+                font-weight: 600 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .score-box-blank {
+                display: inline-block !important;
+                width: 28px !important;
+                height: 22px !important;
+                line-height: 22px !important;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 4px !important;
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: transparent !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .footer {
                 margin-top: 24px;
