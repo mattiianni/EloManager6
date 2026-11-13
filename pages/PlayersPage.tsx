@@ -232,6 +232,7 @@ const PlayersPage: React.FC = () => {
                         variant="gray"
                         onClick={() => setIsPrintModalOpen(true)}
                         disabled={loading || players.length === 0}
+                        aria-label="Stampa profili giocatori"
                         className="flex-1 sm:flex-none"
                     >
                         <SFIcon name="printer" size={18} />

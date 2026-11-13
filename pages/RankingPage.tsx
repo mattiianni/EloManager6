@@ -413,6 +413,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme = 'dark' }) => {
                         teamMatchdaysCache
                     )}
                     disabled={loading || rankingData.length === 0}
+                    aria-label="Stampa classifica"
                     className="border border-slate-200/80 dark:border-white/10"
                 >
                     <SFIcon name="printer" size={18} />

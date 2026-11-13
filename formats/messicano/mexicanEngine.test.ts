@@ -426,4 +426,26 @@ describe('Torneo Messicano - Validazioni e Core Logico JIT', () => {
         expect(html).toContain('CLASSIFICA INDIVIDUALE');
         expect(html).not.toContain('emoji');
     });
+
+    it('generateMexicanPdfHtml: restituisce frammento pulito per openPrintWindow senza doppi tag html/head/body', () => {
+        const tourn: Tournament = {
+            id: 't-clean',
+            name: 'Messicano Pulito',
+            type: TournamentType.Mexican,
+            date: '2026-11-09',
+            club: 'Circolo Padel',
+            matchIds: [],
+            status: 'scheduled',
+            mexicanFields: 2,
+            mexicanRounds: 3,
+            mexicanScoringType: 'games-diff'
+        };
+        const matches = generateFirstRoundMexicanMatches(players8, 'Normal', '2026-11-09');
+        const html = generateMexicanPdfHtml(tourn, matches, id => players8.find(p => p.id === id), undefined, true);
+        expect(html).not.toContain('<!DOCTYPE');
+        expect(html).not.toContain('<html');
+        expect(html).not.toContain('<body');
+        expect(html).toContain('class="print-page"');
+        expect(html).toContain('TURNI E PARTITE SUI CAMPI');
+    });
 });

@@ -132,30 +132,20 @@ export const generateAmericanoPdfHtml = (
     }).join('');
 
     return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>${safeDisplayName} - Riepilogo Torneo Americano</title>
-            <link rel="stylesheet" href="${MANROPE_PRINT_STYLESHEET}">
-            <style>
-                @page { size: A4; margin: 12mm 10mm; }
-                body { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
-                h1 { font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800; }
-                h2 { font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500; }
-                table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
-                th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
-                td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
-                tr { height: 24px; }
-                tr:nth-child(even) { background-color: #f8fafc; }
-                .section-block { page-break-inside: avoid; break-inside: avoid; }
-                .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
-            </style>
-        </head>
-        <body>
+        <style>
+            @page { size: A4; margin: 12mm 10mm; }
+            table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
+            th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
+            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
+            tr { height: 24px; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .section-block { page-break-inside: avoid; break-inside: avoid; }
+            .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+        </style>
+        <div class="print-page">
             <div style="text-align: center; margin-bottom: 14px;">
-                <h1>${PDF_ICONS.trophy} ${safeDisplayName}</h1>
-                <h2>${safeClubName} • Torneo Americano</h2>
+                <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800;">${PDF_ICONS.trophy} ${safeDisplayName}</h1>
+                <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Torneo Americano</h2>
                 <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
                     ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
                 </div>
@@ -217,8 +207,7 @@ export const generateAmericanoPdfHtml = (
                     Generato: ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}, ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
                 </div>
             </div>
-        </body>
-        </html>
+        </div>
     `;
 };
 

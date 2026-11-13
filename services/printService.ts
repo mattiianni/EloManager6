@@ -382,24 +382,66 @@ export const isIOS = (): boolean => {
  * su iPad viene stampata la schermata dell'app. Vedi CHANGELOG (regole di verifica) e QA_CHECKLIST.
  */
 
+/**
+ * Normalizza il contenuto HTML per la stampa estraendo body e stili se il frammento fornito
+ * include già tag <html>, <head> o <body>, evitando doppi documenti annidati.
+ */
+export const extractPrintBodyAndStyles = (content: string): { body: string; styles: string } => {
+    let styles = '';
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = styleRegex.exec(content)) !== null) {
+        styles += '\n' + match[1];
+    }
+
+    const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    let body = bodyMatch ? bodyMatch[1] : content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+    // Rimuove eventuali dichiarazioni DOCTYPE o tag html/head/body residui
+    body = body
+        .replace(/<!DOCTYPE[^>]*>/gi, '')
+        .replace(/<\/?html[^>]*>/gi, '')
+        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+        .trim();
+
+    return { body, styles };
+};
+
 // iOS: print via blob URL so iOS can reload content on zoom change without getting about:blank
 const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
     try {
-        // Inject print script before </body> — fires on load
-        const htmlWithScript = htmlContent.replace(
-            /<\/body>/i,
-            `<script>
-                window.addEventListener('load', function() {
-                    ${waitForPrintFontsScript}.finally(function() {
-                        setTimeout(function() {
-                            try { window.print(); } catch(e) { console.error('Print error:', e); }
-                        }, 200);
-                    });
-                });
-            <\/script></body>`
-        );
+        const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(htmlContent);
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html lang="it">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <title>${escapeHtml(_title)}</title>
+                <style>@page { size: A4; margin: 12mm 10mm; } ${extractedStyles}</style>
+                ${getPrintStyles(true)}
+            </head>
+            <body>
+                ${cleanBody}
+                <script>
+                    function triggerAutoPrint() {
+                        ${waitForPrintFontsScript}.finally(function() {
+                            setTimeout(function() {
+                                try { window.print(); } catch(e) { console.error('Print error:', e); }
+                            }, 200);
+                        });
+                    }
+                    if (document.readyState === 'complete') {
+                        triggerAutoPrint();
+                    } else {
+                        window.addEventListener('load', triggerAutoPrint);
+                    }
+                <\/script>
+            </body>
+            </html>
+        `;
 
-        const blob = new Blob([htmlWithScript], { type: 'text/html;charset=utf-8' });
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
 
@@ -421,61 +463,8 @@ const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
 
 export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
-        if (isIOS()) {
-            // === Ramo iOS / iPadOS: identico alla 6.10.4 (nessuna barra, viewport bloccato, auto-stampa) ===
-            const iosHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>${escapeHtml(title)}</title>
-                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles}</style>
-                ${getPrintStyles(true)}
-            </head>
-            <body>
-                ${content}
-                <script>
-                    window.addEventListener('load', function() {
-                        ${waitForPrintFontsScript}.finally(function() {
-                            setTimeout(function() {
-                                try {
-                                    window.print();
-                                } catch(e) {
-                                    console.error('Print error:', e);
-                                }
-                            }, 300);
-                        });
-                    });
-                <\/script>
-            </body>
-            </html>
-        `;
-
-            if (existingWindow) {
-                // On iOS, keeping team-tournament prints on about:blank breaks the native
-                // preview shell and the user can get stuck without the close button.
-                // Reuse the pre-opened tab, but load it through a blob URL just like the
-                // legacy print flow so Safari shows the standard dismiss UI.
-                const blob = new Blob([iosHtml], { type: 'text/html;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                existingWindow.location.replace(url);
-                setTimeout(() => URL.revokeObjectURL(url), 120000);
-                return true;
-            }
-
-            // iOS: usa blob URL invece di document.write su about:blank
-            // Così iOS può ricaricare il contenuto al cambio zoom senza ottenere pagina bianca
-            const blob = new Blob([iosHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const printWindow = window.open(url, '_blank');
-            if (!printWindow) {
-                URL.revokeObjectURL(url);
-                showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
-                return false;
-            }
-            setTimeout(() => URL.revokeObjectURL(url), 120000);
-            return true;
-        }
+        const iOS = isIOS();
+        const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
 
         const toolbarHtml = `
             <div class="print-toolbar no-print">
@@ -489,34 +478,66 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
 
         const fullHtml = `
             <!DOCTYPE html>
-            <html>
+            <html lang="it">
             <head>
-                <meta name="viewport" content="width=1024, initial-scale=1.0">
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <title>${escapeHtml(title)}</title>
-                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles}</style>
+                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
                 ${getPrintStyles(true)}
             </head>
             <body>
                 ${toolbarHtml}
-                ${content}
+                ${cleanBody}
                 <script>
-                    window.addEventListener('load', function() {
+                    function triggerAutoPrint() {
                         ${waitForPrintFontsScript}.finally(function() {
                             setTimeout(function() {
                                 try {
                                     window.print();
-                                    setTimeout(function() { window.close(); }, 100);
+                                    ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
                                 } catch(e) {
                                     console.error('Print error:', e);
-                                    window.close();
+                                    ${iOS ? '' : 'window.close();'}
                                 }
-                            }, 150);
+                            }, ${iOS ? 300 : 150});
                         });
-                    });
+                    }
+                    if (document.readyState === 'complete') {
+                        triggerAutoPrint();
+                    } else {
+                        window.addEventListener('load', triggerAutoPrint);
+                    }
                 <\/script>
             </body>
             </html>
         `;
+
+        if (iOS) {
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            if (existingWindow) {
+                // On iOS, keeping team-tournament prints on about:blank breaks the native
+                // preview shell and the user can get stuck without the close button.
+                // Reuse the pre-opened tab, but load it through a blob URL just like the
+                // legacy print flow so Safari shows the standard dismiss UI.
+                existingWindow.location.replace(url);
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+                return true;
+            }
+
+            // iOS: usa blob URL invece di document.write su about:blank
+            // Così iOS può ricaricare il contenuto al cambio zoom senza ottenere pagina bianca
+            const printWindow = window.open(url, '_blank');
+            if (!printWindow) {
+                URL.revokeObjectURL(url);
+                showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+                return false;
+            }
+            setTimeout(() => URL.revokeObjectURL(url), 120000);
+            return true;
+        }
 
         if (existingWindow) {
             existingWindow.document.open();

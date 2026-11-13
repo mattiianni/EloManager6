@@ -2330,7 +2330,9 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                  <div className="mt-1 flex items-center flex-wrap gap-2">
                                     {(() => {
                                         if (playerMode === 'singles') {
-                                            const allowedCounts = selectedFormatForNewFlow === 'americano'
+                                            const allowedCounts = selectedFormatForNewFlow === 'mexicano'
+                                                ? [8, 12, 16, 20, 24]
+                                                : selectedFormatForNewFlow === 'americano'
                                                 ? [6, 7, 8, 9, 10, 11, 12, 14, 16]
                                                 : [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16];
                                             return allowedCounts.map(num => (

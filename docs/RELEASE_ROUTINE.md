@@ -2,7 +2,7 @@
 
 ## Stato corrente
 
-- Versione attuale: `6.12.14`
+- Versione attuale: `6.12.15`
 - Mese attuale: `Nov 2026`
 
 ## Regole generali

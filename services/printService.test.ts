@@ -153,19 +153,47 @@ describe('printService document helpers', () => {
     ];
 
     IOS_DEVICES.forEach(([label, ua, platform, touch]) => {
-        it(`${label}: openPrintWindow apre in modo sincrono una pagina Blob con auto-stampa, identica alla 6.10.4`, () => {
+        it(`${label}: openPrintWindow apre in modo sincrono una pagina Blob con auto-stampa e barra fail-safe`, () => {
             const { result, open, blobText, doc } = runIOSPrint(ua, platform, touch, {}, () => openPrintWindow('Titolo', '<div>Contenuto</div>', '@page { size: A4; }'));
             expect(result).toBe(true);
             expect(open).toHaveBeenCalledTimes(1);
             expect(open.mock.calls[0][0]).toBe('blob:test');
             expect(blobText).toContain('width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
             expect(blobText).toContain('window.print();');
-            expect(blobText).toMatch(/\}, 300\);/);
+            expect(blobText).toMatch(/300\);/);
             expect(blobText).toContain('Contenuto');
-            expect(blobText).not.toContain('print-toolbar no-print'); // nessuna barra nella pagina iOS
-            expect(blobText).not.toContain('window.close()');          // su iOS la pagina non si chiude da sola
-            expect(doc.body.appendChild).not.toHaveBeenCalled();       // niente stampa dentro l'app
+            expect(blobText).toContain('print-toolbar no-print'); // barra fail-safe con classe no-print
+            // su iOS la pagina non si chiude da sola nello script di auto-stampa
+            expect(blobText).not.toContain("setTimeout(function() { window.close(); }, 100);");
+            expect(doc.body.appendChild).not.toHaveBeenCalled();  // niente stampa dentro l'app
         });
+    });
+
+    it('openPrintWindow: sanifica contenuti con doppi tag html/head/body (evita blocco AirPrint su Americano, Messicano, Round Robin)', () => {
+        const nestedHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><style>.test-custom { color: red; }</style></head>
+            <body>
+                <div class="test-body">Riepilogo Giornata</div>
+            </body>
+            </html>
+        `;
+        const { blobText } = runIOSPrint(IOS_DEVICES[0][1], 'iPhone', 5, {}, () => openPrintWindow('Giornata 1', nestedHtml));
+        // Un solo doctype, un solo html, un solo body
+        expect((blobText.match(/<!DOCTYPE/gi) || []).length).toBe(1);
+        expect((blobText.match(/<html/gi) || []).length).toBe(1);
+        expect((blobText.match(/<body/gi) || []).length).toBe(1);
+        expect((blobText.match(/<\/body>/gi) || []).length).toBe(1);
+        expect((blobText.match(/<\/html>/gi) || []).length).toBe(1);
+        // Lo script di stampa si trova PRIMA della chiusura del body
+        const scriptIdx = blobText.indexOf('triggerAutoPrint');
+        const bodyEndIdx = blobText.indexOf('</body>');
+        expect(scriptIdx).toBeGreaterThan(0);
+        expect(scriptIdx).toBeLessThan(bodyEndIdx);
+        // Lo stile estratto è presente
+        expect(blobText).toContain('.test-custom { color: red; }');
+        expect(blobText).toContain('Riepilogo Giornata');
     });
 
     it('iOS, popup bloccato: avviso e nessuna stampa dentro l\'app (come nella 6.10.4)', () => {

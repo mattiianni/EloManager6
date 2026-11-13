@@ -2836,11 +2836,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
         {!isT1Single && team1[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team1[1])}>
                 {formatPlayerName(team1[1])}
             </p>
         )}
@@ -2852,11 +2852,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
     <div className="min-w-0 text-right">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
         {!isT2Single && team2[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team2[1])}>
                 {formatPlayerName(team2[1])}
             </p>
         )}
@@ -2911,11 +2911,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
         {!isT1Single && team1[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team1[1])}>
                 {formatPlayerName(team1[1])}
             </p>
         )}
@@ -2927,11 +2927,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
     <div className="min-w-0 text-right">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
         {!isT2Single && team2[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team2[1])}>
                 {formatPlayerName(team2[1])}
             </p>
         )}
@@ -3023,11 +3023,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
         {!isT1Single && team1[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team1[1])}>
                 {formatPlayerName(team1[1])}
             </p>
         )}
@@ -3039,11 +3039,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
     <div className="min-w-0 text-right">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
         {!isT2Single && team2[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team2[1])}>
                 {formatPlayerName(team2[1])}
             </p>
         )}
@@ -3078,11 +3078,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
     <div className="min-w-0 text-left">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra A</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team1[0] ? formatPlayerName(team1[0]) : ''}>
             {team1[0] ? formatPlayerName(team1[0]) : ''}
         </p>
         {!isT1Single && team1[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team1[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team1[1])}>
                 {formatPlayerName(team1[1])}
             </p>
         )}
@@ -3094,11 +3094,11 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
     <div className="min-w-0 text-right">
         <div className="text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400">Squadra B</div>
-        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
+        <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={team2[0] ? formatPlayerName(team2[0]) : ''}>
             {team2[0] ? formatPlayerName(team2[0]) : ''}
         </p>
         {!isT2Single && team2[1] && (
-            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate" title={formatPlayerName(team2[1])}>
+            <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] leading-snug" title={formatPlayerName(team2[1])}>
                 {formatPlayerName(team2[1])}
             </p>
         )}
