@@ -11,6 +11,8 @@ import {
     waitForPrintFontsScript,
     isIOS,
     openPrintWindow,
+    printInWindow,
+    extractPrintBodyAndStyles,
 } from './printService.ts';
 
 const match = (id: string, phase?: string): Match => ({
@@ -116,36 +118,114 @@ describe('printService document helpers', () => {
         expect(styles).toMatch(/@media print[\s\S]*\.print-toolbar\s*\{\s*display:\s*none\s*!important/);
     });
 
-    // === Stampa iOS / iPadOS: sistema della 6.10.4 (pagina Blob + auto-stampa) ===
-    const runIOSPrint = (ua: string, platform: string, touch: number, openResult: any, call: () => boolean) => {
-        const OrigBlob = globalThis.Blob;
-        const OrigURL = globalThis.URL;
-        const origUA = navigator.userAgent;
-        const origPlatform = navigator.platform;
-        const origTouch = navigator.maxTouchPoints;
-        let blobText = '';
-        const open = vi.fn((_url?: string, _target?: string) => openResult);
-        (globalThis as any).Blob = class { constructor(parts: any[]) { blobText = parts.join(''); } };
-        (globalThis as any).URL = { createObjectURL: () => 'blob:test', revokeObjectURL: vi.fn() };
-        (globalThis as any).window = { open, print: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() };
-        (globalThis as any).document = { body: { appendChild: vi.fn() }, head: { appendChild: vi.fn() }, getElementById: vi.fn(() => null), createElement: vi.fn(() => ({})) };
+    it('extractPrintBodyAndStyles sanifica frammenti HTML con tag html/head/body/doctype annidati ed estrae stili', () => {
+        const nestedHtml = `
+            <!DOCTYPE html>
+            <html lang="it">
+            <head>
+                <style>.custom-test { color: blue; }</style>
+            </head>
+            <body>
+                <div class="report-content">Riepilogo Partite</div>
+            </body>
+            </html>
+        `;
+        const { body, styles } = extractPrintBodyAndStyles(nestedHtml);
+        expect(body).not.toContain('<!DOCTYPE');
+        expect(body).not.toContain('<html');
+        expect(body).not.toContain('</html>');
+        expect(body).not.toContain('<head');
+        expect(body).not.toContain('</head>');
+        expect(body).not.toContain('<body');
+        expect(body).not.toContain('</body>');
+        expect(body).toContain('Riepilogo Partite');
+        expect(styles).toContain('.custom-test { color: blue; }');
+    });
+
+    it('printInWindow gestisce in sicurezza ambienti senza DOM (SSR / Node)', () => {
+        expect(printInWindow('Test Stampa', '<div>Contenuto</div>')).toBe(false);
+    });
+
+    it('printInWindow inserisce il nodo di stampa temporaneo, applica gli stili print e ripulisce su afterprint', () => {
+        const mockPrint = vi.fn();
+        const listeners: Record<string, () => void> = {};
+        const elements: Record<string, any> = {};
+
+        const mockHead = {
+            appendChild: vi.fn((el) => { elements[el.id] = el; }),
+        };
+        const mockBody = {
+            appendChild: vi.fn((el) => { elements[el.id] = el; }),
+        };
+
+        const mockDocument = {
+            title: 'Initial Title',
+            head: mockHead,
+            body: mockBody,
+            getElementById: vi.fn((id: string) => elements[id] || null),
+            createElement: vi.fn((tag: string) => {
+                const el: any = {
+                    tagName: tag,
+                    id: '',
+                    innerHTML: '',
+                    textContent: '',
+                    remove: vi.fn(() => {
+                        delete elements[el.id];
+                    }),
+                };
+                return el;
+            }),
+        };
+
+        const mockWindow = {
+            print: mockPrint,
+            addEventListener: vi.fn((event: string, cb: () => void) => {
+                listeners[event] = cb;
+            }),
+            removeEventListener: vi.fn((event: string) => {
+                delete listeners[event];
+            }),
+        };
+
+        (globalThis as any).window = mockWindow;
+        (globalThis as any).document = mockDocument;
+
         try {
-            Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
-            Object.defineProperty(navigator, 'platform', { value: platform, configurable: true });
-            Object.defineProperty(navigator, 'maxTouchPoints', { value: touch, configurable: true });
-            const result = call();
-            return { result, open, blobText, doc: (globalThis as any).document, win: (globalThis as any).window };
+            const success = printInWindow('Test Stampa iOS', '<div id="test-content">Contenuto Test iOS</div>', '@page { size: A4; }');
+            expect(success).toBe(true);
+
+            // Container #padel-print-root deve essere creato e aggiunto
+            expect(elements['padel-print-root']).toBeDefined();
+            expect(elements['padel-print-root'].innerHTML).toContain('Contenuto Test iOS');
+
+            // Stile #padel-print-style deve essere creato con le regole
+            expect(elements['padel-print-style']).toBeDefined();
+            expect(elements['padel-print-style'].textContent).toContain('#padel-print-root');
+            expect(elements['padel-print-style'].textContent).toContain('display: none !important');
+            expect(elements['padel-print-style'].textContent).toContain('size: A4');
+
+            // In @media print deve mostrare #padel-print-root e nascondere #root
+            expect(elements['padel-print-style'].textContent).toContain('#root {\n                    display: none !important;\n                }');
+            expect(elements['padel-print-style'].textContent).toContain('#padel-print-root {\n                    display: block !important;');
+
+            // Il titolo deve essere aggiornato
+            expect(mockDocument.title).toBe('Test Stampa iOS');
+
+            // Simuliamo afterprint per verificare il cleanup
+            expect(listeners['afterprint']).toBeDefined();
+            listeners['afterprint']();
+
+            // Il titolo viene ripristinato e gli elementi rimossi
+            expect(mockDocument.title).toBe('Initial Title');
+            expect(elements['padel-print-root']).toBeUndefined();
+            expect(elements['padel-print-style']).toBeUndefined();
         } finally {
-            (globalThis as any).Blob = OrigBlob;
-            (globalThis as any).URL = OrigURL;
             delete (globalThis as any).window;
             delete (globalThis as any).document;
-            Object.defineProperty(navigator, 'userAgent', { value: origUA, configurable: true });
-            Object.defineProperty(navigator, 'platform', { value: origPlatform, configurable: true });
-            Object.defineProperty(navigator, 'maxTouchPoints', { value: origTouch, configurable: true });
         }
-    };
+    });
 
+    // === Stampa iOS / iPadOS: delega a printInWindow senza aprire schede/pagine HTML ===
     const IOS_DEVICES: Array<[string, string, string, number]> = [
         ['iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', 'iPhone', 5],
         ['iPad', 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)', 'iPad', 5],
@@ -153,90 +233,54 @@ describe('printService document helpers', () => {
     ];
 
     IOS_DEVICES.forEach(([label, ua, platform, touch]) => {
-        it(`${label}: openPrintWindow apre in modo sincrono una pagina Blob con auto-stampa e barra fail-safe`, () => {
-            const { result, open, blobText, doc } = runIOSPrint(ua, platform, touch, {}, () => openPrintWindow('Titolo', '<div>Contenuto</div>', '@page { size: A4; }'));
-            expect(result).toBe(true);
-            expect(open).toHaveBeenCalledTimes(1);
-            expect(open.mock.calls[0][0]).toBe('blob:test');
-            expect(blobText).toContain('width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-            expect(blobText).toContain('window.print();');
-            expect(blobText).toMatch(/300\);/);
-            expect(blobText).toContain('Contenuto');
-            expect(blobText).toContain('print-toolbar no-print'); // barra fail-safe con classe no-print
-            // su iOS la pagina non si chiude da sola nello script di auto-stampa
-            expect(blobText).not.toContain("setTimeout(function() { window.close(); }, 100);");
-            expect(doc.body.appendChild).not.toHaveBeenCalled();  // niente stampa dentro l'app
+        it(`${label}: openPrintWindow chiama direttamente printInWindow senza aprire nuove schede in Safari`, () => {
+            const origUA = navigator.userAgent;
+            const origPlatform = navigator.platform;
+            const origTouch = navigator.maxTouchPoints;
+
+            const mockOpen = vi.fn();
+            const elements: Record<string, any> = {};
+            const mockHead = { appendChild: vi.fn((el) => { elements[el.id] = el; }) };
+            const mockBody = { appendChild: vi.fn((el) => { elements[el.id] = el; }) };
+            const mockDocument = {
+                title: 'Test',
+                head: mockHead,
+                body: mockBody,
+                getElementById: vi.fn((id: string) => elements[id] || null),
+                createElement: vi.fn((tag: string) => ({ id: '', tagName: tag, innerHTML: '', textContent: '', remove: vi.fn() })),
+            };
+            const mockWindow = {
+                open: mockOpen,
+                print: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            };
+
+            (globalThis as any).window = mockWindow;
+            (globalThis as any).document = mockDocument;
+
+            try {
+                Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+                Object.defineProperty(navigator, 'platform', { value: platform, configurable: true });
+                Object.defineProperty(navigator, 'maxTouchPoints', { value: touch, configurable: true });
+
+                const res = openPrintWindow('Titolo Giornata', '<div>Dati Giornata</div>', '@page { size: A4; }');
+                expect(res).toBe(true);
+
+                // NESSUNA nuova scheda/finestra deve essere aperta via window.open
+                expect(mockOpen).not.toHaveBeenCalled();
+
+                // Il contenuto deve essere iniettato in-window
+                expect(elements['padel-print-root']).toBeDefined();
+                expect(elements['padel-print-root'].innerHTML).toContain('Dati Giornata');
+            } finally {
+                delete (globalThis as any).window;
+                delete (globalThis as any).document;
+                Object.defineProperty(navigator, 'userAgent', { value: origUA, configurable: true });
+                Object.defineProperty(navigator, 'platform', { value: origPlatform, configurable: true });
+                Object.defineProperty(navigator, 'maxTouchPoints', { value: origTouch, configurable: true });
+            }
         });
-    });
-
-    it('openPrintWindow: sanifica contenuti con doppi tag html/head/body (evita blocco AirPrint su Americano, Messicano, Round Robin)', () => {
-        const nestedHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head><style>.test-custom { color: red; }</style></head>
-            <body>
-                <div class="test-body">Riepilogo Giornata</div>
-            </body>
-            </html>
-        `;
-        const { blobText } = runIOSPrint(IOS_DEVICES[0][1], 'iPhone', 5, {}, () => openPrintWindow('Giornata 1', nestedHtml));
-        // Un solo doctype, un solo html, un solo body
-        expect((blobText.match(/<!DOCTYPE/gi) || []).length).toBe(1);
-        expect((blobText.match(/<html/gi) || []).length).toBe(1);
-        expect((blobText.match(/<body/gi) || []).length).toBe(1);
-        expect((blobText.match(/<\/body>/gi) || []).length).toBe(1);
-        expect((blobText.match(/<\/html>/gi) || []).length).toBe(1);
-        // Lo script di stampa si trova PRIMA della chiusura del body
-        const scriptIdx = blobText.indexOf('triggerAutoPrint');
-        const bodyEndIdx = blobText.indexOf('</body>');
-        expect(scriptIdx).toBeGreaterThan(0);
-        expect(scriptIdx).toBeLessThan(bodyEndIdx);
-        // Lo stile estratto è presente
-        expect(blobText).toContain('.test-custom { color: red; }');
-        expect(blobText).toContain('Riepilogo Giornata');
-    });
-
-    it('iOS, popup bloccato: avviso e nessuna stampa dentro l\'app (come nella 6.10.4)', () => {
-        const { result, open, doc, win } = runIOSPrint(IOS_DEVICES[0][1], 'iPhone', 5, null, () => openPrintWindow('Titolo', '<div>X</div>'));
-        expect(result).toBe(false);
-        expect(open).toHaveBeenCalledTimes(1);
-        expect(win.dispatchEvent).toHaveBeenCalledTimes(1); // avviso: impossibile aprire la finestra di stampa
-        expect(doc.body.appendChild).not.toHaveBeenCalled();
-    });
-
-    it('iOS, finestra pre-aperta (tornei a squadre): carica la pagina Blob con location.replace', () => {
-        const replace = vi.fn();
-        const pre = { location: { replace }, document: { open: vi.fn(), write: vi.fn(), close: vi.fn() } };
-        const { result, open } = runIOSPrint(IOS_DEVICES[1][1], 'iPad', 5, {}, () => openPrintWindow('Titolo', '<div>X</div>', '', pre as any));
-        expect(result).toBe(true);
-        expect(open).not.toHaveBeenCalled();
-        expect(replace).toHaveBeenCalledWith('blob:test');
-        expect(pre.document.write).not.toHaveBeenCalled();
-    });
-
-    it('iPhone: grafico ELO apre una pagina Blob con lo script di stampa iniettato (200 ms), come nella 6.10.4', async () => {
-        const { printEloChart } = await import('./printService.ts');
-        const { result, open, blobText } = runIOSPrint(IOS_DEVICES[0][1], 'iPhone', 5, {}, () =>
-            printEloChart(
-                [{ eventIndex: 0, sourceLabel: 'Start', p1: 1500 }, { eventIndex: 1, sourceLabel: 'E1', p1: 1516 }],
-                ['p1'],
-                [{ id: 'p1', name: 'Mario', surname: 'Rossi', currentElo: 1516, initialElo: 1500 } as any],
-            ));
-        expect(result).toBe(true);
-        expect(open).toHaveBeenCalledTimes(1);
-        expect(open.mock.calls[0][0]).toBe('blob:test');
-        expect(blobText).toContain('window.print();');
-        expect(blobText).toMatch(/\}, 200\);/);
-        expect(blobText).not.toContain('window.close()');
-    });
-
-    it('GUARDIA: il codice non contiene più la stampa dentro l\'app (printInWindow / #padel-print-root)', async () => {
-        const fs = await import('node:fs');
-        const src = fs.readFileSync(new URL('./printService.ts', import.meta.url), 'utf8');
-        expect(src).not.toContain('printInWindow');
-        expect(src).not.toContain('padel-print-root');
-        expect(src).not.toContain('usesInAppPrint');
-        expect(src).not.toContain('isIPhone');
     });
 
     it('printPlayerProfiles con tournamentFilter: isola le partite del torneo, imposta etichette ELO Start/E1 e personalizza header/footer', async () => {

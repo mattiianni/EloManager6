@@ -374,14 +374,6 @@ export const isIOS = (): boolean => {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
-/*
- * STAMPA SU iOS / iPadOS — sistema della 6.10.4 (l'ultimo che funzionava dall'app installata).
- * Su iPhone e iPad: il tap apre in modo sincrono una pagina da Blob URL con il documento; la pagina
- * stessa, al caricamento, chiama window.print() e si apre il foglio di stampa di iOS.
- * NON stampare dentro il documento dell'app (nodo di stampa nel DOM dell'app): su iPhone non si apre nulla e
- * su iPad viene stampata la schermata dell'app. Vedi CHANGELOG (regole di verifica) e QA_CHECKLIST.
- */
-
 /**
  * Normalizza il contenuto HTML per la stampa estraendo body e stili se il frammento fornito
  * include già tag <html>, <head> o <body>, evitando doppi documenti annidati.
@@ -407,8 +399,172 @@ export const extractPrintBodyAndStyles = (content: string): { body: string; styl
     return { body, styles };
 };
 
-// iOS: print via blob URL so iOS can reload content on zoom change without getting about:blank
-const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
+/**
+ * Estrae le regole @page top-level per evitare che vengano annidate dentro @media print
+ * (sintassi non supportata da Safari/WebKit che causerebbe lo scarto dell'intero blocco di stile).
+ */
+const hoistTopLevelPageRules = (css: string): { pageRules: string; rest: string } => {
+    let depth = 0;
+    let pageRules = '';
+    let rest = '';
+    let i = 0;
+    while (i < css.length) {
+        const ch = css[i];
+        if (depth === 0 && css.startsWith('@page', i)) {
+            const open = css.indexOf('{', i);
+            if (open !== -1) {
+                let d = 1;
+                let j = open + 1;
+                while (j < css.length && d > 0) {
+                    if (css[j] === '{') d++;
+                    else if (css[j] === '}') d--;
+                    j++;
+                }
+                if (d === 0) {
+                    pageRules += css.slice(i, j) + '\n';
+                    i = j;
+                    continue;
+                }
+            }
+        }
+        if (ch === '{') depth++;
+        else if (ch === '}') depth = Math.max(0, depth - 1);
+        rest += ch;
+        i++;
+    }
+    return { pageRules, rest };
+};
+
+/**
+ * STAMPA SU iOS / iPadOS (sistema provato delle versioni 6.12.2 e 6.12.8):
+ * Chiama window.print() direttamente nel documento attivo 150ms dopo il tap.
+ * Questo scatena DIRETTAMENTE il foglio modale nativo AirPrint (UIPrintInteractionController)
+ * con miniature a sinistra e opzioni a destra su iPad, senza aprire pagine HTML o schede vuote in Safari.
+ * Pulizia del DOM su afterprint (con timeout di sicurezza a 120s).
+ */
+export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    try {
+        const existingRoot = document.getElementById('padel-print-root');
+        if (existingRoot) existingRoot.remove();
+        const existingStyle = document.getElementById('padel-print-style');
+        if (existingStyle) existingStyle.remove();
+
+        const { body: rawContent, styles: extractedStyles } = extractPrintBodyAndStyles(content);
+        const cleanContent = rawContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
+
+        const hoistedPageStyles = hoistTopLevelPageRules(pageStyles);
+        const hoistedExtracted = hoistTopLevelPageRules(extractedStyles);
+
+        const styleEl = document.createElement('style');
+        styleEl.id = 'padel-print-style';
+        styleEl.textContent = `
+            @page {
+                size: A4;
+                margin: 12mm 10mm;
+            }
+            ${hoistedPageStyles.pageRules}
+            ${hoistedExtracted.pageRules}
+            #padel-print-root {
+                display: none !important;
+            }
+            @media print {
+                html {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    overflow: visible !important;
+                }
+                #root {
+                    display: none !important;
+                }
+                html, body {
+                    width: 100% !important;
+                    height: auto !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                    overflow: visible !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif !important;
+                }
+                body > *:not(#padel-print-root) {
+                    display: none !important;
+                }
+                #padel-print-root {
+                    display: block !important;
+                    position: static !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    background: #ffffff !important;
+                    color: #000000 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: visible !important;
+                }
+                ${basePrintCss}
+                ${hoistedPageStyles.rest}
+                ${hoistedExtracted.rest}
+            }
+        `;
+
+        const printRoot = document.createElement('div');
+        printRoot.id = 'padel-print-root';
+        printRoot.innerHTML = cleanContent;
+
+        document.head.appendChild(styleEl);
+        document.body.appendChild(printRoot);
+
+        const originalTitle = document.title;
+        if (title) {
+            document.title = title;
+        }
+
+        let cleanedUp = false;
+        const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            try {
+                document.title = originalTitle;
+                const r = document.getElementById('padel-print-root');
+                if (r) r.remove();
+                const st = document.getElementById('padel-print-style');
+                if (st) st.remove();
+                window.removeEventListener('afterprint', cleanup);
+            } catch (e) {
+                console.error('Print cleanup error:', e);
+            }
+        };
+
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(cleanup, 120000);
+
+        setTimeout(() => {
+            try {
+                window.print();
+            } catch (err) {
+                console.error('window.print error:', err);
+                cleanup();
+                showHIGAlert('Impossibile avviare la stampa su iOS.');
+            }
+        }, 150);
+
+        return true;
+    } catch (error) {
+        console.error('printInWindow error:', error);
+        showHIGAlert('Errore durante la preparazione della stampa.');
+        return false;
+    }
+};
+
+// Fallback printing for iframes/blobs: su iOS delega direttamente a printInWindow
+const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
+    if (isIOS()) {
+        return printInWindow(title, htmlContent);
+    }
     try {
         const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(htmlContent);
         const fullHtml = `
@@ -417,7 +573,7 @@ const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>${escapeHtml(_title)}</title>
+                <title>${escapeHtml(title)}</title>
                 <style>@page { size: A4; margin: 12mm 10mm; } ${extractedStyles}</style>
                 ${getPrintStyles(true)}
             </head>
@@ -451,7 +607,6 @@ const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
             return false;
         }
 
-        // Revoca il blob dopo 2 minuti (abbondante tempo per stampa)
         setTimeout(() => URL.revokeObjectURL(url), 120000);
         return true;
     } catch (error) {
@@ -464,6 +619,18 @@ const printViaIframe = (htmlContent: string, _title = 'Stampa'): boolean => {
 export const openPrintWindow = (title: string, content: string, pageStyles = "", existingWindow?: Window | null): boolean => {
     try {
         const iOS = isIOS();
+
+        if (iOS) {
+            if (existingWindow) {
+                try {
+                    existingWindow.close();
+                } catch (e) {
+                    // ignore
+                }
+            }
+            return printInWindow(title, content, pageStyles);
+        }
+
         const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
 
         const toolbarHtml = `
@@ -495,12 +662,12 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                             setTimeout(function() {
                                 try {
                                     window.print();
-                                    ${iOS ? '' : 'setTimeout(function() { window.close(); }, 100);'}
+                                    setTimeout(function() { window.close(); }, 100);
                                 } catch(e) {
                                     console.error('Print error:', e);
-                                    ${iOS ? '' : 'window.close();'}
+                                    window.close();
                                 }
-                            }, ${iOS ? 300 : 150});
+                            }, 150);
                         });
                     }
                     if (document.readyState === 'complete') {
@@ -512,32 +679,6 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
             </body>
             </html>
         `;
-
-        if (iOS) {
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-
-            if (existingWindow) {
-                // On iOS, keeping team-tournament prints on about:blank breaks the native
-                // preview shell and the user can get stuck without the close button.
-                // Reuse the pre-opened tab, but load it through a blob URL just like the
-                // legacy print flow so Safari shows the standard dismiss UI.
-                existingWindow.location.replace(url);
-                setTimeout(() => URL.revokeObjectURL(url), 120000);
-                return true;
-            }
-
-            // iOS: usa blob URL invece di document.write su about:blank
-            // Così iOS può ricaricare il contenuto al cambio zoom senza ottenere pagina bianca
-            const printWindow = window.open(url, '_blank');
-            if (!printWindow) {
-                URL.revokeObjectURL(url);
-                showHIGAlert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
-                return false;
-            }
-            setTimeout(() => URL.revokeObjectURL(url), 120000);
-            return true;
-        }
 
         if (existingWindow) {
             existingWindow.document.open();
