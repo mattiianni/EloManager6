@@ -1,8 +1,8 @@
-# Padel ELO Manager (v6.13.3)
+# Padel ELO Manager (v6.13.4)
 
 Applicazione gestionale completa per tornei di Padel con calcolo dinamico del punteggio ELO, gestione a gironi, fasi finali, esportazione e stampa referti.
 
-Versione documentata: `v6.13.3` (Mese: `Nov 2026`)
+Versione documentata: `v6.13.4` (Mese: `Nov 2026`)
 
 ---
 
@@ -17,7 +17,7 @@ Padel ELO Manager consente di:
 ---
 
 ## Stato del Progetto
-- Versione corrente: `6.13.3`
+- Versione corrente: `6.13.4`
 - Routine obbligatoria: documentazione, test/build, guida PDF, backup ZIP, dump TXT, commit e push.
 
 ## Aggiornamenti v6.7.9

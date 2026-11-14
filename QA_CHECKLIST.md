@@ -79,6 +79,15 @@ Regola: ogni formato mostra la sua etichetta standard (Americano, Beat the Box, 
 2. "Stampa Riepilogo": intestazione e titolo del documento col nome del torneo madre.
 3. Torneo singolo (senza serie): il titolo è il nome del torneo.
 
-## Stampa su iPhone e iPad (sistema 6.10.4) — da provare dall'utente, app installata e Safari
+## Stampa su iPhone e iPad (sistema 6.13.4) — da provare dall'utente, app installata e Safari
 Per ognuna: Giocatori → Stampa → Tutti / Scegli / Singolo Torneo; Home → Stampa giocatori; Tornei → Stampa di un torneo e "Stampa Tabellone Vuoto"; Classifiche → Stampa; grafico ELO; Statistiche → Stampa Riepilogo; Torneo a Squadre → Stampa.
-Atteso su iPhone **e** iPad: si apre una pagina con il documento e subito il foglio di stampa di iOS con il documento (non la schermata dell'app); pinch sull'anteprima → PDF. Se compare "Impossibile aprire la finestra di stampa", annotare quale stampa e da dove.
+1. **iPhone in modalità PWA Standalone (schermata Home)**:
+   - Di default usa la pipeline PDF isolata (`iosPdfPrint.ts`): prepara il PDF A4 con layout e stili identici al desktop, baseline dei testi centrata e blocchi lunghi scorrevoli, aprendo la Share Sheet nativa di iOS con l'azione "Stampa" (AirPrint) e "Salva su File".
+   - Da **Admin → Diagnostica stampa iPhone** (visibile solo su iPhone) è possibile testare le tre modalità:
+     - **PDF (default)**: pipeline isolata in memoria.
+     - **Nativa**: chiamata diretta `window.print()`.
+     - **6.10.4**: apertura pagina Blob con auto-stampa.
+   - Annotare la prova sul dispositivo con versione iOS e versione app.
+2. **iPad e Safari su iPhone**:
+   - Usa `printInWindow` aprendo direttamente il foglio nativo AirPrint con miniature a sinistra e opzioni a destra.
+3. Atteso su tutte le piattaforme: nessuna pagina bianca, testi e punteggi centrati nelle caselle, tabella con righe intere e intestazioni colonna ripetute sulle pagine successive.

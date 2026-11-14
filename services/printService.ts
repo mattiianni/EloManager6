@@ -13,6 +13,7 @@ import { separateTournamentGroups } from '../utils/tournamentGroups.ts';
 import { buildQuarterfinalPairings, selectGironiQualifiers } from '../utils/gironiPlayoffs.ts';
 
 import { TournamentRegistry } from '../formats/registry.ts';
+import { MAX_KEEP_TOGETHER_ROWS, normalizePrintBlocks, normalizePrintBlocksScript } from './printContract.ts';
 
 export const MANROPE_PRINT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
 
@@ -564,6 +565,9 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
         document.head.appendChild(styleEl);
         document.body.appendChild(printRoot);
 
+        // Regola 2 del contratto di stampa: i blocchi lunghi scorrono, le righe restano intere.
+        normalizePrintBlocks(printRoot, MAX_KEEP_TOGETHER_ROWS);
+
         const originalTitle = document.title;
         if (title) {
             document.title = title;
@@ -608,230 +612,132 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
     }
 };
 
-// Stampa per iPhone in modalità Standalone (PWA installata sulla Home).
-// Poiché WebKit nel container WebClip di iPhone non supporta window.print(),
-// convertiamo il documento in un vero PDF (application/pdf) e usiamo la Web Share API nativa.
-// iOS mostra l'anteprima e include l'azione di sistema "Stampa" (AirPrint) con opzioni e miniature,
-// mantenendo l'app al 100% a tutto schermo senza barre di Safari.
-export const printViaPdfShareForIPhone = async (title: string, content: string, pageStyles = ""): Promise<boolean> => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+export type IPhonePrintMode = 'pdf' | 'native' | 'blob';
+export const IPHONE_PRINT_MODE_KEY = 'padel-print-native';
 
-    // Feedback visivo immediato Apple HIG con spinner SVG vettoriale
-    const loadingEl = document.createElement('div');
-    loadingEl.id = 'padel-pdf-loading';
-    loadingEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#ffffff;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;backdrop-filter:blur(10px);font-family:-apple-system,BlinkMacSystemFont,sans-serif;pointer-events:none;';
-    loadingEl.innerHTML = `
-        <style>
-            @keyframes padel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        </style>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: padel-spin 0.8s linear infinite; display: inline-block; flex-shrink: 0;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-        <span>Preparazione documento per AirPrint...</span>
-    `;
-    document.body.appendChild(loadingEl);
-
-    const cleanupLoading = () => {
-        if (typeof document === 'undefined') return;
-        const el = document.getElementById('padel-pdf-loading');
-        if (el) el.remove();
-    };
-
+/**
+ * DIAGNOSTICA: metodo di stampa usato su iPhone PWA (app aggiunta alla Home). Si sceglie da
+ * Pannello Admin → "Diagnostica stampa iPhone" oppure da console con localStorage:
+ *   (assente)  'pdf'    → PDF + foglio di condivisione (default, services/iosPdfPrint.ts)
+ *   '1'        'native' → window.print() dentro l'app (printInWindow, come iPad e Safari)
+ *   'blob'     'blob'   → pagina Blob con auto-stampa: il metodo della 6.10.4 (ottobre 2026)
+ * Serve a verificare sul dispositivo, a ogni versione di iOS, quale metodo nativo funziona.
+ */
+export const getIPhonePrintMode = (): IPhonePrintMode => {
     try {
-        if (document.fonts && document.fonts.ready) {
-            try {
-                await Promise.race([
-                    document.fonts.ready,
-                    new Promise(resolve => setTimeout(resolve, 1500))
-                ]);
-            } catch {}
-        }
+        const value = typeof localStorage !== 'undefined' ? localStorage.getItem(IPHONE_PRINT_MODE_KEY) : null;
+        return value === '1' ? 'native' : value === 'blob' ? 'blob' : 'pdf';
+    } catch {
+        return 'pdf';
+    }
+};
 
+export const setIPhonePrintMode = (mode: IPhonePrintMode): void => {
+    try {
+        if (mode === 'pdf') localStorage.removeItem(IPHONE_PRINT_MODE_KEY);
+        else localStorage.setItem(IPHONE_PRINT_MODE_KEY, mode === 'native' ? '1' : 'blob');
+    } catch { /* storage non disponibile */ }
+};
+
+/**
+ * Metodo di stampa iOS della 6.10.4: il tap apre in modo sincrono una pagina da Blob URL con il
+ * documento; la pagina lancia window.print() al caricamento. In più rispetto alla 6.10.4 c'è la
+ * barra con il pulsante "Stampa / Salva PDF": se iOS rifiuta l'auto-stampa (nessun gesto utente
+ * nella nuova pagina), il tocco sul pulsante è un gesto valido.
+ */
+export const printViaBlobPage = (title: string, content: string, pageStyles = ""): boolean => {
+    try {
         const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
-        const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
-
-        // Impaginazione A4 Standard (210mm x 297mm) con margini reali (10mm sx/dx, 12mm top/bottom):
-        // Area utile: 190mm x 273mm
-        const printableWidthMm = 190;
-        const marginLeftMm = 10;
-        const marginTopMm = 12;
-        const pxPerMm = 794 / printableWidthMm; // ~4.1789 px/mm
-        const maxPageHeightPx = Math.floor(273 * pxPerMm); // ~1140px
-
-        const { jsPDF } = await import('jspdf');
-        const html2canvas = (await import('html2canvas')).default;
-
-        if (typeof document === 'undefined') return false;
-
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-
-        // Contenitore offscreen per il rendering fedele
-        // Larghezza A4 proporzionata (794px = 190mm di area utile stampabile A4 a 96DPI)
-        const container = document.createElement('div');
-        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;color:#000000;padding:0;box-sizing:border-box;z-index:-1;';
-        container.innerHTML = `
-            <style>
-                ${basePrintCss}
-                ${pageStyles}
-                ${extractedStyles}
-                body, html { background: #ffffff !important; color: #000000 !important; }
-                .no-print, .print-toolbar { display: none !important; }
-            </style>
-            ${cleanBody}
+        const html = `
+            <!DOCTYPE html>
+            <html lang="it">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <title>${escapeHtml(title)}</title>
+                <style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
+                ${getPrintStyles(true)}
+            </head>
+            <body>
+                <div class="print-toolbar no-print">
+                    <div class="print-toolbar-info"><strong>${escapeHtml(title)}</strong></div>
+                    <div class="print-toolbar-actions">
+                        <button type="button" onclick="window.print()" class="print-btn-primary">${PDF_ICONS.printer} Stampa / Salva PDF</button>
+                        <button type="button" onclick="window.close()" class="print-btn-secondary">Chiudi</button>
+                    </div>
+                </div>
+                ${cleanBody.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (whole, code) => (/\.print\s*\(|triggerAutoPrint/.test(code) ? '' : whole))}
+                <script>
+                    window.addEventListener('load', function() {
+                        try { ${normalizePrintBlocksScript} } catch (e) { console.error('normalizePrintBlocks error:', e); }
+                        ${waitForPrintFontsScript}.finally(function() {
+                            setTimeout(function() {
+                                try { window.print(); } catch(e) { console.error('Print error:', e); }
+                            }, 300);
+                        });
+                    });
+                <\/script>
+            </body>
+            </html>
         `;
-        document.body.appendChild(container);
-
-        const playerPages = typeof container.querySelectorAll === 'function'
-            ? Array.from(container.querySelectorAll<HTMLElement>('.player-page'))
-            : [];
-
-        if (playerPages.length > 0) {
-            // RENDERING PAGINA PER PAGINA (per profili giocatore o schede multiple):
-            // Evita categoricamente il superamento della memoria canvas di iOS WebKit (limite 256MB / 4096px).
-            // Renderizza ogni singola pagina in un canvas compatto (~13MB) aggiungendolo al PDF.
-            for (let i = 0; i < playerPages.length; i++) {
-                const pageEl = playerPages[i];
-                const pageCanvas = await html2canvas(pageEl, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff',
-                    windowWidth: 794
-                });
-
-                const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-                const pageHeightPx = pageEl.offsetHeight || 1050;
-                const pageHeightMm = Math.min(273, (pageHeightPx / 794) * printableWidthMm);
-
-                if (i > 0) {
-                    pdf.addPage();
-                }
-                pdf.addImage(pageImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, pageHeightMm);
-            }
-        } else {
-            // RENDERING REPORT TORNEO (DOM-aware con protezione anti-taglio):
-            const totalHeight = container.offsetHeight || 1000;
-            const cutPoints: number[] = [0];
-            let currentY = 0;
-
-            const avoidElements = typeof container.querySelectorAll === 'function'
-                ? Array.from(container.querySelectorAll<HTMLElement>(
-                    '.avoid-break, .keep-together, .section-block, table, tr, .match-row, h1, h2, h3, .section-title, .footer'
-                ))
-                : [];
-
-            while (currentY < totalHeight) {
-                const targetCut = currentY + maxPageHeightPx;
-                if (targetCut >= totalHeight) {
-                    cutPoints.push(totalHeight);
-                    break;
-                }
-
-                let adjustedCut = targetCut;
-                for (const el of avoidElements) {
-                    const elTop = el.offsetTop;
-                    const elBottom = elTop + el.offsetHeight;
-
-                    // Se l'elemento attraversa la linea di taglio teorica
-                    if (elTop < targetCut && elBottom > targetCut) {
-                        // Se l'elemento è più piccolo di una pagina, anticipa il taglio subito prima di esso
-                        if (el.offsetHeight <= maxPageHeightPx && elTop > currentY) {
-                            adjustedCut = Math.min(adjustedCut, elTop);
-                        }
-                    }
-                }
-
-                if (adjustedCut <= currentY) {
-                    adjustedCut = targetCut;
-                }
-
-                cutPoints.push(adjustedCut);
-                currentY = adjustedCut;
-            }
-
-            const canvas = await html2canvas(container, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: 794
-            });
-
-            const scale = canvas.width / 794;
-
-            for (let i = 0; i < cutPoints.length - 1; i++) {
-                const startY = cutPoints[i];
-                const endY = cutPoints[i + 1];
-                const sliceHeightPx = endY - startY;
-                if (sliceHeightPx <= 0) continue;
-
-                const sliceCanvas = document.createElement('canvas');
-                sliceCanvas.width = canvas.width;
-                sliceCanvas.height = Math.max(1, Math.round(sliceHeightPx * scale));
-
-                const ctx = sliceCanvas.getContext('2d');
-                if (ctx) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-                    ctx.drawImage(
-                        canvas,
-                        0, Math.round(startY * scale), canvas.width, Math.round(sliceHeightPx * scale),
-                        0, 0, sliceCanvas.width, sliceCanvas.height
-                    );
-                }
-
-                const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
-                const sliceHeightMm = (sliceHeightPx / 794) * printableWidthMm;
-
-                if (i > 0) {
-                    pdf.addPage();
-                }
-
-                pdf.addImage(sliceImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, sliceHeightMm);
-            }
+        const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+        const printWindow = window.open(url, '_blank');
+        if (!printWindow) {
+            URL.revokeObjectURL(url);
+            showHIGAlert('Impossibile aprire la pagina di stampa. Verifica che i popup non siano bloccati.');
+            return false;
         }
-
-        container.remove();
-
-        cleanupLoading();
-
-        const pdfBlob = pdf.output('blob');
-        const cleanName = (title || 'Stampa').replace(/[^a-zA-Z0-9_\u00C0-\u017F-]/g, '_');
-        const file = new File([pdfBlob], `${cleanName}.pdf`, { type: 'application/pdf' });
-
-        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: title || 'Stampa'
-                });
-                return true;
-            } catch (shareErr: any) {
-                if (shareErr && shareErr.name === 'AbortError') {
-                    return true;
-                }
-                console.warn('navigator.share fallito, fallback a visualizzazione PDF:', shareErr);
-            }
-        }
-
-        // Fallback: apertura PDF per visualizzatore nativo iOS con pulsante Stampa
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        const pdfWin = window.open(pdfUrl, '_blank');
-        if (!pdfWin) {
-            const a = document.createElement('a');
-            a.href = pdfUrl;
-            a.download = `${cleanName}.pdf`;
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        }
-        setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
         return true;
     } catch (error) {
-        cleanupLoading();
+        console.error('printViaBlobPage error:', error);
+        showHIGAlert('Errore durante la stampa.');
+        return false;
+    }
+};
+
+/**
+ * Costruisce il documento HTML completo usato per generare il PDF su iPhone standalone.
+ * Struttura e ordine degli stili sono IDENTICI a quelli della finestra di stampa desktop
+ * (openPrintWindow): stesso HTML → stessa cascata CSS → stesso layout.
+ * Vengono rimossi solo la toolbar e gli script di auto-stampa.
+ */
+export const buildPdfCaptureDocument = (title: string, content: string, pageStyles = ""): string => {
+    const { body, styles: extractedStyles } = extractPrintBodyAndStyles(content);
+    const cleanBody = body.replace(
+        /<script\b[^>]*>([\s\S]*?)<\/script>/gi,
+        (whole, code) => (/\.print\s*\(|triggerAutoPrint/.test(code) ? '' : whole),
+    );
+    return `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(title)}</title>
+<style>@page { size: A4; margin: 12mm 10mm; } ${pageStyles} ${extractedStyles}</style>
+${getPrintStyles(true)}
+</head>
+<body>
+${cleanBody}
+</body>
+</html>`;
+};
+
+// Stampa per iPhone in modalità Standalone (PWA installata sulla Home).
+// Nel contenitore Web App di iPhone window.print() non apre AirPrint: generiamo un vero PDF
+// e lo consegniamo al foglio di condivisione di iOS, che contiene l'azione "Stampa".
+// Tutta la pipeline (iframe isolato, impaginazione, rasterizzazione, condivisione) vive in
+// services/iosPdfPrint.ts ed è caricata solo quando serve.
+export const printViaPdfShareForIPhone = async (title: string, content: string, pageStyles = ""): Promise<boolean> => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    try {
+        const { printHtmlDocumentAsPdf } = await import('./iosPdfPrint.ts');
+        return await printHtmlDocumentAsPdf({
+            title,
+            html: buildPdfCaptureDocument(title, content, pageStyles),
+            onError: message => showHIGAlert(message),
+            normalizeBlocks: root => { normalizePrintBlocks(root, MAX_KEEP_TOGETHER_ROWS); },
+        });
+    } catch (error) {
         console.error('printViaPdfShareForIPhone error:', error);
         showHIGAlert('Errore durante la preparazione del documento per la stampa.');
         return false;
@@ -841,8 +747,12 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
 // Fallback printing for iframes/blobs: su iPhone PWA genera PDF AirPrint, su iPad/iOS usa printInWindow
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
     if (isIPhoneStandalone()) {
-        printViaPdfShareForIPhone(title, htmlContent);
-        return true;
+        const mode = getIPhonePrintMode();
+        if (mode === 'blob') return printViaBlobPage(title, htmlContent);
+        if (mode === 'pdf') {
+            printViaPdfShareForIPhone(title, htmlContent);
+            return true;
+        }
     }
     if (isIOS()) {
         return printInWindow(title, htmlContent);
@@ -863,6 +773,7 @@ const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
                 ${cleanBody}
                 <script>
                     function triggerAutoPrint() {
+                        try { ${normalizePrintBlocksScript} } catch (e) { console.error('normalizePrintBlocks error:', e); }
                         ${waitForPrintFontsScript}.finally(function() {
                             setTimeout(function() {
                                 try { window.print(); } catch(e) { console.error('Print error:', e); }
@@ -903,11 +814,15 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
         // Su iPhone PWA (Home Screen standalone), WebKit non gestisce UIPrintInteractionController:
         // generiamo il PDF (application/pdf) e usiamo la Web Share API nativa con opzione AirPrint.
         if (isIPhoneStandalone()) {
-            if (existingWindow) {
-                try { existingWindow.close(); } catch(e) {}
+            const mode = getIPhonePrintMode();
+            if (mode !== 'native') {
+                if (existingWindow) {
+                    try { existingWindow.close(); } catch(e) {}
+                }
+                if (mode === 'blob') return printViaBlobPage(title, content, pageStyles);
+                printViaPdfShareForIPhone(title, content, pageStyles);
+                return true;
             }
-            printViaPdfShareForIPhone(title, content, pageStyles);
-            return true;
         }
 
         const iOS = isIOS();
@@ -950,6 +865,7 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
                 ${cleanBody}
                 <script>
                     function triggerAutoPrint() {
+                        try { ${normalizePrintBlocksScript} } catch (e) { console.error('normalizePrintBlocks error:', e); }
                         ${waitForPrintFontsScript}.finally(function() {
                             setTimeout(function() {
                                 try {

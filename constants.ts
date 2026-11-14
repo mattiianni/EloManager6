@@ -1,4 +1,4 @@
-export const APP_VERSION = '6.13.3';
+export const APP_VERSION = '6.13.4';
 export const APP_MONTH = 'Nov 2026';
 
 export const INITIAL_ELO = 1500;

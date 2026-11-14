@@ -100,4 +100,43 @@ I seguenti 6 formati di torneo sono stati completati, collaudati e sono **rigida
 
 NON apportare MAI modifiche alla logica di business o alla struttura di questi 6 formati se non esplicitamente richiesto dall'utente.
 
+# Stampe PDF — regole permanenti (NON derogabili)
+
+Queste regole valgono per chiunque modifichi il progetto: persone e assistenti AI/LLM.
+Sono verificate da `services/printContract.test.ts`. Se un test del contratto fallisce,
+si corregge il codice: **non si aggiorna l'impronta e non si indebolisce il test**.
+
+## Regola 1 — Il foglio di stile di stampa è congelato
+- Il riferimento visivo unico è la stampa **Beat the Box**. Tutte le stampe devono apparire come quella.
+- È vietato aggiungere, togliere o cambiare stili di stampa durante lavori che non riguardano
+  esplicitamente la grafica delle stampe. Vale per `getPrintStyles`, `formatScoreBoxes`,
+  `renderPrintDateBadge`, `PDF_ICONS` e per il blocco `<style>` di Beat the Box.
+- Una nuova stampa riusa quelle primitive e le classi `.section-block`, `.section-title`, `.footer`.
+  Non introduce font, colori, bordi, altezze riga o padding propri.
+- Le impronte in `services/printContract.ts` si aggiornano **solo** su richiesta esplicita di
+  Mattia Ianniello, citando la richiesta nel changelog.
+
+## Regola 2 — Interruzioni di pagina
+- **a) La riga è l'unità indivisibile.** Una riga di tabella non viene mai tagliata a metà.
+- **b) Un gruppo piccolo resta unito:** fino a 9 righe intestazione inclusa (le partite di un turno,
+  le partite di un box, una classifica di box). Se non entra passa intero alla pagina successiva.
+- **c) Un blocco lungo NON è indivisibile.** Un round robin di 12 partite o una classifica di 20
+  giocatori scorrono da una pagina all'altra spezzandosi solo tra una riga e l'altra.
+  Non devono mai nascere pagine vuote o semivuote per "tenere unito" un blocco grande.
+- **d) Il titolo segue le sue righe.** Il titolo di un blocco non resta solo a fondo pagina e
+  l'intestazione di colonna della tabella viene ripetuta in cima alla pagina successiva.
+- **e) Profili giocatore:** ogni giocatore inizia sempre su una pagina nuova.
+- I punti a-d sono applicati in modo centralizzato da `normalizePrintBlocks()`
+  (`services/printContract.ts`) su tutte le piattaforme: finestra desktop, iPad/Safari, iPhone PWA.
+  Una nuova stampa non deve reimplementarli né aggirarli: marca i gruppi con
+  `section-block avoid-break keep-together` e lascia decidere alla funzione.
+- Non creare regole di interruzione diverse per piattaforma.
+
+## Regola 3 — Pipeline iPhone PWA
+- Su iPhone standalone la stampa passa da `services/iosPdfPrint.ts` (PDF + foglio di condivisione).
+- Non reintrodurre `html2canvas` sul documento dell'app né `offsetTop` per calcolare i tagli pagina.
+- Gli altri percorsi (`printInWindow` per iPad/Safari, finestra di stampa per desktop/Android)
+  non vanno modificati per correggere problemi dell'iPhone PWA.
+
+
 

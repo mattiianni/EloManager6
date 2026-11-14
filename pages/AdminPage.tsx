@@ -6,6 +6,7 @@ import Button from '../components/ui/Button.tsx';
 import { HIGSegmentedControl } from '../components/ui/HIGSegmentedControl.tsx';
 import { requestHIGConfirmation, showHIGAlert } from '../utils/higDialogService.ts';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
+import PrintDiagnostics from '../components/PrintDiagnostics.tsx';
 
 interface Workspace {
     id: string;
@@ -457,6 +458,8 @@ const AdminPage: React.FC = () => {
                     }}
                 />
             </div>
+
+            <PrintDiagnostics />
 
             {/* Workspaces Tab */}
             {activeTab === 'workspaces' && (
@@ -961,3 +964,4 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
+

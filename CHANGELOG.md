@@ -8,13 +8,32 @@ Aggiunte dopo i problemi delle release 6.12.4-6.12.10 (stampa iOS rotta, Torneo 
 4. **Un test per ogni bug corretto**, quando la logica è testabile (`npx vitest run`). Se il flusso non è testabile in automatico, lo scenario va scritto in `QA_CHECKLIST.md` e dichiarato come "da provare dall'utente".
 5. **Nessuna modifica non richiesta.** Grafica, dimensioni, comportamenti già approvati non si toccano senza che l'utente lo chieda; una modifica fuori richiesta si propone e si aspetta la risposta.
 6. **Dire sempre cosa non è verificato.** La stampa su iPhone/iPad, l'app installata e i flussi che richiedono il login non sono verificabili dall'assistente: vanno dichiarati come tali nel messaggio finale, con i passi esatti da provare.
-7. **Stampa iOS / iPadOS (REGOLA MANDATORIA E DEFINITIVA)**:
-   - **Su iPadOS, macOS, Android e Safari standard su iPhone**: si usa tassativamente `printInWindow` (`services/printService.ts`). Questo inietta il nodo di stampa temporaneo (invisibile a video, visibile solo in `@media print` con `#root` nascosto) ed esegue `window.print()` sul documento attivo: in Safari/iPadOS apre direttamente il foglio nativo AirPrint (`UIPrintInteractionController`) con le miniature a sinistra e le opzioni a destra. Pulizia garantita su `afterprint`.
-   - **Su iPhone in modalità PWA Standalone (WebClip da schermata Home)**: Apple WebKit non implementa il delegato di presentazione per `UIPrintInteractionController` e scarta silenziosamente qualsiasi chiamata a `window.print()`. In questo specifico contesto è **MANDATORIO** utilizzare il pattern ufficiale raccomandato da WebKit (`printViaPdfShareForIPhone`): il documento viene convertito asincronamente in un vero file PDF A4 (`application/pdf`) ad alta risoluzione in memoria (`jsPDF` + `html2canvas` caricati via dynamic import) e condiviso tramite la Web Share API nativa (`navigator.share({ files: [pdfFile] })`). iOS apre istantaneamente la Share Sheet nativa che include in cima l'azione di sistema **"Stampa" (AirPrint)** con miniature e opzioni, oltre a "Salva su File" e "WhatsApp", preservando l'app al 100% a tutto schermo (senza barre di navigazione Safari).
-   - **DIVIETO ASSOLUTO**: È categoricamente vietato tentare di sostituire `printViaPdfShareForIPhone` con `window.print()`, `printInWindow` o pagine Blob su iPhone PWA standalone. Questa implementazione è verificata e funzionante.
+7. **Stampa iOS / iPadOS**:
+   - Su iPhone in modalità PWA Standalone (WebClip da schermata Home), la stampa passa da `services/iosPdfPrint.ts` (PDF generato in iframe isolato ad alta risoluzione con margini A4 @page e calcolo esatto getBoundingClientRect + foglio di condivisione nativo Web Share).
+   - Su iPadOS, macOS, Android e Safari standard su iPhone si usa `printInWindow` / finestra dedicata con applicazione centralizzata di `normalizePrintBlocks()`.
+   - Regola: il metodo di stampa iOS non si cambia senza una prova sul dispositivo, annotata nel changelog con versione di iOS e versione dell'app mostrata a schermo.
 8. **Regola Mandatory per la Guida HTML (`docs/Padel_ELO_Manager_Guida_v*.html`)**: Vietato fare elenchi lunghi di decine di versioni precedenti nel riquadro "Novità". Sintetizzare esclusivamente i cambiamenti più rilevanti e includere al massimo le ultime 3 versioni, evitando storici sterminati o ridondanti.
 9. **Regola Mandatory Coerenza Grafica e di Stile delle Stampe**:
    - Ogni nuova implementazione o aggiornamento delle stampe deve avere tassativamente le caratteristiche di quelle già esistenti. Tutte le stampe dell'applicazione devono essere perfettamente coerenti tra di loro, senza inventare nuovi stili o varianti non autorizzate. Il riferimento assoluto di stile per layout, intestazioni, tabelle, colori, bordi, font e footer è la stampa **"Beat the Box"**.
+
+## 6.13.4 — 2026-11-14
+### Corretto
+- iPhone PWA: testi stampati più in basso delle caselle. Causa: `html2canvas` misura la baseline con una `<img>` sonda che Tailwind preflight rendeva `display:block`.
+- iPhone PWA: pagina 1 con sola intestazione e resto vuoto (Classifica). Causa: tagli pagina calcolati con `offsetTop` e tabella trattata come indivisibile.
+- iPhone PWA: layout diverso dal desktop (stili dell'app nel documento, `@media print` ignorate, larghezza 794 px anziché 718 px, margini e orientamento di `@page` ignorati).
+- iPhone PWA: rischio pagina bianca sui documenti lunghi (canvas oltre il limite iOS).
+### Aggiunto
+- `services/iosPdfPrint.ts`: pipeline PDF isolata per iPhone PWA.
+- `services/printContract.ts` + test: stile di stampa congelato e regole sulle interruzioni di pagina (regole permanenti, valide su tutte le piattaforme).
+- Blocchi lunghi marcati `avoid-break` resi scorrevoli su desktop, iPad e iPhone: niente più pagine semivuote; le righe restano intere.
+- iPhone PWA: intestazione di colonna ripetuta quando una tabella prosegue su una pagina nuova.
+- Diagnostica: Pannello Admin → "Diagnostica stampa iPhone" (solo su iPhone) sceglie il metodo di stampa della PWA: PDF (default), Nativa (`window.print()` nell'app), 6.10.4 (pagina Blob con auto-stampa).
+
+### Cronologia accertata dal repository (per non ripetere l'errore)
+- Fino alla 6.10.4 (16/10/2026) iOS stampava con una pagina Blob che lanciava `window.print()`: impaginazione fatta da iOS, quindi corretta.
+- La 6.10.5 (09/11/2026, commit 4f8863a) ha sostituito quel metodo con `printInWindow`.
+- Dal 12 al 14/11 il metodo iOS è stato cambiato 12 volte; la 6.12.16 (commit 8471644) ha introdotto il PDF con `html2canvas`, origine dei disallineamenti.
+- Regola: il metodo di stampa iOS non si cambia senza una prova sul dispositivo, annotata nel changelog con versione di iOS e versione dell'app mostrata a schermo.
 
 ## v6.13.3 — 2026-11-14
 - **Risoluzione Definitiva Bug di Stampa iOS (iPhone PWA Standalone)**:
