@@ -1,10 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
     getPrintStyles,
     formatScoreBoxes,
     renderPrintDateBadge,
     printBeatTheBoxBlank,
     printPlayerProfiles,
+    printRanking,
 } from './printService.ts';
 import {
     MAX_KEEP_TOGETHER_ROWS,
@@ -91,6 +95,47 @@ describe('Contratto di stampa · Regola 1: stile congelato (riferimento: Beat th
     it('foglio di stile della stampa Beat the Box non modificato e indipendente dai dati', () => {
         expect(fingerprint(extractStyleBlocks(beatTheBoxBlankHtml())), FROZEN).toBe(PRINT_STYLE_FINGERPRINTS.beatTheBoxBlank);
         expect(fingerprint(extractStyleBlocks(beatTheBoxBlankHtml('Altro torneo'))), FROZEN).toBe(PRINT_STYLE_FINGERPRINTS.beatTheBoxBlank);
+    });
+});
+
+describe('Contratto di stampa · Regola 1: stampa Classifica', () => {
+    const rankingHtml = (count: number) => capturePrintHtml(() => {
+        printRanking(
+            players.slice(0, count).map((p, i) => ({ ...p, rank: i + 1, matchesPlayed: 1, matchesWon: 1, gamesWon: 6, gamesLost: 3, winPercentage: 100, lastDelta: 1 })) as any,
+            [], [], [],
+        );
+    });
+
+    it('foglio di stile della Classifica non modificato e indipendente dai dati', () => {
+        expect(fingerprint(extractStyleBlocks(rankingHtml(8))), FROZEN).toBe(PRINT_STYLE_FINGERPRINTS.rankingPrint);
+        expect(fingerprint(extractStyleBlocks(rankingHtml(3))), FROZEN).toBe(PRINT_STYLE_FINGERPRINTS.rankingPrint);
+    });
+
+    it('la medaglia di posizione non va mai a capo ("1" sopra, "°" sotto)', () => {
+        const html = rankingHtml(8);
+        const cells = html.match(/<td style="text-align: center; white-space: nowrap;">/g) || [];
+        expect(cells.length, FROZEN).toBe(8);
+    });
+});
+
+describe('Contratto di stampa · Regola 1: medaglie di posizione', () => {
+    it('in ogni stampa la cella della medaglia ha white-space: nowrap (mai "1" sopra e "°" sotto)', () => {
+        const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+        const sources = [
+            join(root, 'services', 'printService.ts'),
+            ...readdirSync(join(root, 'formats'), { withFileTypes: true })
+                .filter(entry => entry.isDirectory())
+                .map(entry => join(root, 'formats', entry.name, 'printer.ts')),
+        ];
+        let cells = 0;
+        for (const file of sources) {
+            let source = '';
+            try { source = readFileSync(file, 'utf8'); } catch { continue; }
+            const all = source.match(/<td style="[^"]*">\$\{rankBadge\}<\/td>/g) || [];
+            cells += all.length;
+            all.forEach(cell => expect(cell, `${FROZEN} File: ${file}`).toContain('white-space: nowrap'));
+        }
+        expect(cells).toBeGreaterThanOrEqual(7);
     });
 });
 

@@ -33,6 +33,8 @@ export const PRINT_STYLE_FINGERPRINTS = {
     scoreBoxes: '32d1ecf0',
     dateBadge: 'de12d10f',
     beatTheBoxBlank: '3b932840',
+    /** Foglio di stile della stampa Classifica (congelato il 14/11/2026 dopo la correzione delle medaglie). */
+    rankingPrint: 'd9cc1fe0',
 } as const;
 
 /** Impronta stabile di un testo CSS/HTML (FNV-1a a 32 bit, spazi normalizzati). */

@@ -197,7 +197,7 @@ export const generateMexicanPdfHtml = (
         if (scoringType === 'points') {
             return `
                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${rankBadge}</td>
+                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box; white-space: nowrap;">${rankBadge}</td>
                     <td style="width: 60%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: 600; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">${playerName}</td>
                     <td style="text-align: center; width: 15%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: bold; color: #0055D4; vertical-align: middle; box-sizing: border-box;">${entry.gamesWon}</td>
                     <td style="text-align: center; width: 15%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gamesLost}</td>
@@ -207,7 +207,7 @@ export const generateMexicanPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${rankBadge}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box; white-space: nowrap;">${rankBadge}</td>
                 <td style="width: 50%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: 600; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">${playerName}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: bold; color: #0055D4; vertical-align: middle; box-sizing: border-box;">${entry.points}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gamesWon}</td>
@@ -297,3 +297,4 @@ export const printMexicanTournamentReport = (
     const title = `${displayNameOverride || tournament.name} - Torneo Messicano`;
     return openPrintWindow(title, html);
 };
+

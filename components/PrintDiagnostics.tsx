@@ -1,31 +1,32 @@
 import React, { useState } from 'react';
 import { HIGSegmentedControl } from './ui/HIGSegmentedControl.tsx';
-import { IPhonePrintMode, getIPhonePrintMode, isIPhone, setIPhonePrintMode } from '../services/printService.ts';
+import { IOSPrintMode, getIOSPrintMode, isIOS, setIOSPrintMode } from '../services/printService.ts';
 
-const MODES: IPhonePrintMode[] = ['pdf', 'native', 'blob'];
-const DESCRIPTIONS: Record<IPhonePrintMode, string> = {
+const MODES: IOSPrintMode[] = ['pdf', 'native', 'blob'];
+const DESCRIPTIONS: Record<IOSPrintMode, string> = {
     pdf: 'PDF + foglio di condivisione (predefinito).',
-    native: 'Stampa nativa dentro l\'app, come su iPad e Safari.',
+    native: 'Stampa nativa dentro l\'app.',
     blob: 'Pagina con auto-stampa: il metodo della versione 6.10.4.',
 };
 
 /**
- * Selettore diagnostico del metodo di stampa su iPhone (app aggiunta alla Home).
- * Visibile solo su iPhone. La scelta resta salvata sul dispositivo.
+ * Selettore del metodo di stampa su iPhone e iPad quando l'app è aggiunta alla Home.
+ * Visibile solo su iOS/iPadOS. La scelta resta salvata sul dispositivo.
+ * In Safari (app non installata) la stampa è sempre quella nativa.
  */
 const PrintDiagnostics: React.FC = () => {
-    const [mode, setMode] = useState<IPhonePrintMode>(() => getIPhonePrintMode());
-    if (!isIPhone()) return null;
+    const [mode, setMode] = useState<IOSPrintMode>(() => getIOSPrintMode());
+    if (!isIOS()) return null;
 
     return (
         <div className="mb-6 px-4 md:px-0 max-w-2xl mx-auto">
-            <div className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 mb-2">Diagnostica stampa iPhone</div>
+            <div className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 mb-2">Diagnostica stampa iOS (app installata)</div>
             <HIGSegmentedControl
                 segments={['PDF', 'Nativa', '6.10.4']}
                 selectedIndex={MODES.indexOf(mode)}
                 onChange={(idx) => {
                     const next = MODES[idx] || 'pdf';
-                    setIPhonePrintMode(next);
+                    setIOSPrintMode(next);
                     setMode(next);
                 }}
             />

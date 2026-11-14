@@ -111,7 +111,7 @@ export const generateAmericanoPdfHtml = (
         if (americanoScoringType === 'points') {
             return `
                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
+                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap;">${rankBadge}</td>
                     <td style="width: 60%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${playerName}</td>
                     <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.gamesWon}</td>
                     <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
@@ -121,7 +121,7 @@ export const generateAmericanoPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; white-space: nowrap;">${rankBadge}</td>
                 <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600;">${playerName}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.points}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
@@ -222,3 +222,4 @@ export const AmericanoPrinter: TournamentPrinter = {
     type: TournamentType.Americano,
     generatePdfHtml: generateAmericanoPdfHtml
 };
+

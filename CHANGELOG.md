@@ -9,12 +9,30 @@ Aggiunte dopo i problemi delle release 6.12.4-6.12.10 (stampa iOS rotta, Torneo 
 5. **Nessuna modifica non richiesta.** Grafica, dimensioni, comportamenti già approvati non si toccano senza che l'utente lo chieda; una modifica fuori richiesta si propone e si aspetta la risposta.
 6. **Dire sempre cosa non è verificato.** La stampa su iPhone/iPad, l'app installata e i flussi che richiedono il login non sono verificabili dall'assistente: vanno dichiarati come tali nel messaggio finale, con i passi esatti da provare.
 7. **Stampa iOS / iPadOS**:
-   - Su iPhone in modalità PWA Standalone (WebClip da schermata Home), la stampa passa da `services/iosPdfPrint.ts` (PDF generato in iframe isolato ad alta risoluzione con margini A4 @page e calcolo esatto getBoundingClientRect + foglio di condivisione nativo Web Share).
-   - Su iPadOS, macOS, Android e Safari standard su iPhone si usa `printInWindow` / finestra dedicata con applicazione centralizzata di `normalizePrintBlocks()`.
+   - Su iPhone e iPad in modalità PWA Standalone (WebClip da schermata Home), la stampa passa da `services/iosPdfPrint.ts` (PDF generato in iframe isolato ad alta risoluzione con margini A4 @page e calcolo esatto getBoundingClientRect + foglio di condivisione nativo Web Share).
+   - Su Safari standard su iPhone/iPad si usa `printInWindow` (AirPrint diretto nativo).
+   - Su desktop e Android si usa la finestra di stampa con applicazione centralizzata di `normalizePrintBlocks()`.
    - Regola: il metodo di stampa iOS non si cambia senza una prova sul dispositivo, annotata nel changelog con versione di iOS e versione dell'app mostrata a schermo.
 8. **Regola Mandatory per la Guida HTML (`docs/Padel_ELO_Manager_Guida_v*.html`)**: Vietato fare elenchi lunghi di decine di versioni precedenti nel riquadro "Novità". Sintetizzare esclusivamente i cambiamenti più rilevanti e includere al massimo le ultime 3 versioni, evitando storici sterminati o ridondanti.
 9. **Regola Mandatory Coerenza Grafica e di Stile delle Stampe**:
    - Ogni nuova implementazione o aggiornamento delle stampe deve avere tassativamente le caratteristiche di quelle già esistenti. Tutte le stampe dell'applicazione devono essere perfettamente coerenti tra di loro, senza inventare nuovi stili o varianti non autorizzate. Il riferimento assoluto di stile per layout, intestazioni, tabelle, colori, bordi, font e footer è la stampa **"Beat the Box"**.
+
+## 6.13.5 — 2026-11-14
+### Corretto
+- iPad con app installata: la stampa riproduceva la schermata dell'app e, dopo "Annulla", l'interfaccia
+  restava ristretta. Ora iPad installato usa lo stesso PDF dell'iPhone (nessun `window.print()` sul
+  documento dell'app).
+- Stampa nativa in app installata (solo se scelta in diagnostica): il documento di stampa non viene più
+  rimosso su `afterprint`, ma al primo tocco dopo la chiusura del foglio, con ripristino del layout.
+- Medaglie di posizione: nella stampa Classifica la medaglia andava a capo ("1" sopra, "°" sotto) quando
+  la colonna POS (7%) scendeva sotto circa 41 px, cioè con larghezza utile inferiore a circa 586 px.
+  Causa: `td { overflow-wrap: anywhere }` dello stile base più colonna stretta. Aggiunto
+  `white-space: nowrap` alla cella della medaglia in tutte le 7 stampe che la usano (Classifica,
+  riepilogo torneo, Americano, Messicano, Round Robin + Finali). Modifica di stile richiesta
+  esplicitamente da Mattia Ianniello il 14/11/2026; subito dopo: foglio di stile della Classifica
+  congelato (impronta `rankingPrint`) e test che vieta celle medaglia senza `nowrap`.
+### Modificato
+- "Diagnostica stampa iOS" nel Pannello Admin ora vale anche per iPad.
 
 ## 6.13.4 — 2026-11-14
 ### Corretto

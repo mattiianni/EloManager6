@@ -113,6 +113,8 @@ si corregge il codice: **non si aggiorna l'impronta e non si indebolisce il test
   `renderPrintDateBadge`, `PDF_ICONS` e per il blocco `<style>` di Beat the Box.
 - Una nuova stampa riusa quelle primitive e le classi `.section-block`, `.section-title`, `.footer`.
   Non introduce font, colori, bordi, altezze riga o padding propri.
+- Impronte congelate: stili base, caselle punteggio, pillola data, stampa Beat the Box, stampa Classifica.
+- La cella che contiene una medaglia di posizione ha sempre `white-space: nowrap` (verificato da test).
 - Le impronte in `services/printContract.ts` si aggiornano **solo** su richiesta esplicita di
   Mattia Ianniello, citando la richiesta nel changelog.
 
@@ -132,11 +134,15 @@ si corregge il codice: **non si aggiorna l'impronta e non si indebolisce il test
   `section-block avoid-break keep-together` e lascia decidere alla funzione.
 - Non creare regole di interruzione diverse per piattaforma.
 
-## Regola 3 — Pipeline iPhone PWA
-- Su iPhone standalone la stampa passa da `services/iosPdfPrint.ts` (PDF + foglio di condivisione).
+## Regola 3 — Metodo di stampa per piattaforma
+- **App installata sulla Home (iPhone e iPad):** PDF generato da `services/iosPdfPrint.ts` e consegnato al
+  foglio di condivisione. Non usa `window.print()`: il documento dell'app non viene mai toccato.
+- **Safari su iPhone/iPad (app non installata):** stampa nativa `printInWindow`.
+- **Desktop e Android:** finestra di stampa.
+- In app installata `window.print()` nel documento dell'app è vietato come predefinito: su iPhone non
+  apre AirPrint, su iPad stampa la schermata dell'app e lascia l'interfaccia ristretta.
+  Resta selezionabile solo da Pannello Admin → "Diagnostica stampa iOS".
 - Non reintrodurre `html2canvas` sul documento dell'app né `offsetTop` per calcolare i tagli pagina.
-- Gli altri percorsi (`printInWindow` per iPad/Safari, finestra di stampa per desktop/Android)
-  non vanno modificati per correggere problemi dell'iPhone PWA.
 
 
 

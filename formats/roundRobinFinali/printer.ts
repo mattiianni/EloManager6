@@ -341,7 +341,7 @@ export const generateRoundRobinPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${rankBadge}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0; white-space: nowrap;">${rankBadge}</td>
                 <td style="width: 55%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600; border: 1px solid #e2e8f0;">${escapeHtml(entry.pair[0].name)} ${escapeHtml(entry.pair[0].surname)} &amp; ${escapeHtml(entry.pair[1].name)} ${escapeHtml(entry.pair[1].surname)}</td>
                 <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4; border: 1px solid #e2e8f0;">${entry.points}</td>
                 <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; border: 1px solid #e2e8f0;">${entry.gamesWon}</td>
@@ -465,3 +465,4 @@ export const RoundRobinPrinter: TournamentPrinter = {
     type: TournamentType.RoundRobinFinali,
     generatePdfHtml: generateRoundRobinPdfHtml
 };
+

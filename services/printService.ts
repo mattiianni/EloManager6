@@ -421,6 +421,16 @@ export const isIPhoneStandalone = (): boolean => {
     return iPhone && standalone;
 };
 
+/** iPhone o iPad con l'app aggiunta alla schermata Home (PWA standalone). */
+export const isIOSStandalone = (): boolean => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+    const standalone = Boolean(
+        (navigator as any).standalone === true ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches)
+    );
+    return isIOS() && standalone;
+};
+
 /**
  * Normalizza il contenuto HTML per la stampa estraendo body e stili se il frammento fornito
  * include già tag <html>, <head> o <body>, evitando doppi documenti annidati.
@@ -489,6 +499,24 @@ const hoistTopLevelPageRules = (css: string): { pageRules: string; rest: string 
  * con miniature a sinistra e opzioni a destra su iPad, senza aprire pagine HTML o schede vuote in Safari.
  * Pulizia del DOM su afterprint (con timeout di sicurezza a 120s).
  */
+/**
+ * Dopo una stampa nativa in PWA, WebKit può lasciare la pagina impaginata alla larghezza del foglio.
+ * Riassegnare il viewport e notificare un resize forza il ricalcolo del layout a schermo.
+ */
+const restoreScreenLayoutAfterPrint = () => {
+    try {
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            const content = viewport.getAttribute('content') || '';
+            viewport.setAttribute('content', content + ' ');
+            requestAnimationFrame(() => viewport.setAttribute('content', content));
+        }
+        window.dispatchEvent(new Event('resize'));
+    } catch (e) {
+        console.error('restoreScreenLayoutAfterPrint error:', e);
+    }
+};
+
 export const printInWindow = (title: string, content: string, pageStyles = ""): boolean => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     try {
@@ -589,8 +617,26 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
             }
         };
 
-        window.addEventListener('afterprint', cleanup);
-        setTimeout(cleanup, 120000);
+        if (isIOSStandalone()) {
+            // PWA installata: window.print() ritorna subito e `afterprint` può arrivare PRIMA che iOS
+            // impagini l'anteprima (che viene rigenerata a ogni cambio di opzioni o zoom). Rimuovere qui
+            // il documento farebbe stampare la schermata dell'app. Nodo e stile restano quindi nel DOM
+            // (a schermo sono invisibili) fino al primo tocco dell'utente dopo la chiusura del foglio.
+            const startedAt = Date.now();
+            const onUserReturn = () => {
+                if (Date.now() - startedAt < 1000) return;
+                document.removeEventListener('pointerdown', onUserReturn, true);
+                cleanup();
+                restoreScreenLayoutAfterPrint();
+            };
+            if (typeof document.addEventListener === 'function') {
+                document.addEventListener('pointerdown', onUserReturn, true);
+            }
+            setTimeout(cleanup, 600000);
+        } else {
+            window.addEventListener('afterprint', cleanup);
+            setTimeout(cleanup, 120000);
+        }
 
         // Su iOS WebKit, window.print() DEVE essere invocato in modo rigorosamente SINCRONO
         // nel contesto dell'evento click/tap dell'utente.
@@ -612,30 +658,31 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
     }
 };
 
-export type IPhonePrintMode = 'pdf' | 'native' | 'blob';
-export const IPHONE_PRINT_MODE_KEY = 'padel-print-native';
+export type IOSPrintMode = 'pdf' | 'native' | 'blob';
+export const IOS_PRINT_MODE_KEY = 'padel-print-native';
 
 /**
- * DIAGNOSTICA: metodo di stampa usato su iPhone PWA (app aggiunta alla Home). Si sceglie da
- * Pannello Admin → "Diagnostica stampa iPhone" oppure da console con localStorage:
- *   (assente)  'pdf'    → PDF + foglio di condivisione (default, services/iosPdfPrint.ts)
- *   '1'        'native' → window.print() dentro l'app (printInWindow, come iPad e Safari)
+ * Metodo di stampa usato da iPhone e iPad quando l'app è aggiunta alla Home (PWA standalone).
+ * Si sceglie da Pannello Admin → "Diagnostica stampa iOS" (o da console con localStorage):
+ *   (assente)  'pdf'    → PDF + foglio di condivisione (default, services/iosPdfPrint.ts).
+ *                         Non usa window.print(): il documento dell'app non viene mai toccato.
+ *   '1'        'native' → window.print() dentro l'app (printInWindow)
  *   'blob'     'blob'   → pagina Blob con auto-stampa: il metodo della 6.10.4 (ottobre 2026)
- * Serve a verificare sul dispositivo, a ogni versione di iOS, quale metodo nativo funziona.
+ * In Safari (app NON installata) la stampa resta sempre quella nativa: questa scelta non si applica.
  */
-export const getIPhonePrintMode = (): IPhonePrintMode => {
+export const getIOSPrintMode = (): IOSPrintMode => {
     try {
-        const value = typeof localStorage !== 'undefined' ? localStorage.getItem(IPHONE_PRINT_MODE_KEY) : null;
+        const value = typeof localStorage !== 'undefined' ? localStorage.getItem(IOS_PRINT_MODE_KEY) : null;
         return value === '1' ? 'native' : value === 'blob' ? 'blob' : 'pdf';
     } catch {
         return 'pdf';
     }
 };
 
-export const setIPhonePrintMode = (mode: IPhonePrintMode): void => {
+export const setIOSPrintMode = (mode: IOSPrintMode): void => {
     try {
-        if (mode === 'pdf') localStorage.removeItem(IPHONE_PRINT_MODE_KEY);
-        else localStorage.setItem(IPHONE_PRINT_MODE_KEY, mode === 'native' ? '1' : 'blob');
+        if (mode === 'pdf') localStorage.removeItem(IOS_PRINT_MODE_KEY);
+        else localStorage.setItem(IOS_PRINT_MODE_KEY, mode === 'native' ? '1' : 'blob');
     } catch { /* storage non disponibile */ }
 };
 
@@ -722,8 +769,9 @@ ${cleanBody}
 </html>`;
 };
 
-// Stampa per iPhone in modalità Standalone (PWA installata sulla Home).
-// Nel contenitore Web App di iPhone window.print() non apre AirPrint: generiamo un vero PDF
+// Stampa per iPhone e iPad in modalità Standalone (PWA installata sulla Home).
+// Nel contenitore Web App window.print() è inaffidabile (iPhone: non apre AirPrint; iPad: stampa la
+// schermata dell'app e lascia l'interfaccia in layout di stampa): generiamo un vero PDF
 // e lo consegniamo al foglio di condivisione di iOS, che contiene l'azione "Stampa".
 // Tutta la pipeline (iframe isolato, impaginazione, rasterizzazione, condivisione) vive in
 // services/iosPdfPrint.ts ed è caricata solo quando serve.
@@ -746,8 +794,8 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
 
 // Fallback printing for iframes/blobs: su iPhone PWA genera PDF AirPrint, su iPad/iOS usa printInWindow
 const printViaIframe = (htmlContent: string, title = 'Stampa'): boolean => {
-    if (isIPhoneStandalone()) {
-        const mode = getIPhonePrintMode();
+    if (isIOSStandalone()) {
+        const mode = getIOSPrintMode();
         if (mode === 'blob') return printViaBlobPage(title, htmlContent);
         if (mode === 'pdf') {
             printViaPdfShareForIPhone(title, htmlContent);
@@ -813,8 +861,8 @@ export const openPrintWindow = (title: string, content: string, pageStyles = "",
     try {
         // Su iPhone PWA (Home Screen standalone), WebKit non gestisce UIPrintInteractionController:
         // generiamo il PDF (application/pdf) e usiamo la Web Share API nativa con opzione AirPrint.
-        if (isIPhoneStandalone()) {
-            const mode = getIPhonePrintMode();
+        if (isIOSStandalone()) {
+            const mode = getIOSPrintMode();
             if (mode !== 'native') {
                 if (existingWindow) {
                     try { existingWindow.close(); } catch(e) {}
@@ -1391,7 +1439,7 @@ export const printRanking = (
             : `${player.lastDelta > 0 ? '+' : ''}${player.lastDelta.toFixed(2)}`;
         const playerRows = `
             <tr class="player-summary-row">
-                <td style="text-align: center;">${rankBadge}</td>
+                <td style="text-align: center; white-space: nowrap;">${rankBadge}</td>
                 <td><div class="player-name">${escapeHtml(`${player.name} ${player.surname}`)}</div></td>
                 <td class="summary-number summary-elo">${player.currentElo.toFixed(2)}</td>
                 <td class="summary-number summary-delta ${player.lastDelta !== null && player.lastDelta < 0 ? 'delta-negative' : 'delta-positive'}">${getDeltaArrow(player.lastDelta)} ${lastDeltaValue}</td>
@@ -5316,7 +5364,7 @@ export const printTournamentStatistics = (stats: any) => {
         }
         return `
             <tr style="height: 24px;">
-                <td style="text-align: center; width: 10%; padding: 5px 6px; border: 1px solid #e2e8f0;">${rankBadge}</td>
+                <td style="text-align: center; width: 10%; padding: 5px 6px; border: 1px solid #e2e8f0; white-space: nowrap;">${rankBadge}</td>
                 <td style="width: 40%; padding: 5px 6px; font-weight: 600; border: 1px solid #e2e8f0;">${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}</td>
                 <td style="text-align: center; width: 16%; font-weight: bold; color: #0055D4; padding: 5px 6px; border: 1px solid #e2e8f0;">${entry.eloTorneo.toFixed(2)}</td>
                 <td style="text-align: center; width: 17%; font-weight: bold; color: ${varColor}; padding: 5px 6px; border: 1px solid #e2e8f0;">
@@ -8651,3 +8699,4 @@ export const printPlayerProfiles = (
         : 'Profili Giocatori - Padel ELO Manager';
     return openPrintWindow(docTitle, pagesHtml, pageStyles);
 };
+
