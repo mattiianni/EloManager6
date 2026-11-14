@@ -50,9 +50,8 @@ export const PDF_ICONS = {
 };
 
 export const renderPrintDateBadge = (dateStr: string, label = 'Data:'): string => `
-    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; line-height: 1; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; vertical-align: middle; box-sizing: border-box;">
-        <span style="display: flex; align-items: center; justify-content: center;">${PDF_ICONS.calendarClean}</span>
-        <span style="display: inline-block; line-height: 1;">${label ? `${label} ` : ''}${escapeHtml(dateStr)}</span>
+    <div style="display: inline-block; height: 24px; line-height: 24px; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; text-align: center; vertical-align: middle; box-sizing: border-box;">
+        ${PDF_ICONS.calendar} ${label ? `${label} ` : ''}${escapeHtml(dateStr)}
     </div>
 `;
 
@@ -318,10 +317,13 @@ export const getPrintStyles = (fontImport: boolean = false) => `
         th, td {
             border-bottom: 1px solid #e2e8f0;
             border-right: 1px solid #e2e8f0;
-            padding: 6px 8px;
+            padding: 4px 6px;
             text-align: left;
             vertical-align: middle;
+            line-height: 16px;
+            height: 24px;
             color: #0f172a;
+            box-sizing: border-box;
         }
         th:last-child, td:last-child { border-right: none; }
         tr:last-child td { border-bottom: none; }
@@ -346,35 +348,33 @@ export const getPrintStyles = (fontImport: boolean = false) => `
         }
         .delta-positive { color: #16a34a !important; font-weight: 700; }
         .delta-negative { color: #dc2626 !important; font-weight: 700; }
-        .player-name-cell { vertical-align: middle; font-weight: 600; }
+        .player-name-cell { vertical-align: middle; font-weight: 600; line-height: 16px; }
         .score-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
             height: 20px;
-            line-height: 1;
+            line-height: 20px;
             padding: 0 8px;
             background-color: #0284c7;
             border-radius: 4px;
             margin: 0 2px;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 11px;
             color: #ffffff;
+            text-align: center;
             vertical-align: middle;
             box-sizing: border-box;
         }
         .score-box-blank {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            display: inline-block !important;
             width: 28px !important;
             height: 20px !important;
-            line-height: 1 !important;
+            line-height: 20px !important;
             border: 1.5px solid #cbd5e1 !important;
             border-radius: 4px !important;
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: transparent !important;
+            text-align: center !important;
             vertical-align: middle !important;
             box-sizing: border-box !important;
             -webkit-print-color-adjust: exact !important;
@@ -386,8 +386,8 @@ export const getPrintStyles = (fontImport: boolean = false) => `
 // Detect iOS devices
 
 export const formatScoreBoxes = (sets: any[], isScheduled: boolean = false) => {
-    const blankBox = '<span class="score-box-blank" style="border: 1px solid #cbd5e1; border-radius: 4px; width: 28px; height: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: #94a3b8; background: #f8fafc; vertical-align: middle; box-sizing: border-box;">&nbsp;&nbsp;&nbsp;</span>';
-    const separator = '<span style="display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 1;">-</span>';
+    const blankBox = '<span class="score-box-blank" style="border: 1px solid #cbd5e1; border-radius: 4px; width: 28px; height: 20px; line-height: 20px; display: inline-block; text-align: center; font-size: 11px; color: #94a3b8; background: #f8fafc; vertical-align: middle; box-sizing: border-box;">&nbsp;&nbsp;&nbsp;</span>';
+    const separator = '<span style="display: inline-block; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 20px;">-</span>';
 
     if (isScheduled || !sets || sets.length === 0) return `${blankBox} ${separator} ${blankBox}`;
 
@@ -395,7 +395,7 @@ export const formatScoreBoxes = (sets: any[], isScheduled: boolean = false) => {
     if (isBlank) return `${blankBox} ${separator} ${blankBox}`;
 
     return sets.map((s: any) =>
-        `<span style="background: linear-gradient(135deg, #0284c7, #0284c7); color: #ffffff; height: 20px; line-height: 1; padding: 0 8px; border-radius: 5px; font-weight: 800; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; margin: 0 2px; vertical-align: middle; box-shadow: 0 1px 2px rgba(2,132,199,0.3); box-sizing: border-box;"><span style="line-height: 1; display: inline-block;">${s.team1}-${s.team2}</span></span>`
+        `<span class="score-box" style="background-color: #0284c7; color: #ffffff; height: 20px; line-height: 20px; padding: 0 8px; border-radius: 4px; font-weight: 800; font-size: 11px; display: inline-block; text-align: center; margin: 0 2px; vertical-align: middle; box-sizing: border-box;">${s.team1}-${s.team2}</span>`
     ).join('');
 };
 
@@ -616,11 +616,17 @@ export const printInWindow = (title: string, content: string, pageStyles = ""): 
 export const printViaPdfShareForIPhone = async (title: string, content: string, pageStyles = ""): Promise<boolean> => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
 
-    // Feedback visivo immediato Apple HIG
+    // Feedback visivo immediato Apple HIG con spinner SVG vettoriale
     const loadingEl = document.createElement('div');
     loadingEl.id = 'padel-pdf-loading';
     loadingEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#ffffff;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;backdrop-filter:blur(10px);font-family:-apple-system,BlinkMacSystemFont,sans-serif;pointer-events:none;';
-    loadingEl.innerHTML = `<span style="font-size:16px;">⏳</span> Preparazione documento per AirPrint...`;
+    loadingEl.innerHTML = `
+        <style>
+            @keyframes padel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: padel-spin 0.8s linear infinite; display: inline-block; flex-shrink: 0;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <span>Preparazione documento per AirPrint...</span>
+    `;
     document.body.appendChild(loadingEl);
 
     const cleanupLoading = () => {
@@ -630,8 +636,36 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
     };
 
     try {
+        if (document.fonts && document.fonts.ready) {
+            try {
+                await Promise.race([
+                    document.fonts.ready,
+                    new Promise(resolve => setTimeout(resolve, 1500))
+                ]);
+            } catch {}
+        }
+
         const { body: cleanBody, styles: extractedStyles } = extractPrintBodyAndStyles(content);
         const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
+
+        // Impaginazione A4 Standard (210mm x 297mm) con margini reali (10mm sx/dx, 12mm top/bottom):
+        // Area utile: 190mm x 273mm
+        const printableWidthMm = 190;
+        const marginLeftMm = 10;
+        const marginTopMm = 12;
+        const pxPerMm = 794 / printableWidthMm; // ~4.1789 px/mm
+        const maxPageHeightPx = Math.floor(273 * pxPerMm); // ~1140px
+
+        const { jsPDF } = await import('jspdf');
+        const html2canvas = (await import('html2canvas')).default;
+
+        if (typeof document === 'undefined') return false;
+
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
 
         // Contenitore offscreen per il rendering fedele
         // Larghezza A4 proporzionata (794px = 190mm di area utile stampabile A4 a 96DPI)
@@ -649,37 +683,42 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
         `;
         document.body.appendChild(container);
 
-        // Impaginazione A4 Standard (210mm x 297mm) con margini reali (10mm sx/dx, 12mm top/bottom):
-        // Area utile: 190mm x 273mm
-        const printableWidthMm = 190;
-        const marginLeftMm = 10;
-        const marginTopMm = 12;
-        const pxPerMm = 794 / printableWidthMm; // ~4.1789 px/mm
-        const maxPageHeightPx = Math.floor(273 * pxPerMm); // ~1140px
-
-        // Punti di taglio deterministici (in pixel dall'alto del container)
-        const cutPoints: number[] = [0];
         const playerPages = typeof container.querySelectorAll === 'function'
             ? Array.from(container.querySelectorAll<HTMLElement>('.player-page'))
             : [];
 
-        if (playerPages.length > 1) {
-            // Stampa profili giocatori: ogni giocatore inizia su una nuova pagina
-            for (let i = 1; i < playerPages.length; i++) {
-                const top = playerPages[i].offsetTop;
-                if (top > cutPoints[cutPoints.length - 1]) {
-                    cutPoints.push(top);
+        if (playerPages.length > 0) {
+            // RENDERING PAGINA PER PAGINA (per profili giocatore o schede multiple):
+            // Evita categoricamente il superamento della memoria canvas di iOS WebKit (limite 256MB / 4096px).
+            // Renderizza ogni singola pagina in un canvas compatto (~13MB) aggiungendolo al PDF.
+            for (let i = 0; i < playerPages.length; i++) {
+                const pageEl = playerPages[i];
+                const pageCanvas = await html2canvas(pageEl, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    windowWidth: 794
+                });
+
+                const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+                const pageHeightPx = pageEl.offsetHeight || 1050;
+                const pageHeightMm = Math.min(273, (pageHeightPx / 794) * printableWidthMm);
+
+                if (i > 0) {
+                    pdf.addPage();
                 }
+                pdf.addImage(pageImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, pageHeightMm);
             }
-            cutPoints.push(container.offsetHeight || 1000);
         } else {
-            // Impaginazione report di torneo DOM-aware con protezione anti-taglio (break-inside: avoid)
+            // RENDERING REPORT TORNEO (DOM-aware con protezione anti-taglio):
             const totalHeight = container.offsetHeight || 1000;
+            const cutPoints: number[] = [0];
             let currentY = 0;
 
             const avoidElements = typeof container.querySelectorAll === 'function'
                 ? Array.from(container.querySelectorAll<HTMLElement>(
-                    '.avoid-break, .keep-together, .section-block, table, tr, .match-row, h1, h2, h3, .section-title, .footer, .player-page'
+                    '.avoid-break, .keep-together, .section-block, table, tr, .match-row, h1, h2, h3, .section-title, .footer'
                 ))
                 : [];
 
@@ -711,59 +750,50 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
                 cutPoints.push(adjustedCut);
                 currentY = adjustedCut;
             }
+
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                windowWidth: 794
+            });
+
+            const scale = canvas.width / 794;
+
+            for (let i = 0; i < cutPoints.length - 1; i++) {
+                const startY = cutPoints[i];
+                const endY = cutPoints[i + 1];
+                const sliceHeightPx = endY - startY;
+                if (sliceHeightPx <= 0) continue;
+
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = Math.max(1, Math.round(sliceHeightPx * scale));
+
+                const ctx = sliceCanvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                    ctx.drawImage(
+                        canvas,
+                        0, Math.round(startY * scale), canvas.width, Math.round(sliceHeightPx * scale),
+                        0, 0, sliceCanvas.width, sliceCanvas.height
+                    );
+                }
+
+                const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+                const sliceHeightMm = (sliceHeightPx / 794) * printableWidthMm;
+
+                if (i > 0) {
+                    pdf.addPage();
+                }
+
+                pdf.addImage(sliceImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, sliceHeightMm);
+            }
         }
-
-        const { jsPDF } = await import('jspdf');
-        const html2canvas = (await import('html2canvas')).default;
-
-        const canvas = await html2canvas(container, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            windowWidth: 794
-        });
 
         container.remove();
-
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-
-        const scale = canvas.width / 794;
-
-        for (let i = 0; i < cutPoints.length - 1; i++) {
-            const startY = cutPoints[i];
-            const endY = cutPoints[i + 1];
-            const sliceHeightPx = endY - startY;
-            if (sliceHeightPx <= 0) continue;
-
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = canvas.width;
-            sliceCanvas.height = Math.max(1, Math.round(sliceHeightPx * scale));
-
-            const ctx = sliceCanvas.getContext('2d');
-            if (ctx) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-                ctx.drawImage(
-                    canvas,
-                    0, Math.round(startY * scale), canvas.width, Math.round(sliceHeightPx * scale),
-                    0, 0, sliceCanvas.width, sliceCanvas.height
-                );
-            }
-
-            const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
-            const sliceHeightMm = (sliceHeightPx / 794) * printableWidthMm;
-
-            if (i > 0) {
-                pdf.addPage();
-            }
-
-            pdf.addImage(sliceImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, sliceHeightMm);
-        }
 
         cleanupLoading();
 
@@ -8674,16 +8704,21 @@ export const printPlayerProfiles = (
         .mini-table th {
             background: #f1f5f9;
             color: #475569;
-            padding: 3px 5px;
+            padding: 4px 6px;
+            line-height: 14px;
             text-align: left;
             font-size: 8px;
             font-weight: bold;
             border-bottom: 1px solid #cbd5e1;
+            vertical-align: middle;
+            box-sizing: border-box;
         }
         .mini-table td {
-            padding: 3px 5px;
+            padding: 4px 6px;
+            line-height: 14px;
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
+            box-sizing: border-box;
         }
         .page-footer {
             margin-top: 8px;

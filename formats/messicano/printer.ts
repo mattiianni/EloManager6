@@ -8,7 +8,8 @@ import {
     escapeHtml,
     PDF_ICONS,
     openPrintWindow,
-    waitForPrintFontsScript
+    waitForPrintFontsScript,
+    renderPrintDateBadge
 } from '../../services/printService';
 import { APP_MONTH, APP_VERSION } from '../../constants';
 
@@ -125,7 +126,7 @@ export const generateMexicanPdfHtml = (
         }
 
         const scoreHtml = isBlank || !hasScore
-            ? `<span class="score-box-blank score-box" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 20px; line-height: 1; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span> <span style="display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 1;">-</span> <span class="score-box-blank score-box" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 20px; line-height: 1; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span>`
+            ? `<span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 20px; line-height: 20px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span> <span style="display: inline-block; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 20px;">-</span> <span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 20px; line-height: 20px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span>`
             : formatScoreBoxes(match.sets, false);
 
         const isT1Winner = !isBlank && (match.winner === 'team1' || (!match.winner && hasScore && (match.sets[0]?.team1 || 0) > (match.sets[0]?.team2 || 0)));
@@ -133,18 +134,18 @@ export const generateMexicanPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 12%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; vertical-align: middle;">
-                    <span style="display: inline-flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #0055D4; background: #eff6ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bfdbfe; line-height: 1;">
+                <td style="text-align: center; width: 12%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">
+                    <span style="display: inline-block; height: 18px; line-height: 18px; font-size: 9.5px; font-weight: 700; color: #0055D4; background: #eff6ff; padding: 0 6px; border-radius: 4px; border: 1px solid #bfdbfe; text-align: center; vertical-align: middle; box-sizing: border-box;">
                         ${courtLabel}
                     </span>
                 </td>
-                <td style="width: 32%; text-align: right; ${isT1Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere; vertical-align: middle;">
+                <td style="width: 32%; text-align: right; ${isT1Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">
                     ${team1Name}
                 </td>
-                <td style="text-align: center; width: 24%; font-size: 11px; padding: 4px 6px; height: 24px; vertical-align: middle; white-space: nowrap;">
+                <td style="text-align: center; width: 24%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; white-space: nowrap; box-sizing: border-box;">
                     ${scoreHtml}
                 </td>
-                <td style="width: 32%; text-align: left; ${isT2Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere; vertical-align: middle;">
+                <td style="width: 32%; text-align: left; ${isT2Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">
                     ${team2Name}
                 </td>
             </tr>
@@ -184,34 +185,34 @@ export const generateMexicanPdfHtml = (
     // Standings HTML
     const standingsRowsHtml = standings.map((entry, idx) => {
         const playerName = `${escapeHtml(entry.player.name)} ${escapeHtml(entry.player.surname)}`;
-        let rankBadge = `<span style="font-weight: 700; color: #64748b;">${idx + 1}°</span>`;
+        let rankBadge = `<span style="font-weight: 700; color: #64748b; display: inline-block; height: 18px; line-height: 18px; text-align: center; vertical-align: middle;">${idx + 1}°</span>`;
         if (idx === 0) {
-            rankBadge = `<span style="background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fde68a;">1°</span>`;
+            rankBadge = `<span style="background: #fef3c7; color: #92400e; padding: 0 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fde68a; display: inline-block; height: 18px; line-height: 18px; text-align: center; vertical-align: middle; box-sizing: border-box;">1°</span>`;
         } else if (idx === 1) {
-            rankBadge = `<span style="background: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #cbd5e1;">2°</span>`;
+            rankBadge = `<span style="background: #f1f5f9; color: #475569; padding: 0 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #cbd5e1; display: inline-block; height: 18px; line-height: 18px; text-align: center; vertical-align: middle; box-sizing: border-box;">2°</span>`;
         } else if (idx === 2) {
-            rankBadge = `<span style="background: #ffedd5; color: #9a3412; padding: 2px 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fed7aa;">3°</span>`;
+            rankBadge = `<span style="background: #ffedd5; color: #9a3412; padding: 0 7px; border-radius: 9999px; font-weight: 800; border: 1px solid #fed7aa; display: inline-block; height: 18px; line-height: 18px; text-align: center; vertical-align: middle; box-sizing: border-box;">3°</span>`;
         }
 
         if (scoringType === 'points') {
             return `
                 <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
-                    <td style="width: 60%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600; overflow-wrap: anywhere;">${playerName}</td>
-                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.gamesWon}</td>
-                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
+                    <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${rankBadge}</td>
+                    <td style="width: 60%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: 600; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">${playerName}</td>
+                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: bold; color: #0055D4; vertical-align: middle; box-sizing: border-box;">${entry.gamesWon}</td>
+                    <td style="text-align: center; width: 15%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gamesLost}</td>
                 </tr>
             `;
         }
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${rankBadge}</td>
-                <td style="width: 50%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: 600; overflow-wrap: anywhere;">${playerName}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px; font-weight: bold; color: #0055D4;">${entry.points}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesWon}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gamesLost}</td>
-                <td style="text-align: center; width: 10%; font-size: 11px; padding: 5px 6px; height: 24px;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${rankBadge}</td>
+                <td style="width: 50%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: 600; overflow-wrap: anywhere; vertical-align: middle; box-sizing: border-box;">${playerName}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; font-weight: bold; color: #0055D4; vertical-align: middle; box-sizing: border-box;">${entry.points}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gamesWon}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gamesLost}</td>
+                <td style="text-align: center; width: 10%; font-size: 11px; padding: 4px 6px; height: 24px; line-height: 16px; vertical-align: middle; box-sizing: border-box;">${entry.gameDifference >= 0 ? '+' : ''}${entry.gameDifference}</td>
             </tr>
         `;
     }).join('');
@@ -222,24 +223,19 @@ export const generateMexicanPdfHtml = (
         <style>
             @page { size: A4; margin: 12mm 10mm; }
             table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
-            th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
-            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; vertical-align: middle; }
+            th { background-color: #f8fafc; color: #1e293b; padding: 5px 6px; font-weight: 700; font-size: 11px; height: 24px; line-height: 16px; text-align: left; border: 1px solid #e2e8f0; vertical-align: middle; box-sizing: border-box; }
+            td { padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; line-height: 16px; border: 1px solid #e2e8f0; vertical-align: middle; box-sizing: border-box; }
             tr { height: 24px; }
             tr:nth-child(even) { background-color: #f8fafc; }
-            .score-box { display: inline-flex; align-items: center; justify-content: center; height: 20px; line-height: 1; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-size: 11px; background: #ffffff; vertical-align: middle; box-sizing: border-box; }
-            .score-box-blank { display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 28px !important; height: 20px !important; line-height: 1 !important; border: 1.5px solid #cbd5e1 !important; border-radius: 4px !important; background: #ffffff !important; background-color: #ffffff !important; color: transparent !important; vertical-align: middle !important; box-sizing: border-box !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .score-box { display: inline-block; height: 20px; line-height: 20px; padding: 0 8px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 800; background-color: #0284c7; color: #ffffff; vertical-align: middle; box-sizing: border-box; }
+            .score-box-blank { display: inline-block !important; width: 28px !important; height: 20px !important; line-height: 20px !important; border: 1.5px solid #cbd5e1 !important; border-radius: 4px !important; background: #ffffff !important; background-color: #ffffff !important; color: transparent !important; text-align: center !important; vertical-align: middle !important; box-sizing: border-box !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
         </style>
         <div class="print-page">
             <div style="text-align: center; margin-bottom: 14px;">
                 <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800;">${PDF_ICONS.trophy} ${safeDisplayName}</h1>
                 <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Torneo Messicano (JIT Coppie Mobili) • ${isBlank ? 'Tabellone Vuoto' : 'Riepilogo'}</h2>
-                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; line-height: 1; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; vertical-align: middle; box-sizing: border-box;">
-                    <span style="display: flex; align-items: center; justify-content: center;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                    </span>
-                    <span style="display: inline-block; line-height: 1;">Data: ${formattedDate}</span>
-                </div>
+                ${renderPrintDateBadge(formattedDate, 'Data:')}
             </div>
 
             <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 18px 0;"></div>
@@ -254,11 +250,11 @@ export const generateMexicanPdfHtml = (
 
             <!-- CLASSIFICA DEFINITIVA O PROVVISORIA INDIVIDUALE -->
             ${!isBlank ? `
-            <div style="margin-top: 20px; page-break-inside: avoid; break-inside: avoid;">
-                <div style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #ecfdf5; border-left: 4px solid #059669; color: #065f46; border-radius: 4px; display: flex; align-items: center;">
+            <div class="section-block avoid-break keep-together" style="margin-top: 20px; page-break-inside: avoid; break-inside: avoid;">
+                <div class="section-title" style="font-size: 13px; font-weight: 700; margin: 14px 0 8px 0; padding: 6px 10px; background: #ecfdf5; border-left: 4px solid #059669; color: #065f46; border-radius: 4px; display: flex; align-items: center; break-after: avoid; page-break-after: avoid;">
                     ${PDF_ICONS.medal} CLASSIFICA INDIVIDUALE
                 </div>
-                <table>
+                <table style="width: 100%; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
                     <thead>
                         <tr>
                             <th style="text-align: center; width: 10%;">Pos</th>
