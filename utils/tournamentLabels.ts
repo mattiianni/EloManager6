@@ -25,7 +25,7 @@ export const getCompletedTournamentDayDisplayName = (
     tournament: Tournament,
     tournaments: Tournament[]
 ): string => {
-    if (tournament.type === TournamentType.TorneoASquadre || tournament.status !== 'completed') {
+    if (tournament.type === TournamentType.TorneoASquadre) {
         return tournament.name;
     }
 
@@ -38,11 +38,15 @@ export const getCompletedTournamentDayDisplayName = (
     const seriesDays = getNonTeamSeriesTournaments(tournament, tournaments);
     if (seriesDays.length <= 1) return tournament.name;
 
-    const dayIndex = seriesDays.findIndex(t => t.id === tournament.id);
-    const dayNumber = dayIndex >= 0 ? dayIndex + 1 : 1;
     const seriesName = getTournamentSeriesKey(tournament);
 
-    return `${seriesName} - ${dayNumber}^ Giornata`;
+    // Se il torneo ha un nome specifico distinto dal nome della serie, usa quello!
+    if (tournament.name && tournament.name.trim() !== seriesName.trim()) {
+        return tournament.name;
+    }
+
+    // Altrimenti mostra il tipo/formato della giornata (es. 'Mexicano', 'Beat the Box')
+    return tournament.type;
 };
 
 export const getTournamentDisplayName = (

@@ -125,7 +125,7 @@ export const generateMexicanPdfHtml = (
         }
 
         const scoreHtml = isBlank || !hasScore
-            ? `<span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 22px; line-height: 22px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle;">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold; margin: 0 4px;">-</span> <span class="score-box-blank score-box" style="display: inline-block; width: 28px; height: 22px; line-height: 22px; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle;">&nbsp;</span>`
+            ? `<span class="score-box-blank score-box" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 20px; line-height: 1; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span> <span style="display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 1;">-</span> <span class="score-box-blank score-box" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 20px; line-height: 1; border: 1.5px solid #cbd5e1; border-radius: 4px; background: #ffffff !important; background-color: #ffffff !important; color: transparent; text-align: center; vertical-align: middle; box-sizing: border-box;">&nbsp;</span>`
             : formatScoreBoxes(match.sets, false);
 
         const isT1Winner = !isBlank && (match.winner === 'team1' || (!match.winner && hasScore && (match.sets[0]?.team1 || 0) > (match.sets[0]?.team2 || 0)));
@@ -133,18 +133,18 @@ export const generateMexicanPdfHtml = (
 
         return `
             <tr style="height: 24px; page-break-inside: avoid; break-inside: avoid;">
-                <td style="text-align: center; width: 12%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3;">
-                    <span style="display: inline-block; font-size: 9.5px; font-weight: 700; color: #0055D4; background: #eff6ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bfdbfe;">
+                <td style="text-align: center; width: 12%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; vertical-align: middle;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #0055D4; background: #eff6ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bfdbfe; line-height: 1;">
                         ${courtLabel}
                     </span>
                 </td>
-                <td style="width: 32%; text-align: right; ${isT1Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">
+                <td style="width: 32%; text-align: right; ${isT1Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere; vertical-align: middle;">
                     ${team1Name}
                 </td>
-                <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
+                <td style="text-align: center; width: 24%; font-size: 11px; padding: 4px 6px; height: 24px; vertical-align: middle; white-space: nowrap;">
                     ${scoreHtml}
                 </td>
-                <td style="width: 32%; text-align: left; ${isT2Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere;">
+                <td style="width: 32%; text-align: left; ${isT2Winner ? 'font-weight: 700; color: #0055D4;' : 'color: #334155;'} font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; overflow-wrap: anywhere; vertical-align: middle;">
                     ${team2Name}
                 </td>
             </tr>
@@ -223,19 +223,22 @@ export const generateMexicanPdfHtml = (
             @page { size: A4; margin: 12mm 10mm; }
             table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
             th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
-            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
+            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; vertical-align: middle; }
             tr { height: 24px; }
             tr:nth-child(even) { background-color: #f8fafc; }
-            .score-box { display: inline-block; width: 22px; height: 20px; line-height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-size: 11px; background: #ffffff; }
-            .score-box-blank { display: inline-block !important; width: 28px !important; height: 22px !important; line-height: 22px !important; border: 1.5px solid #cbd5e1 !important; border-radius: 4px !important; background: #ffffff !important; background-color: #ffffff !important; color: transparent !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .score-box { display: inline-flex; align-items: center; justify-content: center; height: 20px; line-height: 1; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-size: 11px; background: #ffffff; vertical-align: middle; box-sizing: border-box; }
+            .score-box-blank { display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 28px !important; height: 20px !important; line-height: 1 !important; border: 1.5px solid #cbd5e1 !important; border-radius: 4px !important; background: #ffffff !important; background-color: #ffffff !important; color: transparent !important; vertical-align: middle !important; box-sizing: border-box !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8.5px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
         </style>
         <div class="print-page">
             <div style="text-align: center; margin-bottom: 14px;">
                 <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800;">${PDF_ICONS.trophy} ${safeDisplayName}</h1>
                 <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Torneo Messicano (JIT Coppie Mobili) • ${isBlank ? 'Tabellone Vuoto' : 'Riepilogo'}</h2>
-                <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                    ${PDF_ICONS.calendar} Data: ${formattedDate}
+                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; line-height: 1; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; vertical-align: middle; box-sizing: border-box;">
+                    <span style="display: flex; align-items: center; justify-content: center;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                    </span>
+                    <span style="display: inline-block; line-height: 1;">Data: ${formattedDate}</span>
                 </div>
             </div>
 

@@ -43,10 +43,18 @@ export const PDF_ICONS = {
     printer: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>`,
     zap: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
     calendar: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px; display: inline-block;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`,
+    calendarClean: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`,
     users: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px; display: inline-block;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
     target: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
     chart: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; display: inline-block;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
 };
+
+export const renderPrintDateBadge = (dateStr: string, label = 'Data:'): string => `
+    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; line-height: 1; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; vertical-align: middle; box-sizing: border-box;">
+        <span style="display: flex; align-items: center; justify-content: center;">${PDF_ICONS.calendarClean}</span>
+        <span style="display: inline-block; line-height: 1;">${label ? `${label} ` : ''}${escapeHtml(dateStr)}</span>
+    </div>
+`;
 
 const normalizedMatchPhase = (match: Match): string => String((match as Match & { phase?: string }).phase || '')
     .trim()
@@ -343,24 +351,32 @@ export const getPrintStyles = (fontImport: boolean = false) => `
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 3px 7px;
+            height: 20px;
+            line-height: 1;
+            padding: 0 8px;
             background-color: #0284c7;
             border-radius: 4px;
             margin: 0 2px;
             font-weight: 700;
             font-size: 11px;
             color: #ffffff;
+            vertical-align: middle;
+            box-sizing: border-box;
         }
         .score-box-blank {
-            display: inline-block !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             width: 28px !important;
-            height: 22px !important;
-            line-height: 22px !important;
+            height: 20px !important;
+            line-height: 1 !important;
             border: 1.5px solid #cbd5e1 !important;
             border-radius: 4px !important;
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: transparent !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
@@ -370,14 +386,16 @@ export const getPrintStyles = (fontImport: boolean = false) => `
 // Detect iOS devices
 
 export const formatScoreBoxes = (sets: any[], isScheduled: boolean = false) => {
-    if (isScheduled) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
-    if (!sets || sets.length === 0) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
+    const blankBox = '<span class="score-box-blank" style="border: 1px solid #cbd5e1; border-radius: 4px; width: 28px; height: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: #94a3b8; background: #f8fafc; vertical-align: middle; box-sizing: border-box;">&nbsp;&nbsp;&nbsp;</span>';
+    const separator = '<span style="display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-weight: bold; margin: 0 4px; vertical-align: middle; line-height: 1;">-</span>';
+
+    if (isScheduled || !sets || sets.length === 0) return `${blankBox} ${separator} ${blankBox}`;
 
     const isBlank = sets.every((s: any) => Number(s?.team1 || 0) === 0 && Number(s?.team2 || 0) === 0);
-    if (isBlank) return '<span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span> - <span style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 10px; display: inline-block; font-size: 11px; color: #94a3b8; background: #f8fafc;">&nbsp;&nbsp;&nbsp;</span>';
+    if (isBlank) return `${blankBox} ${separator} ${blankBox}`;
 
     return sets.map((s: any) =>
-        `<span style="background: linear-gradient(135deg, #0284c7, #0284c7); color: #ffffff; padding: 3px 8px; border-radius: 5px; font-weight: 800; font-size: 11px; display: inline-block; margin: 0 2px; box-shadow: 0 1px 2px rgba(2,132,199,0.3);">${s.team1}-${s.team2}</span>`
+        `<span style="background: linear-gradient(135deg, #0284c7, #0284c7); color: #ffffff; height: 20px; line-height: 1; padding: 0 8px; border-radius: 5px; font-weight: 800; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; margin: 0 2px; vertical-align: middle; box-shadow: 0 1px 2px rgba(2,132,199,0.3); box-sizing: border-box;"><span style="line-height: 1; display: inline-block;">${s.team1}-${s.team2}</span></span>`
     ).join('');
 };
 
@@ -606,6 +624,7 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
     document.body.appendChild(loadingEl);
 
     const cleanupLoading = () => {
+        if (typeof document === 'undefined') return;
         const el = document.getElementById('padel-pdf-loading');
         if (el) el.remove();
     };
@@ -615,8 +634,9 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
         const basePrintCss = getPrintStyles(false).replace(/<style>/g, '').replace(/<\/style>/g, '');
 
         // Contenitore offscreen per il rendering fedele
+        // Larghezza A4 proporzionata (794px = 190mm di area utile stampabile A4 a 96DPI)
         const container = document.createElement('div');
-        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;color:#000000;padding:24px;box-sizing:border-box;z-index:-1;';
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;color:#000000;padding:0;box-sizing:border-box;z-index:-1;';
         container.innerHTML = `
             <style>
                 ${basePrintCss}
@@ -628,6 +648,70 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
             ${cleanBody}
         `;
         document.body.appendChild(container);
+
+        // Impaginazione A4 Standard (210mm x 297mm) con margini reali (10mm sx/dx, 12mm top/bottom):
+        // Area utile: 190mm x 273mm
+        const printableWidthMm = 190;
+        const marginLeftMm = 10;
+        const marginTopMm = 12;
+        const pxPerMm = 794 / printableWidthMm; // ~4.1789 px/mm
+        const maxPageHeightPx = Math.floor(273 * pxPerMm); // ~1140px
+
+        // Punti di taglio deterministici (in pixel dall'alto del container)
+        const cutPoints: number[] = [0];
+        const playerPages = typeof container.querySelectorAll === 'function'
+            ? Array.from(container.querySelectorAll<HTMLElement>('.player-page'))
+            : [];
+
+        if (playerPages.length > 1) {
+            // Stampa profili giocatori: ogni giocatore inizia su una nuova pagina
+            for (let i = 1; i < playerPages.length; i++) {
+                const top = playerPages[i].offsetTop;
+                if (top > cutPoints[cutPoints.length - 1]) {
+                    cutPoints.push(top);
+                }
+            }
+            cutPoints.push(container.offsetHeight || 1000);
+        } else {
+            // Impaginazione report di torneo DOM-aware con protezione anti-taglio (break-inside: avoid)
+            const totalHeight = container.offsetHeight || 1000;
+            let currentY = 0;
+
+            const avoidElements = typeof container.querySelectorAll === 'function'
+                ? Array.from(container.querySelectorAll<HTMLElement>(
+                    '.avoid-break, .keep-together, .section-block, table, tr, .match-row, h1, h2, h3, .section-title, .footer, .player-page'
+                ))
+                : [];
+
+            while (currentY < totalHeight) {
+                const targetCut = currentY + maxPageHeightPx;
+                if (targetCut >= totalHeight) {
+                    cutPoints.push(totalHeight);
+                    break;
+                }
+
+                let adjustedCut = targetCut;
+                for (const el of avoidElements) {
+                    const elTop = el.offsetTop;
+                    const elBottom = elTop + el.offsetHeight;
+
+                    // Se l'elemento attraversa la linea di taglio teorica
+                    if (elTop < targetCut && elBottom > targetCut) {
+                        // Se l'elemento è più piccolo di una pagina, anticipa il taglio subito prima di esso
+                        if (el.offsetHeight <= maxPageHeightPx && elTop > currentY) {
+                            adjustedCut = Math.min(adjustedCut, elTop);
+                        }
+                    }
+                }
+
+                if (adjustedCut <= currentY) {
+                    adjustedCut = targetCut;
+                }
+
+                cutPoints.push(adjustedCut);
+                currentY = adjustedCut;
+            }
+        }
 
         const { jsPDF } = await import('jspdf');
         const html2canvas = (await import('html2canvas')).default;
@@ -642,29 +726,43 @@ export const printViaPdfShareForIPhone = async (title: string, content: string, 
 
         container.remove();
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4'
         });
 
-        const pageWidth = 210;
-        const pageHeight = 297;
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const scale = canvas.width / 794;
 
-        let heightLeft = imgHeight;
-        let position = 0;
+        for (let i = 0; i < cutPoints.length - 1; i++) {
+            const startY = cutPoints[i];
+            const endY = cutPoints[i + 1];
+            const sliceHeightPx = endY - startY;
+            if (sliceHeightPx <= 0) continue;
 
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = Math.max(1, Math.round(sliceHeightPx * scale));
 
-        while (heightLeft > 0) {
-            position -= pageHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
+            const ctx = sliceCanvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                ctx.drawImage(
+                    canvas,
+                    0, Math.round(startY * scale), canvas.width, Math.round(sliceHeightPx * scale),
+                    0, 0, sliceCanvas.width, sliceCanvas.height
+                );
+            }
+
+            const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+            const sliceHeightMm = (sliceHeightPx / 794) * printableWidthMm;
+
+            if (i > 0) {
+                pdf.addPage();
+            }
+
+            pdf.addImage(sliceImgData, 'JPEG', marginLeftMm, marginTopMm, printableWidthMm, sliceHeightMm);
         }
 
         cleanupLoading();
@@ -1616,9 +1714,7 @@ export const printRanking = (
 
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.standings} ${selectedTournament ? `Classifica Giocatori (${escapeHtml(selectedTournament.giornataName || selectedTournament.name)})` : 'Classifica Generale ELO'}</h1>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 11px; font-weight: 700; background: #eff6ff; padding: 2px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 5px;">
-                ${PDF_ICONS.calendar} Aggiornata al: ${new Date().toLocaleDateString('it-IT').replace(/\//g, '.')}
-            </div>
+            ${renderPrintDateBadge(new Date().toLocaleDateString('it-IT').replace(/\//g, '.'), 'Aggiornata al:')}
         </div>
 
         ${selectedTournament ? `
@@ -5615,9 +5711,7 @@ export const printTournamentStatistics = (stats: any) => {
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.chart} Statistiche Torneo</h1>
             <h2>${escapeHtml(getTournamentSeriesKey(stats.tournament))} • ${escapeHtml(stats.tournament.club)}</h2>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                ${PDF_ICONS.calendar} ${stats.periodo.inizio} — ${stats.periodo.fine}
-            </div>
+            ${renderPrintDateBadge(`${stats.periodo.inizio} — ${stats.periodo.fine}`, '')}
             ${stats.isPartial ? `
                 <div style="display: flex; justify-content: center; margin: 8px 0 0 0;">
                     <div style="display: inline-flex; align-items: center; border: 1px solid #fcd34d; background: #fffbeb; color: #92400e; border-radius: 9999px; padding: 4px 12px; font-size: 11px; font-weight: 800;">
@@ -6344,9 +6438,7 @@ export const printBeatTheBoxBlank = (
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.box} ${escapeHtml(tournamentDetails.name)} - Scheda Punteggi</h1>
             <h2>${escapeHtml(tournamentDetails.club)} • Beat the Box</h2>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                ${PDF_ICONS.calendar} ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
-            </div>
+            ${renderPrintDateBadge(new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.'))}
         </div>
 
         <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 16px 0;"></div>
@@ -6767,9 +6859,7 @@ export const printBeatTheBoxComplete = (
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.box} ${displayName}</h1>
             <h2>${escapeHtml(tournament.club)} • Beat the Box</h2>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
-            </div>
+            ${renderPrintDateBadge(new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.'))}
         </div>
 
         <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 20px 0;"></div>
@@ -7212,9 +7302,7 @@ export const printCustomTournamentBlank = (
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.trophy} ${displayName} - Scheda Punteggi</h1>
             <h2>${escapeHtml(tournamentDetails.club)} • ${formatLabels}</h2>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                ${PDF_ICONS.calendar} ${new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
-            </div>
+            ${renderPrintDateBadge(new Date(tournamentDetails.date).toLocaleDateString('it-IT').replace(/\//g, '.'))}
         </div>
 
         <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 16px 0;"></div>
@@ -7428,9 +7516,7 @@ export const printCustomTournamentComplete = (
         <div style="text-align: center; margin-bottom: 14px;">
             <h1>${PDF_ICONS.trophy} ${displayName}</h1>
             <h2>${escapeHtml(tournament.club)} • ${formatLabels}</h2>
-            <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 3px;">
-                ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
-            </div>
+            ${renderPrintDateBadge(new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.'))}
         </div>
 
         <div style="border-bottom: 2px solid #0055D4; margin: 10px 0 18px 0;"></div>

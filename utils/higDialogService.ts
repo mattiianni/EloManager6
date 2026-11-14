@@ -18,7 +18,7 @@ const createRequestId = () => globalThis.crypto?.randomUUID?.()
     || `dialog-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const emitDialog = (request: HIGDialogRequest) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
     window.dispatchEvent(new CustomEvent<HIGDialogRequest>(HIG_DIALOG_EVENT, { detail: request }));
 };
 

@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.13.1)
+# Istruzioni d'uso (v6.13.2)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.13.1`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.13.2`, `Nov 2026`).
 
 ## Indice
 

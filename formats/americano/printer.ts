@@ -138,7 +138,7 @@ export const generateAmericanoPdfHtml = (
             @page { size: A4; margin: 12mm 10mm; }
             table { width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
             th { background-color: #f8fafc; color: #1e293b; padding: 6px 8px; font-weight: 700; font-size: 11px; height: 24px; text-align: left; border: 1px solid #e2e8f0; }
-            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; }
+            td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; height: 24px; border: 1px solid #e2e8f0; vertical-align: middle; }
             tr { height: 24px; }
             tr:nth-child(even) { background-color: #f8fafc; }
             .section-block { page-break-inside: avoid; break-inside: avoid; }
@@ -148,8 +148,11 @@ export const generateAmericanoPdfHtml = (
             <div style="text-align: center; margin-bottom: 14px;">
                 <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #0f172a; font-weight: 800;">${PDF_ICONS.trophy} ${safeDisplayName}</h1>
                 <h2 style="font-size: 14px; margin: 0 0 3px 0; color: #64748b; font-weight: 500;">${safeClubName} • Torneo Americano • ${isScheduled ? 'Tabellone Vuoto' : 'Riepilogo'}</h2>
-                <div style="display: inline-flex; align-items: center; gap: 4px; color: #0055D4; font-size: 12px; font-weight: 700; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px;">
-                    ${PDF_ICONS.calendar} ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}
+                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; line-height: 1; color: #0055D4; font-size: 11.5px; font-weight: 700; background: #eff6ff; padding: 0 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 4px; vertical-align: middle; box-sizing: border-box;">
+                    <span style="display: flex; align-items: center; justify-content: center;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                    </span>
+                    <span style="display: inline-block; line-height: 1;">Data: ${new Date(tournament.date).toLocaleDateString('it-IT').replace(/\//g, '.')}</span>
                 </div>
             </div>
 

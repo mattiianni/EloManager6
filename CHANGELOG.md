@@ -13,6 +13,24 @@ Aggiunte dopo i problemi delle release 6.12.4-6.12.10 (stampa iOS rotta, Torneo 
    - **Su iPhone in modalità PWA Standalone (WebClip da schermata Home)**: Apple WebKit non implementa il delegato di presentazione per `UIPrintInteractionController` e scarta silenziosamente qualsiasi chiamata a `window.print()`. In questo specifico contesto è **MANDATORIO** utilizzare il pattern ufficiale raccomandato da WebKit (`printViaPdfShareForIPhone`): il documento viene convertito asincronamente in un vero file PDF A4 (`application/pdf`) ad alta risoluzione in memoria (`jsPDF` + `html2canvas` caricati via dynamic import) e condiviso tramite la Web Share API nativa (`navigator.share({ files: [pdfFile] })`). iOS apre istantaneamente la Share Sheet nativa che include in cima l'azione di sistema **"Stampa" (AirPrint)** con miniature e opzioni, oltre a "Salva su File" e "WhatsApp", preservando l'app al 100% a tutto schermo (senza barre di navigazione Safari).
    - **DIVIETO ASSOLUTO**: È categoricamente vietato tentare di sostituire `printViaPdfShareForIPhone` con `window.print()`, `printInWindow` o pagine Blob su iPhone PWA standalone. Questa implementazione è verificata e funzionante.
 8. **Regola Mandatory per la Guida HTML (`docs/Padel_ELO_Manager_Guida_v*.html`)**: Vietato fare elenchi lunghi di decine di versioni precedenti nel riquadro "Novità". Sintetizzare esclusivamente i cambiamenti più rilevanti e includere al massimo le ultime 3 versioni, evitando storici sterminati o ridondanti.
+9. **Regola Mandatory Coerenza Grafica e di Stile delle Stampe**:
+   - Ogni nuova implementazione o aggiornamento delle stampe deve avere tassativamente le caratteristiche di quelle già esistenti. Tutte le stampe dell'applicazione devono essere perfettamente coerenti tra di loro, senza inventare nuovi stili o varianti non autorizzate. Il riferimento assoluto di stile per layout, intestazioni, tabelle, colori, bordi, font e footer è la stampa **"Beat the Box"**.
+
+## v6.13.2 — 2026-11-14
+- **PWA iPhone PDF Print: Margini A4 e Paginazione DOM-Aware**:
+  - **Margini A4 Reali**: Risolta l'assenza di margini nell'esportazione PDF da iPhone PWA standalone. Applicati i margini standard A4 (`10mm` laterali, `12mm` verticali, area utile `190×273mm`).
+  - **Paginazione Intelligente DOM-Aware**: L'algoritmo di slicing analizza il DOM e gli elementi indivisibili (`.avoid-break`, `.section-block`, `table`, `tr`, `.footer`). Se una riga o la classifica attraversa la linea di taglio teorica, il taglio viene anticipato all'`offsetTop` del blocco, facendolo iniziare integro in cima alla pagina successiva (eliminato ogni taglio a metà classifica o tabella).
+  - **Interruzioni di Pagina tra Schede Giocatore**: Le stampe multi-profilo (`.player-page`) assegnano a ciascun giocatore una pagina PDF dedicata e pulita.
+  - **Safe Guard su Lifecycle**: Aggiunto controllo `if (typeof document === 'undefined') return;` in `cleanupLoading` per eliminare qualsiasi rischio di unhandled rejection in ambienti di test e SSR.
+- **Centratura e Allineamento Punteggi e Pillole Data**:
+  - **Box Risultati Perfettamente Centrati**: I badge punteggio (`formatScoreBoxes`) utilizzano ora `display: inline-flex; align-items: center; justify-content: center; height: 20px; line-height: 1; vertical-align: middle; box-sizing: border-box;`, impedendo il collasso del testo (`7-0`, `3-3`) contro il bordo inferiore del box blu.
+  - **Pillole Data e Info**: Normalizzate le pillole data nei template di stampa (`Messicano`, `Americano`, `Round Robin + Finali`, `Beat the Box`) tramite l'helper `renderPrintDateBadge`, eliminando l'offset negativo `vertical-align: -2px` dell'icona SVG del calendario e garantendo perfetto allineamento sul baricentro comune.
+- **Ripristino Nomi Giornate nelle Serie Multi-Giornata**:
+  - In `utils/tournamentLabels.ts`, rimossa la sovrascrittura forzata `${seriesName} - ${dayNumber}^ Giornata`. Se la giornata non ha un nome specifico personalizzato, viene mostrato il formato/tipo giocato (`Mexicano`, `Beat the Box`).
+  - Nella UI della pagina Tornei, per la serie "TorneOtto 2026/2027", le card mostrano ordinatamente i nomi specifici delle tappe: **Beat the Box**, **Beat the Box (No Finali)**, **Mexicano** con i relativi badge "GIORNATA X DI 3".
+  - Nella stampa PDF, l'intestazione riporta fedelmente il nome della giornata (es. 🏆 **Mexicano**) anziché il nome generico della serie.
+- **Audit e Conformità Apple HIG**:
+  - Audit formale eseguito da Senior QA Engineer & Apple HIG Auditor con esito **100% PASS** su tutte le 6 verifiche (zero emoji legacy, icone 100% SVG lineari, tipografia Manrope conforme, 189/189 test passati).
 
 ## v6.13.1 — 2026-11-13
 - **Armonizzazione e Coerenza Globale Stampe in Bianco**:
