@@ -161,7 +161,7 @@ bullet('TorneOtto 30\'', 'Formato a 8 giocatori su 2 campi, con rotazione di com
 bullet('Round Robin + Finali', 'Girone all\'italiana con gestione dei campi, andata e ritorno e riposi equi. La fase finale può essere solo girone, solo finale, oppure semifinali + finali.');
 bullet('Americano', 'Rotazione individuale a punti, con rotazione continua su tutti i campi.');
 bullet('Messicano', 'Coppie mobili per 8, 12, 16, 20 o 24 giocatori (vedi sotto).');
-bullet('Beat the Box', 'I partecipanti sono divisi in box, con fasi finali tra i migliori.');
+bullet('Beat the Box', 'I partecipanti sono divisi in box, con fasi finali tra i migliori. Dalle 4 coppie (8 persone) puoi scegliere tra Solo Finali e Semifinali + Finali.');
 bullet('Gironi + Fase Finale', '2, 3 o 4 gironi, poi quarti o semifinali.');
 bullet('Eliminazione Diretta (TPRA)', 'Tabellone ad albero.');
 bullet('Torneo Libero', 'Accoppiamenti liberi.');

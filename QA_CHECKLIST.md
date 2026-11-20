@@ -11,6 +11,7 @@ Eseguire ogni formato in stato `scheduled` e `completed`:
 - Round Robin + Finali: numero pari e dispari di coppie; solo girone, finale, semifinali; andata/ritorno.
 - Gironi + Fase Finale: 2 e 3 gironi; con e senza teste di serie.
 - Beat the Box: 4, 6 e 8 coppie.
+- Beat the Box con 4 coppie (da provare dall'utente): (1) la scelta Solo Finali / Semifinali + Finali compare; (2) Solo Finali = come prima (2 finali); (3) Semifinali + Finali: Semi 1 A1+B2 vs B3+A4, Semi 2 B1+A2 vs A3+B4, finali da vincitori/sconfitti, classifica ed ELO a fine torneo; (4) salvataggio e ripresa da Tornei/Risultati dopo i box e dopo le semifinali; (5) stampa in bianco e completa; (6) torneo a 2 box salvato prima di questa modifica: si riapre come Solo Finali; (7) 5+ box: nessuna scelta, semifinali con finali non vuote.
 - TPRA Eliminazione Diretta: tabellone con e senza BYE.
 - Torneo Libero: coppie fisse e rotazione.
 - Torneo a Squadre: round robin, andata/ritorno ed eliminazione diretta.

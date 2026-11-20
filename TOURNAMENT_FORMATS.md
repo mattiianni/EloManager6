@@ -73,7 +73,7 @@ Nota: `Torneo a Squadre` e' un flusso separato (implementato principalmente in `
 - requisiti: numero pari di coppie, minimo 4
 - box da 4 giocatori
 - fase box round robin
-- con 8+ coppie puo' generare semifinali prima delle finali
+- da 4 coppie (2 box) si sceglie tra solo finali e semifinali + finali (tabellone 1 contro 4: A1+B2 vs B3+A4, B1+A2 vs A3+B4); con 5+ box solo semifinali
 - ha stampa dedicata vuota e completa
 - ELO: K `16` (Standard unificato)
 

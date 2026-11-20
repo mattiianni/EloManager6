@@ -22,6 +22,7 @@ import { showHIGAlert } from '../utils/higDialogService.ts';
 import {
  calculateAllBoxStandings,
  createFinalsMatches as createBeatBoxFinalsMatches,
+ resolveBeatBoxPlayoffType,
  calculateNumBoxes,
  groupMatchesByPlayerSets,
 } from '../services/beatTheBoxService.ts';
@@ -176,6 +177,9 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
      if (consolazioneMatch && finalMatches.length === 2) {
          finalMatches.push(consolazioneMatch);
      }
+ } else if (remainingMatches.length > 0 && remainingMatches.every(m => m.phase === 'semifinal')) {
+     // Solo le semifinali salvate (es. 2 box con semifinali, finali non ancora giocate)
+     semifinalMatches = remainingMatches;
  } else {
      finalMatches = remainingMatches;
  }
@@ -961,7 +965,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
 
  if (existingFinalsMatches.length === 0) {
  // No finals yet - generate and show standings modal
- const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date, undefined, (tournament.playoffType as any) || 'semifinals');
+ const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date, undefined, resolveBeatBoxPlayoffType(tournament.playoffType, numBoxes));
  if (semifinals && semifinals.length > 0) {
  setBeatBoxSemifinalMatches(semifinals.map((m, i) => ({
  ...m, id: `temp-sf-${i}`, tournamentId: tournament.id, phase: 'semifinal'
@@ -977,14 +981,20 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  } else {
  // Finals/Semifinals exist in DB, populate state & resume from appropriate phase
  const is4OrMoreBoxes = numBoxes >= 4;
- const totalExpectedFinalMatches = is4OrMoreBoxes ? 6 : (numBoxes === 3 ? 3 : 2);
+ // 2 box (8 persone) con semifinali: 2 semifinali + 2 finali; senza semifinali: solo 2 finali.
+ const isTwoBoxWithSemifinals = numBoxes === 2 && (
+     resolveBeatBoxPlayoffType(tournament.playoffType, numBoxes) === 'semifinals' ||
+     existingFinalsMatches.some(m => m.phase === 'semifinal')
+ );
+ const hasSemifinalsResume = is4OrMoreBoxes || isTwoBoxWithSemifinals;
+ const totalExpectedFinalMatches = is4OrMoreBoxes ? 6 : (numBoxes === 3 ? 3 : (isTwoBoxWithSemifinals ? 4 : 2));
 
  const hasAllExpectedFinalMatches = existingFinalsMatches.length >= totalExpectedFinalMatches;
  const allFinalsCompleted = hasAllExpectedFinalMatches && existingFinalsMatches.every(m => m.winner && m.sets.length > 0);
 
  if (allFinalsCompleted && (tournament.status as string) === 'completed') {
  setEditingTournament(tournament);
- } else if (is4OrMoreBoxes && existingFinalsMatches.length >= 2) {
+ } else if (hasSemifinalsResume && existingFinalsMatches.length >= 2) {
  const semiMatches = existingFinalsMatches.slice(0, 2);
  const finalMatchesInDb = existingFinalsMatches.slice(2);
  const allSemisCompleted = semiMatches.every(m => m.winner && m.sets.length > 0);
@@ -1004,7 +1014,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  standings,
  tournament.date,
  sfResults,
- (tournament.playoffType as any) || 'semifinals'
+ resolveBeatBoxPlayoffType(tournament.playoffType, numBoxes)
  );
  setBeatBoxFinalMatches(finals.map((m, i) => ({
  ...m,
@@ -1553,7 +1563,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
      standings,
      editingTournament.date,
      undefined, // semifinalResults
-     (editingTournament.playoffType as any) || 'semifinals'
+     resolveBeatBoxPlayoffType(editingTournament.playoffType, numBoxes)
  );
 
  if (semifinals && semifinals.length > 0) {
@@ -3590,7 +3600,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  </div>
  ))}
  <p className="text-gray-600 dark:text-gray-400 text-center">
- I primi 2 classificati di ogni box (evidenziati in verde) sono qualificati. Vuoi procedere con le {beatBoxNumBoxes >= 4 ? 'semifinali' : 'finali'}?
+ I primi 2 classificati di ogni box (evidenziati in verde) sono qualificati. Vuoi procedere con le {beatBoxSemifinalMatches.length > 0 ? 'semifinali' : 'finali'}?
  </p>
  <div className="flex gap-3 pt-4">
  <Button
@@ -3616,7 +3626,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
  }}
  className="flex-1"
  >
- Procedi {beatBoxNumBoxes >= 4 ? 'alle Semifinali' : 'alle Finali'}
+ Procedi {beatBoxSemifinalMatches.length > 0 ? 'alle Semifinali' : 'alle Finali'}
  </Button>
  </div>
  </div>
@@ -3756,7 +3766,7 @@ const calculateGironiStandings = (allMatches: Match[]): any[] => {
      beatBoxStandings,
      activeT.date,
      sfResults,
-     activeT.playoffType || 'semifinals'
+     resolveBeatBoxPlayoffType(activeT.playoffType, beatBoxNumBoxes)
  );
 
  const sf1WinnerTeam = sfResults.sf1Winner === 'team1' ? beatBoxSemifinalMatches[0].team1 : beatBoxSemifinalMatches[0].team2;

@@ -60,7 +60,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments, 
             const { phaseMatches } = groupMatchesByPlayerSets(tournamentMatches);
             const numBoxes = groupMatchesByPlayerSets(tournamentMatches).boxes.size;
             let finalMatches: typeof tournamentMatches = [];
-            if (numBoxes >= 4 && phaseMatches.length >= 2) {
+            if ((numBoxes >= 4 || phaseMatches.length >= 4) && phaseMatches.length >= 2) {
                 finalMatches = phaseMatches.slice(2);
             } else {
                 finalMatches = phaseMatches;

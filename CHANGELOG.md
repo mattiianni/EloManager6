@@ -17,6 +17,18 @@ Aggiunte dopo i problemi delle release 6.12.4-6.12.10 (stampa iOS rotta, Torneo 
 9. **Regola Mandatory Coerenza Grafica e di Stile delle Stampe**:
    - Ogni nuova implementazione o aggiornamento delle stampe deve avere tassativamente le caratteristiche di quelle già esistenti. Tutte le stampe dell'applicazione devono essere perfettamente coerenti tra di loro, senza inventare nuovi stili o varianti non autorizzate. Il riferimento assoluto di stile per layout, intestazioni, tabelle, colori, bordi, font e footer è la stampa **"Beat the Box"**.
 
+## 6.13.6 — 2026-11-20
+### Aggiunto
+- Beat the Box a coppie con 4 coppie (8 persone, 2 box): ora compare la scelta **Solo Finali / Semifinali + Finali**.
+  Semifinali a "tabellone 1 contro 4": Semifinale 1 = A1+B2 contro B3+A4, Semifinale 2 = B1+A2 contro A3+B4;
+  Finale 1°-2° tra i vincitori, Finale 3°-4° tra gli sconfitti. "Solo Finali" resta identico a prima.
+  Il tipo di fase finale viene ora salvato anche al completamento; per i tornei a 2 box senza valore salvato
+  si considera "Solo Finali" (flusso storico). Ripresa da Tornei/Risultati e stampa in bianco aggiornate.
+  Formato **FROZEN** modificato su richiesta esplicita di Mattia Ianniello (20/11/2026); nessuno stile di stampa toccato.
+### Corretto
+- Beat the Box con 5 o più box: scegliendo "Solo Finali" l'elenco delle finali risultava vuoto. Da 5 box la
+  fase finale è sempre a semifinali e la scelta non viene più mostrata.
+
 ## 6.13.5 — 2026-11-14
 ### Corretto
 - iPad con app installata: la stampa riproduceva la schermata dell'app e, dopo "Annulla", l'interfaccia

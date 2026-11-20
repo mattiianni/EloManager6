@@ -5876,7 +5876,9 @@ export const printBeatTheBoxBlank = (
     playoffTypeStr?: string
 ) => {
     const numBoxes = boxes.length;
-    const wantSemifinals = (playoffTypeStr || tournamentDetails.playoffType) === 'semifinals' || !(playoffTypeStr || tournamentDetails.playoffType);
+    const storedPlayoffType = playoffTypeStr || tournamentDetails.playoffType;
+    // Tipo assente: con 2 box (8 persone) il flusso storico aveva solo le finali; con 3+ box le semifinali.
+    const wantSemifinals = storedPlayoffType ? storedPlayoffType === 'semifinals' : numBoxes !== 2;
 
     // Genera il contenuto delle finali basato sul numero di box
     const generateFinalsContent = () => {
@@ -5946,22 +5948,22 @@ export const printBeatTheBoxBlank = (
                                     <span class="score-box">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold;">-</span> <span class="score-box">&nbsp;</span>
                                 </td>
                                 <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">1ª Semifinale (Semi A) • A2 + B1</div>
-                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A2 + B1</span>
+                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">1ª Semifinale (Semi A) • A4 + B3</div>
+                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A4 + B3</span>
                                 </td>
                             </tr>
                             <tr style="height: 24px;">
                                 <td style="width: 38%; text-align: right; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">2ª Semifinale (Semi B) • A3 + B4</div>
-                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A3 + B4</span>
+                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">2ª Semifinale (Semi B) • A2 + B1</div>
+                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A2 + B1</span>
                                 </td>
                                 <td style="text-align: center; width: 24%; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap;">
                                     <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">Semi B</div>
                                     <span class="score-box">&nbsp;</span> <span style="color: #94a3b8; font-weight: bold;">-</span> <span class="score-box">&nbsp;</span>
                                 </td>
                                 <td style="width: 38%; text-align: left; font-size: 11px; padding: 5px 6px; height: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">2ª Semifinale (Semi B) • A4 + B3</div>
-                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A4 + B3</span>
+                                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; font-weight: 600;">2ª Semifinale (Semi B) • A3 + B4</div>
+                                    <span class="score-box" style="width: 85%; min-width: 120px; text-align: left;">&nbsp;A3 + B4</span>
                                 </td>
                             </tr>
                         </tbody>

@@ -176,6 +176,59 @@ export function createFinalsFor2Boxes(boxStandings: BoxStanding[], date: string)
     ];
 }
 
+/**
+ * 2 box (4 coppie, 8 persone) con SEMIFINALI — tabellone "1 contro 4".
+ * Le 4 squadre sono miste tra i due box (nessuno ripete il compagno del girone):
+ *   T1 = A1+B2   T2 = B1+A2   T3 = A3+B4   T4 = B3+A4
+ * Le posizioni derivano SOLO dai piazzamenti nei box (non dai punti combinati), così il foglio in bianco
+ * stampato prima del torneo coincide sempre con il flusso.
+ *   Semifinale 1: T1 contro T4     Semifinale 2: T2 contro T3
+ *   Finale 1°-2°: vincitori        Finale 3°-4°: sconfitti      (nessuna consolazione: giocano tutti)
+ */
+export function createSemifinalsAndFinalsFor2Boxes(
+    boxStandings: BoxStanding[],
+    date: string,
+    semifinalResults?: { sf1Winner: 'team1' | 'team2', sf2Winner: 'team1' | 'team2' }
+): { semifinals: Omit<Match, 'id' | 'tournamentId'>[]; finals: Omit<Match, 'id' | 'tournamentId'>[] } {
+    const getSafeId = (boxIdx: number, rankIdx: number) => {
+        const p = boxStandings[boxIdx]?.standings[rankIdx]?.player;
+        return p ? p.id : `dummy-${boxIdx}-${rankIdx}`;
+    };
+
+    // Box A = indice 0, Box B = indice 1; rankIdx 0 = 1° del box
+    const t1: [string, string] = [getSafeId(0, 0), getSafeId(1, 1)]; // A1 + B2
+    const t2: [string, string] = [getSafeId(1, 0), getSafeId(0, 1)]; // B1 + A2
+    const t3: [string, string] = [getSafeId(0, 2), getSafeId(1, 3)]; // A3 + B4
+    const t4: [string, string] = [getSafeId(1, 2), getSafeId(0, 3)]; // B3 + A4
+
+    const semifinals: Omit<Match, 'id' | 'tournamentId'>[] = [
+        { date, team1: t1, team2: t4, phase: 'semifinal', sets: [], winner: null },
+        { date, team1: t2, team2: t3, phase: 'semifinal', sets: [], winner: null },
+    ];
+
+    const finals: Omit<Match, 'id' | 'tournamentId'>[] = [];
+    if (semifinalResults) {
+        const sf1 = semifinals[0];
+        const sf2 = semifinals[1];
+        finals.push({
+            date,
+            team1: semifinalResults.sf1Winner === 'team1' ? sf1.team1 : sf1.team2,
+            team2: semifinalResults.sf2Winner === 'team1' ? sf2.team1 : sf2.team2,
+            phase: 'final_1_2',
+            sets: [], winner: null,
+        });
+        finals.push({
+            date,
+            team1: semifinalResults.sf1Winner === 'team1' ? sf1.team2 : sf1.team1,
+            team2: semifinalResults.sf2Winner === 'team1' ? sf2.team2 : sf2.team1,
+            phase: 'final_3_4',
+            sets: [], winner: null,
+        });
+    }
+
+    return { semifinals, finals };
+}
+
 // ==========================================
 // 3 BOX (6 COPPIE)
 // ==========================================
@@ -453,6 +506,9 @@ export function createFinalsMatches(
 ): { semifinals?: Omit<Match, 'id' | 'tournamentId'>[]; finals: Omit<Match, 'id' | 'tournamentId'>[] } {
     
     if (numBoxes === 2) {
+        if (playoffType === 'semifinals') {
+            return createSemifinalsAndFinalsFor2Boxes(boxStandings, date, semifinalResults);
+        }
         return { finals: createFinalsFor2Boxes(boxStandings, date) };
     } 
     
@@ -468,7 +524,23 @@ export function createFinalsMatches(
         return { finals: createFinalsOnlyFor4Boxes(boxStandings, date) };
     }
     
+    // 5 o più box: sono definite solo le semifinali (le "sole finali" esistono fino a 4 box).
+    // Con `finals_only` si procede comunque con le semifinali: mai una fase finale vuota.
     return createSemifinalsAndFinalsFor4PlusBoxes(boxStandings, date, semifinalResults);
+}
+
+/**
+ * Tipo di fase finale di un torneo salvato. Se non è stato memorizzato: con 2 box (8 persone) il flusso storico
+ * aveva solo le finali; da 3 box in su il valore storico è "semifinali".
+ */
+export function resolveBeatBoxPlayoffType(stored: string | null | undefined, numBoxes: number): PlayoffType {
+    if (stored === 'semifinals' || stored === 'finals_only') return stored;
+    return numBoxes === 2 ? 'finals_only' : 'semifinals';
+}
+
+/** Dal 5° box in su la scelta "Solo Finali" non è definita: la fase finale è sempre a semifinali. */
+export function playoffTypeAllowsFinalsOnly(numBoxes: number): boolean {
+    return numBoxes >= 2 && numBoxes <= 4;
 }
 
 export function isValidPairsCount(pairsCount: number): boolean {

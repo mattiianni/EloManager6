@@ -1,6 +1,6 @@
-# Istruzioni d'uso (v6.13.5)
+# Istruzioni d'uso (v6.13.6)
 
-Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.13.5`, `Nov 2026`).
+Guida pratica, allineata all'interfaccia e al comportamento attuali di Padel ELO Manager (versione `v6.13.6`, `Nov 2026`).
 
 ## Indice
 
@@ -115,7 +115,7 @@ Il PDF del calendario si può stampare prima di giocare, in bianco, da far compi
 - **Round Robin + Finali**: girone all'italiana con gestione dei campi, andata e ritorno e riposi equi. La fase finale può essere solo girone, solo finale, oppure semifinali + finali.
 - **Americano**: rotazione individuale a punti.
 - **Messicano**: coppie mobili (vedi sotto).
-- **Beat the Box**: i partecipanti sono divisi in box, con fasi finali tra i migliori.
+- **Beat the Box**: i partecipanti sono divisi in box, con fasi finali tra i migliori. Dalle 4 coppie (8 persone) puoi scegliere tra **Solo Finali** e **Semifinali + Finali**.
 - **Gironi + Fase Finale**: 2, 3 o 4 gironi, poi quarti o semifinali.
 - **Eliminazione Diretta (TPRA)**: tabellone ad albero.
 - **Torneo Libero**: accoppiamenti liberi.

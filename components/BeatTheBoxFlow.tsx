@@ -10,6 +10,7 @@ import {
  sortPairsByElo,
  isValidPairsCount,
  calculateNumBoxes,
+ playoffTypeAllowsFinalsOnly,
  getAllPlayersFromBoxes,
  BoxData,
  BoxStanding,
@@ -49,7 +50,9 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 }) => {
  const { addMultipleMatches, getPlayerById } = usePadelStore();
  
- const [step, setStep] = useState<BeatTheBoxStep>((pairs.length >= 6) ? 'playoff_selection' : 'animating');
+ // Da 4 coppie (8 persone) si sceglie tra "Solo Finali" e "Semifinali + Finali". Da 5 box (10 coppie) in su
+ // esistono solo le semifinali: nessuna scelta, si parte direttamente.
+ const [step, setStep] = useState<BeatTheBoxStep>(playoffTypeAllowsFinalsOnly(calculateNumBoxes(pairs.length)) ? 'playoff_selection' : 'animating');
  const [playoffType, setPlayoffType] = useState<PlayoffType>(pairs.length >= 6 ? 'semifinals' : 'finals_only');
  const [boxesData, setBoxesData] = useState<BoxData[]>([]);
  const [allMatches, setAllMatches] = useState<Match[]>([]);
@@ -224,7 +227,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  date: tournamentDate,
  club: clubName,
  };
- printBeatTheBoxBlank(tournamentDetails, boxesData, getPlayerById);
+ printBeatTheBoxBlank(tournamentDetails, boxesData, getPlayerById, playoffType);
  };
  
  // Recupera ELO di partenza dal backend
@@ -520,6 +523,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  matchIds: [],
  status: 'completed',
  giornataName: giornataName || undefined,
+ playoffType: playoffType,
  playoffsCustomized: isCustomizedPlayoffs,
  // Gli ELO vengono salvati automaticamente in elo_history dal server
  };
@@ -1122,7 +1126,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 
  <div className="flex gap-3 mt-6">
  <Button
- onClick={() => numBoxes >= 4 ? setStep('semifinals') : setStep('boxes')}
+ onClick={() => playoffType === 'semifinals' ? setStep('semifinals') : setStep('boxes')}
  variant="outline"
  className="flex-1"
  >
